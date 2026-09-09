@@ -1,0 +1,64 @@
+name: Build and Release APK
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Rename APK for Release
+        run: |
+          mkdir -p release-assets
+          cp app/build/outputs/apk/debug/app-debug.apk release-assets/FireTube-v1.0.0-debug.apk
+          cp app/build/outputs/apk/debug/app-debug.apk release-assets/app-debug.apk
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            release-assets/FireTube-v1.0.0-debug.apk
+            release-assets/app-debug.apk
+          name: "FireTube ${{ github.ref_name }}"
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          body: |
+            ## FireTube (Fire TV Dedicated YouTube Client)
+            Amazon Fire TV Stick HD (Fire OS 7〜8 / 1.5GB RAM) 専用 YouTube ネイティブクライアント
+
+            ### 🚀 主な特徴
+            - **完全ネイティブ UI (AndroidX Leanback)**: 物理リモコン（D-Pad）対応・60fps
+            - **GMS 0% & 完全広告フリー**: NewPipeExtractor による生ストリーム直接再生
+            - **SponsorBlock 自動スキップ**: 案件セクション・OP/EDをミリ秒単位でスキップ
+            - **スマート・リモコン操作**: 早送り長押しで倍速切り替え（1.25x / 1.5x / 2.0x）
+            - **低RAM（1.5GB以下）チューニング**: Glide RGB_565 & ExoPlayer バッファ制限
+
+            ### 📥 インストール方法
+            下の `app-debug.apk` または `FireTube-v1.0.0-debug.apk` をダウンロードし、ADB または Fire TV の Downloader アプリでインストールしてください。

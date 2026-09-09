@@ -9,3 +9,4 @@
 .externalNativeBuild
 .cxx
 .jdk17/
+.tools/
