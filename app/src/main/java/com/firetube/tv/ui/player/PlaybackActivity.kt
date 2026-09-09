@@ -346,9 +346,25 @@ class PlaybackActivity : FragmentActivity() {
                 if (p.isPlaying) p.pause() else p.play()
                 return true
             }
+
+            KeyEvent.KEYCODE_BACK -> {
+                onBackPressed()
+                return true
+            }
         }
 
         return super.onKeyDown(keyCode, event)
+    }
+
+    override fun onBackPressed() {
+        if (upNextContainer.visibility == View.VISIBLE) {
+            hideUpNextPanel()
+            return
+        }
+        if (isTaskRoot) {
+            startActivity(Intent(this, com.firetube.tv.ui.main.MainActivity::class.java))
+        }
+        super.onBackPressed()
     }
 
     override fun onKeyLongPress(keyCode: Int, event: KeyEvent?): Boolean {
