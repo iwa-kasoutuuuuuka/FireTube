@@ -36,11 +36,13 @@ jobs:
       - name: Build Debug APK
         run: |
           ./gradlew assembleDebug --stacktrace --info > build.log 2>&1 || {
-            echo "### ❌ Build Error Log" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            tail -n 150 build.log >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            tail -n 150 build.log
+            echo "Build failed, saving log to branch..."
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git checkout -B build-error-log
+            git add -f build.log
+            git commit -m "chore: debug build error log"
+            git push origin build-error-log --force
             exit 1
           }
 
