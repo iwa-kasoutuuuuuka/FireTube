@@ -3,6 +3,7 @@ package com.firetube.tv.ui.player
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.content.Intent
+import android.media.audiofx.LoudnessEnhancer
 import android.os.Bundle
 import android.util.Log
 import android.view.KeyEvent
@@ -16,18 +17,26 @@ import androidx.leanback.widget.ArrayObjectAdapter
 import androidx.leanback.widget.HorizontalGridView
 import androidx.leanback.widget.ItemBridgeAdapter
 import androidx.lifecycle.lifecycleScope
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
+import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.ui.PlayerView
 import com.firetube.tv.FireTubeApp
 import com.firetube.tv.R
 import com.firetube.tv.data.extractor.SponsorBlockService
+import com.firetube.tv.data.local.SubscriptionEntity
 import com.firetube.tv.data.local.VideoHistoryEntity
 import com.firetube.tv.data.model.SponsorSegment
 import com.firetube.tv.data.model.StreamInfoData
 import com.firetube.tv.data.model.VideoItem
+import com.firetube.tv.data.network.NetworkClient
+import com.firetube.tv.data.network.ReturnYouTubeDislikeClient
 import com.firetube.tv.data.repository.VideoRepository
 import com.firetube.tv.ui.main.VideoCardPresenter
 import com.firetube.tv.util.AppPreferences
@@ -43,6 +52,9 @@ import kotlinx.coroutines.launch
  * - 下キーで「関連動画（Up Next）」水平カルーセルを表示しシームレス切り替え
  * - ユーザー設定（画質、再生速度、SponsorBlock対象）の反映
  * - 低RAM最適化（非表示時にSurface描画を即時アンバインド）
+ * - 音量均一化 (Loudness Normalizer) 対応
+ * - Return YouTube Dislike (RYD) 評価比率バッジ
+ * - ハードウェア AVC/VP9 コーデック優先
  */
 class PlaybackActivity : FragmentActivity() {
 
@@ -55,12 +67,19 @@ class PlaybackActivity : FragmentActivity() {
     }
 
     private var player: ExoPlayer? = null
+    private var loudnessEnhancer: LoudnessEnhancer? = null
     private lateinit var playerView: PlayerView
     private lateinit var loadingView: ProgressBar
     private lateinit var sponsorBanner: View
     private lateinit var speedIndicator: TextView
     private lateinit var upNextContainer: LinearLayout
     private lateinit var upNextGrid: HorizontalGridView
+
+    private lateinit var videoInfoHud: View
+    private lateinit var videoHudTitle: TextView
+    private lateinit var videoHudChannel: TextView
+    private lateinit var videoHudRyd: TextView
+    private var hudDismissJob: Job? = null
 
     private val upNextAdapter = ArrayObjectAdapter(VideoCardPresenter())
 
@@ -92,6 +111,11 @@ class PlaybackActivity : FragmentActivity() {
         upNextContainer = findViewById(R.id.up_next_container)
         upNextGrid = findViewById(R.id.up_next_grid)
 
+        videoInfoHud = findViewById(R.id.video_info_hud)
+        videoHudTitle = findViewById(R.id.video_hud_title)
+        videoHudChannel = findViewById(R.id.video_hud_channel)
+        videoHudRyd = findViewById(R.id.video_hud_ryd)
+
         if (videoId.isEmpty()) {
             Toast.makeText(this, R.string.error_loading, Toast.LENGTH_SHORT).show()
             finish()
@@ -102,7 +126,24 @@ class PlaybackActivity : FragmentActivity() {
         initPlayer()
         loadStreamAndPlay()
         loadSponsorBlock()
+        loadRydVotes()
         loadUpNextVideos()
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        val newVideoId = intent?.getStringExtra(EXTRA_VIDEO_ID) ?: return
+        if (newVideoId.isNotEmpty() && newVideoId != videoId) {
+            videoId = newVideoId
+            videoTitle = intent.getStringExtra(EXTRA_VIDEO_TITLE) ?: ""
+            uploaderName = intent.getStringExtra(EXTRA_UPLOADER_NAME) ?: ""
+            thumbnailUrl = intent.getStringExtra(EXTRA_THUMBNAIL_URL) ?: ""
+            loadStreamAndPlay()
+            loadSponsorBlock()
+            loadRydVotes()
+            loadUpNextVideos()
+        }
     }
 
     private fun setupUpNextGrid() {
@@ -121,16 +162,37 @@ class PlaybackActivity : FragmentActivity() {
     }
 
     private fun initPlayer() {
+        val pref = AppPreferences.getInstance(this)
+
+        val trackSelector = DefaultTrackSelector(this).apply {
+            if (pref.preferAvcCodec) {
+                parameters = buildUponParameters()
+                    .setPreferredVideoMimeType(MimeTypes.VIDEO_H264)
+                    .build()
+            }
+        }
+
+        val mediaSourceFactory = DefaultMediaSourceFactory(
+            OkHttpDataSource.Factory(NetworkClient.client)
+        )
+
         player = ExoPlayer.Builder(this)
-            .setLoadControl(PlayerLoadControlFactory.createLowRamLoadControl())
+            .setMediaSourceFactory(mediaSourceFactory)
+            .setTrackSelector(trackSelector)
+            .setLoadControl(PlayerLoadControlFactory.createLowRamLoadControl(pref.bufferProfile))
             .build()
             .apply {
                 playWhenReady = true
                 addListener(object : Player.Listener {
                     override fun onPlaybackStateChanged(state: Int) {
+                        Log.i(TAG, "onPlaybackStateChanged: $state (BUFFERING=2, READY=3, ENDED=4, IDLE=1)")
                         when (state) {
                             Player.STATE_BUFFERING -> loadingView.visibility = View.VISIBLE
-                            Player.STATE_READY -> loadingView.visibility = View.GONE
+                            Player.STATE_READY -> {
+                                Log.i(TAG, "Playback ready! Hiding loadingView and showing HUD")
+                                loadingView.visibility = View.GONE
+                                showVideoInfoHud()
+                            }
                             Player.STATE_ENDED -> {
                                 saveHistory(currentPosition)
                                 showUpNextPanel()
@@ -138,13 +200,80 @@ class PlaybackActivity : FragmentActivity() {
                             Player.STATE_IDLE -> Unit
                         }
                     }
+
+                    override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                        Log.e(TAG, "ExoPlayer error: ${error.message}", error)
+                        loadingView.visibility = View.GONE
+                        Toast.makeText(this@PlaybackActivity, R.string.error_loading, Toast.LENGTH_SHORT).show()
+                    }
+
+                    override fun onAudioSessionIdChanged(audioSessionId: Int) {
+                        if (audioSessionId != C.AUDIO_SESSION_ID_UNSET) {
+                            setupLoudnessEnhancer(audioSessionId)
+                        }
+                    }
                 })
             }
         playerView.player = player
 
         // 設定されたデフォルト速度を適用
-        val pref = AppPreferences.getInstance(this)
         applyPlaybackSpeed(pref.defaultSpeed)
+    }
+
+    private fun setupLoudnessEnhancer(audioSessionId: Int) {
+        val pref = AppPreferences.getInstance(this)
+        if (!pref.loudnessNormalizerEnabled) {
+            loudnessEnhancer?.enabled = false
+            return
+        }
+
+        try {
+            loudnessEnhancer?.release()
+            loudnessEnhancer = LoudnessEnhancer(audioSessionId).apply {
+                setTargetGain(1000) // 10dB相当の自動リミッター・ゲインノーマライズ
+                enabled = true
+            }
+            Log.i(TAG, "LoudnessEnhancer enabled for session $audioSessionId")
+        } catch (e: Exception) {
+            Log.w(TAG, "LoudnessEnhancer unsupported on this hardware: ${e.message}")
+        }
+    }
+
+    private fun loadRydVotes() {
+        val pref = AppPreferences.getInstance(this)
+        if (!pref.showRydVotes) {
+            videoHudRyd.visibility = View.GONE
+            return
+        }
+
+        lifecycleScope.launch {
+            val result = ReturnYouTubeDislikeClient.getVotes(videoId)
+            result.onSuccess { votes ->
+                videoHudRyd.text = votes.formattedSummary
+                videoHudRyd.visibility = View.VISIBLE
+            }.onFailure {
+                videoHudRyd.visibility = View.GONE
+            }
+        }
+    }
+
+    private fun showVideoInfoHud() {
+        videoHudTitle.text = videoTitle
+        videoHudChannel.text = uploaderName
+        videoInfoHud.visibility = View.VISIBLE
+        videoInfoHud.alpha = 1.0f
+
+        hudDismissJob?.cancel()
+        hudDismissJob = lifecycleScope.launch {
+            delay(4000)
+            videoInfoHud.animate()
+                .alpha(0f)
+                .setDuration(400)
+                .withEndAction {
+                    videoInfoHud.visibility = View.GONE
+                }
+                .start()
+        }
     }
 
     private fun loadStreamAndPlay() {
@@ -165,32 +294,61 @@ class PlaybackActivity : FragmentActivity() {
         val pref = AppPreferences.getInstance(this)
         val targetQuality = pref.defaultQuality
 
-        // 設定画質に最も適合するストリームを検索
-        val preferredStream = streamInfo.videoStreams.firstOrNull {
-            it.resolution.contains(targetQuality, ignoreCase = true) && !it.isVideoOnly
+        Log.i(TAG, "startPlayback: streamInfo has ${streamInfo.videoStreams.size} video streams, hlsUrl=${streamInfo.hlsUrl}")
+        streamInfo.videoStreams.forEachIndexed { i, s ->
+            Log.d(TAG, "Stream[$i]: res=${s.resolution}, fmt=${s.format}, videoOnly=${s.isVideoOnly}, url=${s.url.take(60)}")
         }
 
-        val streamUrl = preferredStream?.url
-            ?: streamInfo.hlsUrl
+        // 設定画質に適合するストリームを検索（AVC優先時は MP4 / H.264 を最優先）
+        val matchingStreams = streamInfo.videoStreams.filter { !it.isVideoOnly }
+        val qualityFiltered = matchingStreams.filter { it.resolution.contains(targetQuality, ignoreCase = true) }
+        val candidates = if (qualityFiltered.isNotEmpty()) qualityFiltered else matchingStreams
+
+        val preferredStream = if (pref.preferAvcCodec) {
+            candidates.firstOrNull { it.format.equals("mp4", ignoreCase = true) || it.url.contains("mime=video%2Fmp4") }
+                ?: candidates.firstOrNull()
+        } else {
+            candidates.firstOrNull()
+        }
+
+        // HLS (アダプティブビットレート) を最優先。なければ設定画質の MP4 / 単一ストリームへフォールバック
+        val streamUrl = streamInfo.hlsUrl
+            ?: preferredStream?.url
             ?: streamInfo.videoStreams.firstOrNull { !it.isVideoOnly }?.url
             ?: streamInfo.videoStreams.firstOrNull()?.url
+
+        Log.i(TAG, "Selected streamUrl (HLS=${streamUrl == streamInfo.hlsUrl}): ${streamUrl?.take(100)}")
 
         if (streamUrl == null) {
             Toast.makeText(this, R.string.error_loading, Toast.LENGTH_SHORT).show()
             return
         }
 
-        val mediaItem = MediaItem.fromUri(streamUrl)
+        val mediaItem = if (streamUrl.contains(".m3u8") || streamUrl == streamInfo.hlsUrl) {
+            MediaItem.Builder()
+                .setUri(streamUrl)
+                .setMimeType(MimeTypes.APPLICATION_M3U8)
+                .build()
+        } else {
+            MediaItem.fromUri(streamUrl)
+        }
+
         lifecycleScope.launch {
             val db = (application as FireTubeApp).database
             val lastPos = db.videoDao().getLastPosition(videoId)
+            val durationMs = streamInfo.durationSeconds * 1000L
+            Log.i(TAG, "Restoring position for $videoId: lastPos=$lastPos, durationMs=$durationMs")
             player?.let { p ->
                 p.setMediaItem(mediaItem)
-                // 前回位置がある場合は prepare 前にシークして初期バッファリングの二重走りを防止
-                if (lastPos != null && lastPos > 5000) {
-                    p.seekTo(lastPos)
+                val shouldSeek = lastPos != null && lastPos > 5000 && (durationMs <= 0 || lastPos < durationMs - 10000)
+                if (shouldSeek) {
+                    Log.i(TAG, "Seeking to saved position: $lastPos ms")
+                    p.seekTo(lastPos!!)
+                } else {
+                    p.seekTo(0)
                 }
                 p.prepare()
+                p.play()
                 startSponsorMonitor()
             }
         }
@@ -226,6 +384,7 @@ class PlaybackActivity : FragmentActivity() {
 
         loadStreamAndPlay()
         loadSponsorBlock()
+        loadRydVotes()
         loadUpNextVideos()
     }
 
@@ -316,16 +475,33 @@ class PlaybackActivity : FragmentActivity() {
         }
 
         when (keyCode) {
+            // リモコンのメニューキー (MENU) でチャンネル登録/解除
+            KeyEvent.KEYCODE_MENU -> {
+                toggleChannelSubscription()
+                return true
+            }
+
             // D-Pad 下キーで関連動画（Up Next）表示
             KeyEvent.KEYCODE_DPAD_DOWN -> {
                 showUpNextPanel()
                 return true
             }
 
+            // D-Pad 上キーで動画情報 & RYD HUD 表示
+            KeyEvent.KEYCODE_DPAD_UP -> {
+                showVideoInfoHud()
+                return true
+            }
+
             KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,
             KeyEvent.KEYCODE_MEDIA_PLAY,
             KeyEvent.KEYCODE_MEDIA_PAUSE -> {
-                if (p.isPlaying) p.pause() else p.play()
+                if (p.isPlaying) {
+                    p.pause()
+                    showVideoInfoHud()
+                } else {
+                    p.play()
+                }
                 return true
             }
 
@@ -333,6 +509,7 @@ class PlaybackActivity : FragmentActivity() {
             KeyEvent.KEYCODE_MEDIA_REWIND -> {
                 val newPos = (p.currentPosition - 10_000).coerceAtLeast(0)
                 p.seekTo(newPos)
+                showVideoInfoHud()
                 return true
             }
 
@@ -340,12 +517,18 @@ class PlaybackActivity : FragmentActivity() {
             KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
                 val newPos = (p.currentPosition + 10_000).coerceAtMost(p.duration)
                 p.seekTo(newPos)
+                showVideoInfoHud()
                 return true
             }
 
             KeyEvent.KEYCODE_DPAD_CENTER,
             KeyEvent.KEYCODE_ENTER -> {
-                if (p.isPlaying) p.pause() else p.play()
+                if (p.isPlaying) {
+                    p.pause()
+                    showVideoInfoHud()
+                } else {
+                    p.play()
+                }
                 return true
             }
 
@@ -356,6 +539,28 @@ class PlaybackActivity : FragmentActivity() {
         }
 
         return super.onKeyDown(keyCode, event)
+    }
+
+    private fun toggleChannelSubscription() {
+        if (uploaderName.isBlank()) return
+        lifecycleScope.launch {
+            val db = (application as FireTubeApp).database
+            val channelId = uploaderName
+            val isSub = db.videoDao().isSubscribed(channelId)
+            if (isSub) {
+                db.videoDao().deleteSubscription(channelId)
+                Toast.makeText(this@PlaybackActivity, "「$uploaderName」の登録を解除しました", Toast.LENGTH_SHORT).show()
+            } else {
+                db.videoDao().insertSubscription(
+                    SubscriptionEntity(
+                        channelId = channelId,
+                        channelName = uploaderName,
+                        channelAvatarUrl = null
+                    )
+                )
+                Toast.makeText(this@PlaybackActivity, "「$uploaderName」をチャンネル登録しました", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     override fun onBackPressed() {
@@ -441,6 +646,9 @@ class PlaybackActivity : FragmentActivity() {
     override fun onDestroy() {
         sponsorMonitorJob?.cancel()
         speedHudDismissJob?.cancel()
+        hudDismissJob?.cancel()
+        loudnessEnhancer?.release()
+        loudnessEnhancer = null
         player?.release()
         player = null
         super.onDestroy()

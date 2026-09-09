@@ -20,15 +20,21 @@ object PlayerLoadControlFactory {
     // テレビ用バッファメモリ上限: 32MB
     private const val TARGET_BUFFER_BYTES = 32 * 1024 * 1024
 
-    fun createLowRamLoadControl(): LoadControl {
+    fun createLowRamLoadControl(bufferProfile: String = com.firetube.tv.util.AppPreferences.BUFFER_FAST): LoadControl {
         val allocator = DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE)
+
+        val (minBuffer, maxBuffer, playbackBuffer) = when (bufferProfile) {
+            com.firetube.tv.util.AppPreferences.BUFFER_STABLE -> Triple(40_000, 60_000, 5_000)
+            com.firetube.tv.util.AppPreferences.BUFFER_NORMAL -> Triple(25_000, 45_000, 1_500)
+            else -> Triple(MIN_BUFFER_MS, MAX_BUFFER_MS, BUFFER_FOR_PLAYBACK_MS) // FAST (500ms)
+        }
 
         return DefaultLoadControl.Builder()
             .setAllocator(allocator)
             .setBufferDurationsMs(
-                MIN_BUFFER_MS,
-                MAX_BUFFER_MS,
-                BUFFER_FOR_PLAYBACK_MS,
+                minBuffer,
+                maxBuffer,
+                playbackBuffer,
                 BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS
             )
             .setTargetBufferBytes(TARGET_BUFFER_BYTES)

@@ -86,6 +86,49 @@ class SearchFragment : SearchSupportFragment(), SearchSupportFragment.SearchResu
         }
     }
 
+    companion object {
+        private const val ARG_INITIAL_QUERY = "arg_initial_query"
+        private const val REQUEST_SPEECH = 1001
+
+        fun newInstance(initialQuery: String? = null): SearchFragment {
+            return SearchFragment().apply {
+                arguments = Bundle().apply {
+                    putString(ARG_INITIAL_QUERY, initialQuery)
+                }
+            }
+        }
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        val initialQuery = arguments?.getString(ARG_INITIAL_QUERY)
+        if (!initialQuery.isNullOrBlank()) {
+            setSearchQuery(initialQuery, true)
+        }
+
+        // 音声認識コールバック（マイクアイコン押下時）
+        setSpeechRecognitionCallback {
+            try {
+                val intent = recognizerIntent
+                startActivityForResult(intent, REQUEST_SPEECH)
+            } catch (e: Exception) {
+                // 音声認識サービスが利用できない端末では無視
+            }
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQUEST_SPEECH && resultCode == android.app.Activity.RESULT_OK && data != null) {
+            setSearchQuery(data, true)
+        }
+    }
+
+    fun setQueryAndSearch(query: String) {
+        setSearchQuery(query, true)
+    }
+
     override fun onStop() {
         super.onStop()
         MemoryManager.getInstance()?.clearUiCaches()

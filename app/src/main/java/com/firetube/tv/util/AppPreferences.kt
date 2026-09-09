@@ -28,10 +28,18 @@ class AppPreferences private constructor(context: Context) {
         const val KEY_SB_INTRO = "pref_sb_intro"
         const val KEY_SB_BADGE = "pref_sb_badge"
         const val KEY_API_SOURCE = "pref_api_source"
+        const val KEY_LOUDNESS_NORMALIZER = "pref_loudness_normalizer"
+        const val KEY_BUFFER_PROFILE = "pref_buffer_profile"
+        const val KEY_SHOW_RYD = "pref_show_ryd"
+        const val KEY_PREFER_AVC = "pref_prefer_avc"
 
         const val API_SOURCE_INNERTUBE = "InnerTube (推奨)"
         const val API_SOURCE_NEWPIPE = "NewPipe"
         const val API_SOURCE_PIPED = "Piped"
+
+        const val BUFFER_FAST = "FAST"     // 500ms (超高速起動)
+        const val BUFFER_NORMAL = "NORMAL" // 1500ms (標準)
+        const val BUFFER_STABLE = "STABLE" // 5000ms (低速Wi-Fi向け安定)
     }
 
     var defaultQuality: String
@@ -57,4 +65,21 @@ class AppPreferences private constructor(context: Context) {
     var apiSource: String
         get() = prefs.getString(KEY_API_SOURCE, API_SOURCE_INNERTUBE) ?: API_SOURCE_INNERTUBE
         set(value) = prefs.edit().putString(KEY_API_SOURCE, value).apply()
+
+    var loudnessNormalizerEnabled: Boolean
+        get() = prefs.getBoolean(KEY_LOUDNESS_NORMALIZER, true)
+        set(value) = prefs.edit().putBoolean(KEY_LOUDNESS_NORMALIZER, value).apply()
+
+    var bufferProfile: String
+        get() = prefs.getString(KEY_BUFFER_PROFILE, BUFFER_FAST) ?: BUFFER_FAST
+        set(value) = prefs.edit().putString(KEY_BUFFER_PROFILE, value).apply()
+
+    var showRydVotes: Boolean
+        get() = prefs.getBoolean(KEY_SHOW_RYD, true)
+        set(value) = prefs.edit().putBoolean(KEY_SHOW_RYD, value).apply()
+
+    var preferAvcCodec: Boolean
+        get() = prefs.getBoolean(KEY_PREFER_AVC, true)
+        set(value) = prefs.edit().putBoolean(KEY_PREFER_AVC, value).apply()
 }
+

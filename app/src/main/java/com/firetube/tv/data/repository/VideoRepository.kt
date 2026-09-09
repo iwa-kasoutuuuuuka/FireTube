@@ -151,8 +151,8 @@ object VideoRepository {
                 Log.i(TAG, "Loaded Up Next via NewPipeExtractor")
                 return@withContext Result.success(items)
             }
-        } catch (e: Exception) {
-            Log.w(TAG, "NewPipeExtractor Up Next failed: ${e.message}")
+        } catch (t: Throwable) {
+            Log.w(TAG, "NewPipeExtractor Up Next failed or incompatible on API level: ${t.message}")
         }
 
         Result.failure(Exception("Failed to fetch Up Next videos"))
@@ -177,15 +177,20 @@ object VideoRepository {
      * 動画再生ストリーム情報取得（NewPipe -> Piped 高速多重フォールバック）
      */
     suspend fun extractStreamInfo(videoId: String): Result<StreamInfoData> = withContext(Dispatchers.IO) {
-        // 1. NewPipeExtractor による直接抽出
-        val npResult = YouTubeStreamExtractor.extractStreamInfo(videoId)
-        if (npResult.isSuccess) {
-            val data = npResult.getOrNull()
-            if (data != null && (data.videoStreams.isNotEmpty() || data.hlsUrl != null)) {
-                return@withContext npResult
+        // 1. NewPipeExtractor による直接抽出 (API 28 LinkageErrorも捕捉)
+        try {
+            val npResult = YouTubeStreamExtractor.extractStreamInfo(videoId)
+            if (npResult.isSuccess) {
+                val data = npResult.getOrNull()
+                if (data != null && (data.videoStreams.isNotEmpty() || data.hlsUrl != null)) {
+                    return@withContext npResult
+                }
             }
+        } catch (t: Throwable) {
+            Log.w(TAG, "NewPipeExtractor stream extraction unavailable on this device: ${t.message}")
         }
-        Log.w(TAG, "NewPipeExtractor failed or returned empty streams for $videoId, trying Piped...")
+
+        Log.w(TAG, "NewPipeExtractor failed or empty, falling back to Piped...")
 
         // 2. Piped API によるストリーム抽出フォールバック
         val pipedResult = PipedApiClient.extractStreamInfo(videoId)
@@ -193,6 +198,6 @@ object VideoRepository {
             return@withContext pipedResult
         }
 
-        npResult
+        Result.failure(Exception("All stream extraction providers failed for $videoId"))
     }
 }

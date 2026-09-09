@@ -37,6 +37,7 @@ class MainFragment : BrowseSupportFragment() {
 
     private lateinit var rowsAdapter: ArrayObjectAdapter
     private val trendingAdapter = ArrayObjectAdapter(VideoCardPresenter())
+    private val subscriptionsAdapter = ArrayObjectAdapter(VideoCardPresenter())
     private val historyAdapter = ArrayObjectAdapter(VideoCardPresenter())
     private val toolsAdapter = ArrayObjectAdapter(VideoCardPresenter())
 
@@ -44,6 +45,8 @@ class MainFragment : BrowseSupportFragment() {
         const val ID_SETTINGS = "__settings__"
         const val ID_CAST = "__cast__"
         const val ID_RETRY = "__retry__"
+        const val ID_NO_SUB = "__no_sub__"
+        const val PREFIX_CHANNEL = "__chan__:"
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -74,10 +77,13 @@ class MainFragment : BrowseSupportFragment() {
         val trendingHeader = HeaderItem(0, getString(R.string.menu_trending))
         rowsAdapter.add(ListRow(trendingHeader, trendingAdapter))
 
-        val historyHeader = HeaderItem(1, getString(R.string.menu_history))
+        val subHeader = HeaderItem(1, getString(R.string.menu_subscriptions))
+        rowsAdapter.add(ListRow(subHeader, subscriptionsAdapter))
+
+        val historyHeader = HeaderItem(2, getString(R.string.menu_history))
         rowsAdapter.add(ListRow(historyHeader, historyAdapter))
 
-        val toolsHeader = HeaderItem(2, "設定 & 便利機能")
+        val toolsHeader = HeaderItem(3, "設定 & 便利機能")
         rowsAdapter.add(ListRow(toolsHeader, toolsAdapter))
 
         adapter = rowsAdapter
@@ -113,15 +119,26 @@ class MainFragment : BrowseSupportFragment() {
         // カード決定ボタン押下
         onItemViewClickedListener = OnItemViewClickedListener { _, item, _, _ ->
             if (item is VideoItem) {
-                when (item.id) {
-                    ID_SETTINGS -> {
+                when {
+                    item.id == ID_SETTINGS -> {
                         startActivity(Intent(requireContext(), SettingsActivity::class.java))
                     }
-                    ID_CAST -> {
+                    item.id == ID_CAST -> {
                         startActivity(Intent(requireContext(), CastActivity::class.java))
                     }
-                    ID_RETRY -> {
+                    item.id == ID_RETRY -> {
                         loadData()
+                    }
+                    item.id == ID_NO_SUB -> {
+                        Toast.makeText(requireContext(), R.string.no_subscriptions_desc, Toast.LENGTH_SHORT).show()
+                    }
+                    item.id.startsWith(PREFIX_CHANNEL) -> {
+                        val channelId = item.id.removePrefix(PREFIX_CHANNEL)
+                        val intent = Intent(requireContext(), ChannelActivity::class.java).apply {
+                            putExtra(ChannelActivity.EXTRA_CHANNEL_URL, channelId)
+                            putExtra(ChannelActivity.EXTRA_CHANNEL_NAME, item.title)
+                        }
+                        startActivity(intent)
                     }
                     else -> {
                         val intent = Intent(requireContext(), PlaybackActivity::class.java).apply {
@@ -171,7 +188,42 @@ class MainFragment : BrowseSupportFragment() {
             }
         }
 
-        // 2. ローカル履歴の取得 (Room DB)
+        // 3. ローカル登録チャンネルの取得
+        loadSubscriptions()
+
+        // 4. ローカル履歴の取得 (Room DB)
+        loadHistory()
+    }
+
+    private fun loadSubscriptions() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val db = (requireActivity().application as FireTubeApp).database
+            val subs = db.videoDao().getAllSubscriptions().firstOrNull() ?: emptyList()
+            subscriptionsAdapter.clear()
+            if (subs.isEmpty()) {
+                subscriptionsAdapter.add(
+                    VideoItem(
+                        id = ID_NO_SUB,
+                        title = getString(R.string.no_subscriptions),
+                        uploaderName = getString(R.string.no_subscriptions_desc),
+                        thumbnailUrl = ""
+                    )
+                )
+            } else {
+                val subItems = subs.map { entity ->
+                    VideoItem(
+                        id = "$PREFIX_CHANNEL${entity.channelId}",
+                        title = entity.channelName,
+                        uploaderName = "登録チャンネル",
+                        thumbnailUrl = entity.channelAvatarUrl ?: ""
+                    )
+                }
+                subscriptionsAdapter.addAll(0, subItems)
+            }
+        }
+    }
+
+    private fun loadHistory() {
         viewLifecycleOwner.lifecycleScope.launch {
             val db = (requireActivity().application as FireTubeApp).database
             val historyList = db.videoDao().getHistoryVideos().firstOrNull() ?: emptyList()
@@ -191,22 +243,9 @@ class MainFragment : BrowseSupportFragment() {
 
     override fun onResume() {
         super.onResume()
-        // 設定や再生から戻った際に履歴を更新
-        viewLifecycleOwner.lifecycleScope.launch {
-            val db = (requireActivity().application as FireTubeApp).database
-            val historyList = db.videoDao().getHistoryVideos().firstOrNull() ?: emptyList()
-            val historyVideos = historyList.map { entity ->
-                VideoItem(
-                    id = entity.id,
-                    title = entity.title,
-                    uploaderName = entity.uploaderName,
-                    thumbnailUrl = entity.thumbnailUrl,
-                    durationSeconds = entity.durationSeconds
-                )
-            }
-            historyAdapter.clear()
-            historyAdapter.addAll(0, historyVideos)
-        }
+        // 設定や再生から戻った際に履歴と登録チャンネルを更新
+        loadSubscriptions()
+        loadHistory()
     }
 
     override fun onStop() {

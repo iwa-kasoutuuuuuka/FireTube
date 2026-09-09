@@ -161,21 +161,22 @@ object PipedApiClient {
                     val body = response.body?.string() ?: return@use
                     val json = gson.fromJson(body, JsonObject::class.java)
 
-                    val title = json.get("title")?.asString ?: "Video"
-                    val uploader = json.get("uploader")?.asString ?: "Channel"
-                    val duration = json.get("duration")?.asLong ?: 0L
-                    val hlsUrl = json.get("hls")?.asString
-                    val dashUrl = json.get("dash")?.asString
+                    val title = json.getStringOrNull("title") ?: "Video"
+                    val uploader = json.getStringOrNull("uploader") ?: "Channel"
+                    val duration = json.getLongOrDefault("duration", 0L)
+                    val hlsUrl = json.getStringOrNull("hls")
+                    val dashUrl = json.getStringOrNull("dash")
 
                     val videoStreams = mutableListOf<VideoStream>()
                     json.getAsJsonArray("videoStreams")?.forEach { elem ->
                         if (elem.isJsonObject) {
                             val obj = elem.asJsonObject
-                            val url = obj.get("url")?.asString ?: ""
-                            val quality = obj.get("quality")?.asString ?: "720p"
-                            val format = obj.get("format")?.asString ?: "mp4"
-                            val videoOnly = obj.get("videoOnly")?.asBoolean ?: false
-                            val bitrate = obj.get("bitrate")?.asInt ?: 0
+                            val url = obj.getStringOrNull("url") ?: ""
+                            val quality = obj.getStringOrNull("quality")
+                                ?: obj.getStringOrNull("resolution") ?: "720p"
+                            val format = obj.getStringOrNull("format") ?: "mp4"
+                            val videoOnly = obj.getBooleanOrDefault("videoOnly", false)
+                            val bitrate = obj.getIntOrDefault("bitrate", 0)
                             if (url.isNotEmpty()) {
                                 videoStreams.add(
                                     VideoStream(
@@ -194,9 +195,9 @@ object PipedApiClient {
                     json.getAsJsonArray("audioStreams")?.forEach { elem ->
                         if (elem.isJsonObject) {
                             val obj = elem.asJsonObject
-                            val url = obj.get("url")?.asString ?: ""
-                            val format = obj.get("format")?.asString ?: "m4a"
-                            val bitrate = obj.get("bitrate")?.asInt ?: 0
+                            val url = obj.getStringOrNull("url") ?: ""
+                            val format = obj.getStringOrNull("format") ?: "m4a"
+                            val bitrate = obj.getIntOrDefault("bitrate", 0)
                             if (url.isNotEmpty()) {
                                 audioStreams.add(AudioStream(url = url, format = format, bitrate = bitrate))
                             }
@@ -204,7 +205,7 @@ object PipedApiClient {
                     }
 
                     if (videoStreams.isNotEmpty() || hlsUrl != null) {
-                        Log.i(TAG, "Stream info extracted successfully from Piped: $baseUrl")
+                        Log.i(TAG, "Stream info extracted successfully from Piped: $baseUrl (${videoStreams.size} streams)")
                         return@withContext Result.success(
                             StreamInfoData(
                                 videoId = videoId,
@@ -225,4 +226,25 @@ object PipedApiClient {
         }
         Result.failure(Exception("All Piped instances failed to extract streams for: $videoId"))
     }
+
+    private fun JsonObject.getStringOrNull(key: String): String? {
+        val elem = get(key) ?: return null
+        return if (!elem.isJsonNull) elem.asString else null
+    }
+
+    private fun JsonObject.getLongOrDefault(key: String, default: Long = 0L): Long {
+        val elem = get(key) ?: return default
+        return if (!elem.isJsonNull) elem.asLong else default
+    }
+
+    private fun JsonObject.getIntOrDefault(key: String, default: Int = 0): Int {
+        val elem = get(key) ?: return default
+        return if (!elem.isJsonNull) elem.asInt else default
+    }
+
+    private fun JsonObject.getBooleanOrDefault(key: String, default: Boolean = false): Boolean {
+        val elem = get(key) ?: return default
+        return if (!elem.isJsonNull) elem.asBoolean else default
+    }
 }
+

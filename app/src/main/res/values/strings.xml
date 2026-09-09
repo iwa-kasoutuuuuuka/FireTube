@@ -41,4 +41,14 @@
     <string name="cast_title">スマホから動画をキャスト</string>
     <string name="cast_instruction">同じWi-Fiに接続されたスマホ・PCのブラウザから、以下のURLにアクセスしてください：</string>
     <string name="cast_waiting">接続待機中…</string>
+
+    <!-- New Advanced TV Features -->
+    <string name="pref_loudness_normalizer">音量均一化 (Loudness Normalizer)</string>
+    <string name="pref_buffer_profile">バッファプロファイル (低遅延 / 安定)</string>
+    <string name="pref_show_ryd">低評価数表示 (Return YouTube Dislike)</string>
+    <string name="pref_prefer_avc">AVC (H.264) ハードウェア再生を優先</string>
+    <string name="no_subscriptions">登録チャンネルがありません</string>
+    <string name="no_subscriptions_desc">チャンネル詳細画面からお気に入りに登録できます</string>
+    <string name="unsubscribe">登録解除</string>
+    <string name="voice_search">音声検索</string>
 </resources>
