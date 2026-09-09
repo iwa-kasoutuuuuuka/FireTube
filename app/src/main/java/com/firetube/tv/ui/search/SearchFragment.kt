@@ -78,7 +78,7 @@ class SearchFragment : SearchSupportFragment(), SearchSupportFragment.SearchResu
         searchJob?.cancel()
         searchJob = viewLifecycleOwner.lifecycleScope.launch {
             delay(400) // 連打防止デバウンス
-            val result = YouTubeStreamExtractor.searchVideos(query)
+            val result = com.firetube.tv.data.repository.VideoRepository.searchVideos(query)
             result.onSuccess { videos ->
                 resultsAdapter.clear()
                 resultsAdapter.addAll(0, videos)

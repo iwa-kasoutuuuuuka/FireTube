@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/layout_error_retry"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="32dp"
+    android:visibility="gone"
+    android:background="@color/background_dark">
+
+    <ImageView
+        android:id="@+id/image_error_icon"
+        android:layout_width="72dp"
+        android:layout_height="72dp"
+        android:layout_marginBottom="16dp"
+        android:contentDescription="@string/error_loading"
+        android:src="@android:drawable/ic_dialog_alert"
+        android:tint="@color/primary_red" />
+
+    <TextView
+        android:id="@+id/text_error_message"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:text="@string/network_error_msg"
+        android:textColor="@color/text_primary"
+        android:textSize="20sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/text_error_hint"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="24dp"
+        android:text="@string/press_to_retry"
+        android:textColor="@color/text_secondary"
+        android:textSize="14sp" />
+
+    <Button
+        android:id="@+id/btn_retry"
+        android:layout_width="220dp"
+        android:layout_height="48dp"
+        android:background="@drawable/btn_selector"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:text="@string/retry"
+        android:textColor="@color/text_primary"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+</LinearLayout>

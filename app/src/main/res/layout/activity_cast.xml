@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background_dark"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="48dp">
+
+    <ImageView
+        android:layout_width="96dp"
+        android:layout_height="96dp"
+        android:layout_marginBottom="24dp"
+        android:contentDescription="@string/menu_cast"
+        android:src="@drawable/ic_firetube_logo" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        android:text="@string/cast_title"
+        android:textColor="@color/text_primary"
+        android:textSize="28sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="24dp"
+        android:gravity="center"
+        android:maxWidth="700dp"
+        android:text="@string/cast_instruction"
+        android:textColor="@color/text_secondary"
+        android:textSize="18sp" />
+
+    <TextView
+        android:id="@+id/text_cast_url"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="32dp"
+        android:background="@drawable/card_focus_border"
+        android:paddingStart="32dp"
+        android:paddingTop="16dp"
+        android:paddingEnd="32dp"
+        android:paddingBottom="16dp"
+        android:text="http://192.168.1.xxx:8080"
+        android:textColor="@color/accent_focus"
+        android:textSize="26sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="32dp"
+        android:text="@string/cast_waiting"
+        android:textColor="@color/text_secondary"
+        android:textSize="16sp" />
+
+    <Button
+        android:id="@+id/btn_close_cast"
+        android:layout_width="220dp"
+        android:layout_height="48dp"
+        android:background="@drawable/btn_selector"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:text="戻る"
+        android:textColor="@color/text_primary"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+</LinearLayout>

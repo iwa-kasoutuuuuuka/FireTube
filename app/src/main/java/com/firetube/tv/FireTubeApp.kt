@@ -33,5 +33,8 @@ class FireTubeApp : Application() {
 
         // 2. GMSフリー抽出エンジンの非同期初期化
         YouTubeStreamExtractor.init()
+
+        // 3. ローカルキャスト待受サーバー起動 (ポート8080)
+        com.firetube.tv.cast.LocalCastServer.start(this)
     }
 }

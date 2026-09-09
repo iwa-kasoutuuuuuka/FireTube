@@ -2,14 +2,19 @@ package com.firetube.tv.ui.player
 
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.KeyEvent
 import android.view.View
+import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.FragmentActivity
+import androidx.leanback.widget.ArrayObjectAdapter
+import androidx.leanback.widget.HorizontalGridView
+import androidx.leanback.widget.ItemBridgeAdapter
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackParameters
@@ -19,10 +24,13 @@ import androidx.media3.ui.PlayerView
 import com.firetube.tv.FireTubeApp
 import com.firetube.tv.R
 import com.firetube.tv.data.extractor.SponsorBlockService
-import com.firetube.tv.data.extractor.YouTubeStreamExtractor
 import com.firetube.tv.data.local.VideoHistoryEntity
 import com.firetube.tv.data.model.SponsorSegment
 import com.firetube.tv.data.model.StreamInfoData
+import com.firetube.tv.data.model.VideoItem
+import com.firetube.tv.data.repository.VideoRepository
+import com.firetube.tv.ui.main.VideoCardPresenter
+import com.firetube.tv.util.AppPreferences
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -32,7 +40,8 @@ import kotlinx.coroutines.launch
  * Fire TV 物理リモコン操作対応 高速ネイティブ動画プレイヤー
  * - 広告完全自動フリー（生ストリーム直再生）
  * - SponsorBlock による案件・OP/ED 自動ミリ秒スキップ
- * - 早送り長押しでのスマート倍速切り替え (1.0x -> 1.25x -> 1.5x -> 2.0x)
+ * - 下キーで「関連動画（Up Next）」水平カルーセルを表示しシームレス切り替え
+ * - ユーザー設定（画質、再生速度、SponsorBlock対象）の反映
  * - 低RAM最適化（非表示時にSurface描画を即時アンバインド）
  */
 class PlaybackActivity : FragmentActivity() {
@@ -50,6 +59,10 @@ class PlaybackActivity : FragmentActivity() {
     private lateinit var loadingView: ProgressBar
     private lateinit var sponsorBanner: View
     private lateinit var speedIndicator: TextView
+    private lateinit var upNextContainer: LinearLayout
+    private lateinit var upNextGrid: HorizontalGridView
+
+    private val upNextAdapter = ArrayObjectAdapter(VideoCardPresenter())
 
     private var videoId: String = ""
     private var videoTitle: String = ""
@@ -60,7 +73,6 @@ class PlaybackActivity : FragmentActivity() {
     private var sponsorMonitorJob: Job? = null
     private var speedHudDismissJob: Job? = null
 
-    // 再生速度リスト
     private val speedList = listOf(1.0f, 1.25f, 1.5f, 2.0f)
     private var currentSpeedIndex = 0
 
@@ -77,6 +89,8 @@ class PlaybackActivity : FragmentActivity() {
         loadingView = findViewById(R.id.player_loading)
         sponsorBanner = findViewById(R.id.sponsor_banner)
         speedIndicator = findViewById(R.id.speed_indicator)
+        upNextContainer = findViewById(R.id.up_next_container)
+        upNextGrid = findViewById(R.id.up_next_grid)
 
         if (videoId.isEmpty()) {
             Toast.makeText(this, R.string.error_loading, Toast.LENGTH_SHORT).show()
@@ -84,13 +98,29 @@ class PlaybackActivity : FragmentActivity() {
             return
         }
 
+        setupUpNextGrid()
         initPlayer()
         loadStreamAndPlay()
         loadSponsorBlock()
+        loadUpNextVideos()
+    }
+
+    private fun setupUpNextGrid() {
+        val bridgeAdapter = ItemBridgeAdapter(upNextAdapter)
+        upNextGrid.adapter = bridgeAdapter
+        bridgeAdapter.setAdapterListener(object : ItemBridgeAdapter.AdapterListener() {
+            override fun onBind(viewHolder: ItemBridgeAdapter.ViewHolder) {
+                viewHolder.itemView.setOnClickListener {
+                    val item = upNextAdapter.get(viewHolder.adapterPosition) as? VideoItem
+                    if (item != null) {
+                        switchVideo(item)
+                    }
+                }
+            }
+        })
     }
 
     private fun initPlayer() {
-        // 低メモリバッファLoadControlを適用してExoPlayerを生成
         player = ExoPlayer.Builder(this)
             .setLoadControl(PlayerLoadControlFactory.createLowRamLoadControl())
             .build()
@@ -101,19 +131,26 @@ class PlaybackActivity : FragmentActivity() {
                         when (state) {
                             Player.STATE_BUFFERING -> loadingView.visibility = View.VISIBLE
                             Player.STATE_READY -> loadingView.visibility = View.GONE
-                            Player.STATE_ENDED -> saveHistory(currentPosition)
+                            Player.STATE_ENDED -> {
+                                saveHistory(currentPosition)
+                                showUpNextPanel()
+                            }
                             Player.STATE_IDLE -> Unit
                         }
                     }
                 })
             }
         playerView.player = player
+
+        // 設定されたデフォルト速度を適用
+        val pref = AppPreferences.getInstance(this)
+        applyPlaybackSpeed(pref.defaultSpeed)
     }
 
     private fun loadStreamAndPlay() {
         loadingView.visibility = View.VISIBLE
         lifecycleScope.launch {
-            val result = YouTubeStreamExtractor.extractStreamInfo(videoId)
+            val result = VideoRepository.extractStreamInfo(videoId)
             result.onSuccess { streamInfo ->
                 startPlayback(streamInfo)
             }.onFailure { e ->
@@ -125,7 +162,16 @@ class PlaybackActivity : FragmentActivity() {
     }
 
     private fun startPlayback(streamInfo: StreamInfoData) {
-        val streamUrl = streamInfo.hlsUrl
+        val pref = AppPreferences.getInstance(this)
+        val targetQuality = pref.defaultQuality
+
+        // 設定画質に最も適合するストリームを検索
+        val preferredStream = streamInfo.videoStreams.firstOrNull {
+            it.resolution.contains(targetQuality, ignoreCase = true) && !it.isVideoOnly
+        }
+
+        val streamUrl = preferredStream?.url
+            ?: streamInfo.hlsUrl
             ?: streamInfo.videoStreams.firstOrNull { !it.isVideoOnly }?.url
             ?: streamInfo.videoStreams.firstOrNull()?.url
 
@@ -139,7 +185,6 @@ class PlaybackActivity : FragmentActivity() {
             p.setMediaItem(mediaItem)
             p.prepare()
 
-            // 以前の再生位置を復元
             lifecycleScope.launch {
                 val db = (application as FireTubeApp).database
                 val lastPos = db.videoDao().getLastPosition(videoId)
@@ -148,7 +193,6 @@ class PlaybackActivity : FragmentActivity() {
                 }
             }
 
-            // SponsorBlock 監視ループ開始
             startSponsorMonitor()
         }
     }
@@ -159,12 +203,48 @@ class PlaybackActivity : FragmentActivity() {
         }
     }
 
+    private fun loadUpNextVideos() {
+        lifecycleScope.launch {
+            val result = VideoRepository.getUpNextVideos(videoId)
+            result.onSuccess { videos ->
+                upNextAdapter.clear()
+                upNextAdapter.addAll(0, videos)
+            }
+        }
+    }
+
+    private fun switchVideo(item: VideoItem) {
+        saveHistory(player?.currentPosition ?: 0)
+        hideUpNextPanel()
+
+        videoId = item.id
+        videoTitle = item.title
+        uploaderName = item.uploaderName
+        thumbnailUrl = item.thumbnailUrl
+
+        loadStreamAndPlay()
+        loadSponsorBlock()
+        loadUpNextVideos()
+    }
+
+    private fun showUpNextPanel() {
+        if (upNextAdapter.size() == 0) return
+        upNextContainer.visibility = View.VISIBLE
+        upNextGrid.requestFocus()
+    }
+
+    private fun hideUpNextPanel() {
+        upNextContainer.visibility = View.GONE
+        playerView.requestFocus()
+    }
+
     /**
      * SponsorBlock 自動スキップループ
-     * 100msごとに再生位置を判定し、区間に入ったら瞬時にスキップ
      */
     private fun startSponsorMonitor() {
         sponsorMonitorJob?.cancel()
+        val pref = AppPreferences.getInstance(this)
+
         sponsorMonitorJob = lifecycleScope.launch {
             while (isActive) {
                 player?.let { p ->
@@ -172,9 +252,18 @@ class PlaybackActivity : FragmentActivity() {
                         val currentMs = p.currentPosition
                         val segmentToSkip = sponsorSegments.firstOrNull { it.contains(currentMs) }
                         if (segmentToSkip != null) {
-                            Log.i(TAG, "SponsorBlock match: Skipping from ${segmentToSkip.startMs}ms to ${segmentToSkip.endMs}ms (${segmentToSkip.category})")
-                            p.seekTo(segmentToSkip.endMs + 100)
-                            showSponsorBanner()
+                            val shouldSkip = when (segmentToSkip.category) {
+                                "sponsor" -> pref.skipSponsor
+                                "intro" -> pref.skipIntro
+                                else -> true
+                            }
+                            if (shouldSkip) {
+                                Log.i(TAG, "SponsorBlock match: Skipping to ${segmentToSkip.endMs}ms (${segmentToSkip.category})")
+                                p.seekTo(segmentToSkip.endMs + 100)
+                                if (pref.showSponsorBadge) {
+                                    showSponsorBanner()
+                                }
+                            }
                         }
                     }
                 }
@@ -197,25 +286,40 @@ class PlaybackActivity : FragmentActivity() {
             .start()
     }
 
-    /**
-     * リモコン物理キーのハンドリング（D-Pad、早送り・巻き戻しショートカット）
-     */
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         val p = player ?: return super.onKeyDown(keyCode, event)
 
-        // 早送りキー長押しで再生速度切り替え
+        // Up Next パネル表示中のキー処理
+        if (upNextContainer.visibility == View.VISIBLE) {
+            when (keyCode) {
+                KeyEvent.KEYCODE_BACK,
+                KeyEvent.KEYCODE_DPAD_UP -> {
+                    hideUpNextPanel()
+                    return true
+                }
+            }
+            return super.onKeyDown(keyCode, event)
+        }
+
+        // 早送り長押しで倍速切り替え
         if (keyCode == KeyEvent.KEYCODE_MEDIA_FAST_FORWARD && event?.isLongPress == true) {
             cyclePlaybackSpeed()
             return true
         }
 
-        // 巻き戻しキー長押しで等速（1.0x）へリセット
+        // 巻き戻し長押しで等速へリセット
         if (keyCode == KeyEvent.KEYCODE_MEDIA_REWIND && event?.isLongPress == true) {
             resetPlaybackSpeed()
             return true
         }
 
         when (keyCode) {
+            // D-Pad 下キーで関連動画（Up Next）表示
+            KeyEvent.KEYCODE_DPAD_DOWN -> {
+                showUpNextPanel()
+                return true
+            }
+
             KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,
             KeyEvent.KEYCODE_MEDIA_PLAY,
             KeyEvent.KEYCODE_MEDIA_PAUSE -> {
@@ -223,7 +327,6 @@ class PlaybackActivity : FragmentActivity() {
                 return true
             }
 
-            // D-Pad 左右 / 早送り・巻き戻し単押しで10秒シーク
             KeyEvent.KEYCODE_DPAD_LEFT,
             KeyEvent.KEYCODE_MEDIA_REWIND -> {
                 val newPos = (p.currentPosition - 10_000).coerceAtLeast(0)
@@ -301,12 +404,9 @@ class PlaybackActivity : FragmentActivity() {
 
     override fun onStop() {
         super.onStop()
-        // 視聴位置をローカルDBに保存
         player?.let { p ->
             saveHistory(p.currentPosition)
         }
-
-        // 低RAM対策: 画面非表示時は動画描画Surfaceを解除し、メモリとGPUリソースを解放
         playerView.player = null
         if (!isChangingConfigurations) {
             player?.pause()
@@ -315,7 +415,6 @@ class PlaybackActivity : FragmentActivity() {
 
     override fun onStart() {
         super.onStart()
-        // 復帰時にSurfaceを再バインド
         if (player != null && playerView.player == null) {
             playerView.player = player
         }

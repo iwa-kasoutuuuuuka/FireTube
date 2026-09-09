@@ -15,4 +15,30 @@
     <string name="error_loading">動画情報の取得に失敗しました</string>
     <string name="search_hint">動画やチャンネルを検索…</string>
     <string name="background_playback_running">バックグラウンド音声再生中</string>
+
+    <string name="menu_cast">スマホからキャスト</string>
+    <string name="retry">再試行</string>
+    <string name="network_error_msg">ネットワークまたは動画の取得に失敗しました</string>
+    <string name="press_to_retry">リモコンの決定キーを押して再試行</string>
+    <string name="up_next">関連動画・次の動画</string>
+    <string name="channel_videos">チャンネルの最新動画</string>
+    <string name="subscribe">チャンネル登録</string>
+    <string name="subscribed">登録済み</string>
+
+    <!-- Settings -->
+    <string name="settings_title">設定</string>
+    <string name="pref_category_playback">再生設定</string>
+    <string name="pref_default_quality">デフォルト画質</string>
+    <string name="pref_default_speed">デフォルト再生速度</string>
+    <string name="pref_category_sponsorblock">SponsorBlock 設定</string>
+    <string name="pref_sb_sponsor">案件セクションを自動スキップ</string>
+    <string name="pref_sb_intro">OP / イントロを自動スキップ</string>
+    <string name="pref_sb_badge">スキップ時に通知バッジを表示</string>
+    <string name="pref_category_network">ネットワーク &amp; API</string>
+    <string name="pref_api_source">優先データソース (InnerTube / NewPipe / Piped)</string>
+
+    <!-- Cast -->
+    <string name="cast_title">スマホから動画をキャスト</string>
+    <string name="cast_instruction">同じWi-Fiに接続されたスマホ・PCのブラウザから、以下のURLにアクセスしてください：</string>
+    <string name="cast_waiting">接続待機中…</string>
 </resources>

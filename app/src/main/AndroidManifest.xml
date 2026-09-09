@@ -27,6 +27,7 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:largeHeap="true"
+        android:usesCleartextTraffic="true"
         android:theme="@style/Theme.FireTube">
 
         <!-- Main Leanback Activity -->
@@ -51,6 +52,24 @@
         <!-- Search Activity -->
         <activity
             android:name=".ui.search.SearchActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+
+        <!-- Settings Activity -->
+        <activity
+            android:name=".ui.settings.SettingsActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+
+        <!-- Cast Info Activity -->
+        <activity
+            android:name=".cast.CastActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+
+        <!-- Channel Video Grid Activity -->
+        <activity
+            android:name=".ui.channel.ChannelActivity"
             android:exported="false"
             android:screenOrientation="landscape" />
 
