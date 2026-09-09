@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="background_dark">#121212</color>
+    <color name="surface_dark">#1E1E1E</color>
+    <color name="primary_red">#FF0033</color>
+    <color name="primary_red_dark">#CC0029</color>
+    <color name="accent_focus">#FFCC00</color>
+    <color name="card_focused_stroke">#FFCC00</color>
+    <color name="card_unfocused">#2A2A2A</color>
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#AAAAAA</color>
+    <color name="overlay_black_70">#B3000000</color>
+</resources>
