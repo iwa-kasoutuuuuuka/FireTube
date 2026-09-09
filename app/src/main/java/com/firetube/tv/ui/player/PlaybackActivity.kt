@@ -181,19 +181,18 @@ class PlaybackActivity : FragmentActivity() {
         }
 
         val mediaItem = MediaItem.fromUri(streamUrl)
-        player?.let { p ->
-            p.setMediaItem(mediaItem)
-            p.prepare()
-
-            lifecycleScope.launch {
-                val db = (application as FireTubeApp).database
-                val lastPos = db.videoDao().getLastPosition(videoId)
+        lifecycleScope.launch {
+            val db = (application as FireTubeApp).database
+            val lastPos = db.videoDao().getLastPosition(videoId)
+            player?.let { p ->
+                p.setMediaItem(mediaItem)
+                // 前回位置がある場合は prepare 前にシークして初期バッファリングの二重走りを防止
                 if (lastPos != null && lastPos > 5000) {
                     p.seekTo(lastPos)
                 }
+                p.prepare()
+                startSponsorMonitor()
             }
-
-            startSponsorMonitor()
         }
     }
 
@@ -204,7 +203,10 @@ class PlaybackActivity : FragmentActivity() {
     }
 
     private fun loadUpNextVideos() {
+        // 再生開始直後のWi-Fi帯域とCPUをストリーム取得に集中させるため、関連動画は2.5秒遅延取得
         lifecycleScope.launch {
+            delay(2500)
+            if (!isActive) return@launch
             val result = VideoRepository.getUpNextVideos(videoId)
             result.onSuccess { videos ->
                 upNextAdapter.clear()

@@ -19,12 +19,8 @@ object SponsorBlockService {
     private const val TAG = "SponsorBlock"
     private const val BASE_URL = "https://sponsor.ajay.app/api/skipSegments"
 
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(5, TimeUnit.SECONDS)
-        .readTimeout(5, TimeUnit.SECONDS)
-        .build()
-
-    private val gson = Gson()
+    private val client = com.firetube.tv.data.network.NetworkClient.client
+    private val gson = com.firetube.tv.data.network.NetworkClient.gson
 
     suspend fun getSkipSegments(videoId: String): List<SponsorSegment> = withContext(Dispatchers.IO) {
         try {

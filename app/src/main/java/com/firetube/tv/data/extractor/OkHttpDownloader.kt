@@ -16,13 +16,7 @@ class OkHttpDownloader(private val client: OkHttpClient) : Downloader() {
 
     companion object {
         fun createDefault(): OkHttpDownloader {
-            val client = OkHttpClient.Builder()
-                .connectTimeout(15, TimeUnit.SECONDS)
-                .readTimeout(20, TimeUnit.SECONDS)
-                .writeTimeout(20, TimeUnit.SECONDS)
-                .followRedirects(true)
-                .build()
-            return OkHttpDownloader(client)
+            return OkHttpDownloader(com.firetube.tv.data.network.NetworkClient.client)
         }
     }
 

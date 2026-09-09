@@ -14,8 +14,8 @@ object PlayerLoadControlFactory {
 
     private const val MIN_BUFFER_MS = 15_000 // 15秒
     private const val MAX_BUFFER_MS = 30_000 // 30秒
-    private const val BUFFER_FOR_PLAYBACK_MS = 2_000 // 2秒で即時再生開始
-    private const val BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = 4_000 // リバッファ時4秒
+    private const val BUFFER_FOR_PLAYBACK_MS = 500 // 0.5秒で即時再生開始 (体感遅延75%削減)
+    private const val BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = 2_000 // リバッファ時2秒
 
     // テレビ用バッファメモリ上限: 32MB
     private const val TARGET_BUFFER_BYTES = 32 * 1024 * 1024

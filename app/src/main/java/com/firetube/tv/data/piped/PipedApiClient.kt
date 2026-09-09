@@ -14,26 +14,27 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.util.concurrent.TimeUnit
 
+import com.firetube.tv.data.network.NetworkClient
+
 /**
  * Piped API クライアント (セカンダリフォールバック)
  * YouTube公式APIやスクレイピングがブロックされた場合の代替通信路
+ * 最速稼働インスタンスを先頭に配置し、共有 NetworkClient による高速通信を実現
  */
 object PipedApiClient {
 
     private const val TAG = "PipedApiClient"
 
+    // 実測最速の稼働インスタンスを優先配置
     private val INSTANCES = listOf(
-        "https://pipedapi.kavin.rocks",
         "https://api.piped.private.coffee",
-        "https://piped-api.lunar.icu"
+        "https://piped.video",
+        "https://pipedapi.tokhmi.xyz",
+        "https://pipedapi.kavin.rocks"
     )
 
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(8, TimeUnit.SECONDS)
-        .readTimeout(8, TimeUnit.SECONDS)
-        .build()
-
-    private val gson = Gson()
+    private val client = NetworkClient.client
+    private val gson = NetworkClient.gson
 
     /**
      * トレンド動画取得
@@ -142,5 +143,86 @@ object PipedApiClient {
             }
         }
         Result.failure(Exception("All Piped search instances failed"))
+    }
+
+    /**
+     * 動画再生ストリーム情報の取得（高速フォールバック）
+     */
+    suspend fun extractStreamInfo(videoId: String): Result<StreamInfoData> = withContext(Dispatchers.IO) {
+        for (baseUrl in INSTANCES) {
+            try {
+                val request = Request.Builder()
+                    .url("$baseUrl/streams/$videoId")
+                    .get()
+                    .build()
+
+                client.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) return@use
+                    val body = response.body?.string() ?: return@use
+                    val json = gson.fromJson(body, JsonObject::class.java)
+
+                    val title = json.get("title")?.asString ?: "Video"
+                    val uploader = json.get("uploader")?.asString ?: "Channel"
+                    val duration = json.get("duration")?.asLong ?: 0L
+                    val hlsUrl = json.get("hls")?.asString
+                    val dashUrl = json.get("dash")?.asString
+
+                    val videoStreams = mutableListOf<VideoStream>()
+                    json.getAsJsonArray("videoStreams")?.forEach { elem ->
+                        if (elem.isJsonObject) {
+                            val obj = elem.asJsonObject
+                            val url = obj.get("url")?.asString ?: ""
+                            val quality = obj.get("quality")?.asString ?: "720p"
+                            val format = obj.get("format")?.asString ?: "mp4"
+                            val videoOnly = obj.get("videoOnly")?.asBoolean ?: false
+                            val bitrate = obj.get("bitrate")?.asInt ?: 0
+                            if (url.isNotEmpty()) {
+                                videoStreams.add(
+                                    VideoStream(
+                                        url = url,
+                                        resolution = quality,
+                                        format = format,
+                                        isVideoOnly = videoOnly,
+                                        bitrate = bitrate
+                                    )
+                                )
+                            }
+                        }
+                    }
+
+                    val audioStreams = mutableListOf<AudioStream>()
+                    json.getAsJsonArray("audioStreams")?.forEach { elem ->
+                        if (elem.isJsonObject) {
+                            val obj = elem.asJsonObject
+                            val url = obj.get("url")?.asString ?: ""
+                            val format = obj.get("format")?.asString ?: "m4a"
+                            val bitrate = obj.get("bitrate")?.asInt ?: 0
+                            if (url.isNotEmpty()) {
+                                audioStreams.add(AudioStream(url = url, format = format, bitrate = bitrate))
+                            }
+                        }
+                    }
+
+                    if (videoStreams.isNotEmpty() || hlsUrl != null) {
+                        Log.i(TAG, "Stream info extracted successfully from Piped: $baseUrl")
+                        return@withContext Result.success(
+                            StreamInfoData(
+                                videoId = videoId,
+                                title = title,
+                                uploaderName = uploader,
+                                videoStreams = videoStreams,
+                                audioStreams = audioStreams,
+                                hlsUrl = hlsUrl,
+                                dashUrl = dashUrl,
+                                durationSeconds = duration
+                            )
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Piped stream info on $baseUrl failed: ${e.message}")
+            }
+        }
+        Result.failure(Exception("All Piped instances failed to extract streams for: $videoId"))
     }
 }

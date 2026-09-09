@@ -22,34 +22,69 @@ object VideoRepository {
 
     private const val TAG = "VideoRepository"
 
+    @Volatile
+    private var cachedTrendingVideos: List<VideoItem>? = null
+    @Volatile
+    private var lastTrendingCacheTime: Long = 0L
+    private const val CACHE_TTL_MS = 5 * 60 * 1000L // 5分間キャッシュ
+
+    /**
+     * UI即時表示用の高速メモリキャッシュ取得（0ms）
+     */
+    fun getCachedTrendingFast(): List<VideoItem>? {
+        return cachedTrendingVideos
+    }
+
     /**
      * トレンド (急上昇) 動画一覧の取得
+     * キャッシュ有効期間内であれば即座に返却し、無効時は多重フォールバック実行
      */
-    suspend fun getTrendingVideos(): Result<List<VideoItem>> = withContext(Dispatchers.IO) {
+    suspend fun getTrendingVideos(forceRefresh: Boolean = false): Result<List<VideoItem>> = withContext(Dispatchers.IO) {
+        val now = System.currentTimeMillis()
+        if (!forceRefresh && cachedTrendingVideos != null && (now - lastTrendingCacheTime) < CACHE_TTL_MS) {
+            Log.i(TAG, "Returning cached trending videos (${cachedTrendingVideos?.size} items)")
+            return@withContext Result.success(cachedTrendingVideos!!)
+        }
+
         // 1. YouTube InnerTube API (公式JSON直結・超高速・パースエラーなし)
         val innerResult = InnerTubeClient.getTrendingVideos()
         if (innerResult.isSuccess && innerResult.getOrNull()?.isNotEmpty() == true) {
+            val list = innerResult.getOrNull()!!
+            cachedTrendingVideos = list
+            lastTrendingCacheTime = now
             Log.i(TAG, "Loaded trending videos via InnerTube API")
             return@withContext innerResult
         }
-        Log.w(TAG, "InnerTube trending failed or empty, trying NewPipeExtractor...")
+        Log.w(TAG, "InnerTube trending failed or empty, trying Piped API...")
 
-        // 2. NewPipeExtractor (スクレイピング)
-        val npResult = YouTubeStreamExtractor.getTrendingVideos()
-        if (npResult.isSuccess && npResult.getOrNull()?.isNotEmpty() == true) {
-            Log.i(TAG, "Loaded trending videos via NewPipeExtractor")
-            return@withContext npResult
-        }
-        Log.w(TAG, "NewPipeExtractor trending failed, trying Piped API...")
-
-        // 3. Piped API (分散インスタンス)
+        // 2. Piped API (高速インスタンス優先)
         val pipedResult = PipedApiClient.getTrendingVideos()
         if (pipedResult.isSuccess && pipedResult.getOrNull()?.isNotEmpty() == true) {
+            val list = pipedResult.getOrNull()!!
+            cachedTrendingVideos = list
+            lastTrendingCacheTime = now
             Log.i(TAG, "Loaded trending videos via Piped API")
             return@withContext pipedResult
         }
+        Log.w(TAG, "Piped API trending failed, trying NewPipeExtractor...")
 
-        Result.failure(Exception("All providers (InnerTube, NewPipe, Piped) failed to fetch trending videos"))
+        // 3. NewPipeExtractor (スクレイピング・フォールバック)
+        val npResult = YouTubeStreamExtractor.getTrendingVideos()
+        if (npResult.isSuccess && npResult.getOrNull()?.isNotEmpty() == true) {
+            val list = npResult.getOrNull()!!
+            cachedTrendingVideos = list
+            lastTrendingCacheTime = now
+            Log.i(TAG, "Loaded trending videos via NewPipeExtractor")
+            return@withContext npResult
+        }
+
+        // 全て失敗しても前回のキャッシュがあればそれを返却
+        cachedTrendingVideos?.let {
+            Log.w(TAG, "All providers failed, falling back to stale cache")
+            return@withContext Result.success(it)
+        }
+
+        Result.failure(Exception("All providers (InnerTube, Piped, NewPipe) failed to fetch trending videos"))
     }
 
     /**
@@ -139,9 +174,25 @@ object VideoRepository {
     }
 
     /**
-     * 動画再生ストリーム情報取得
+     * 動画再生ストリーム情報取得（NewPipe -> Piped 高速多重フォールバック）
      */
-    suspend fun extractStreamInfo(videoId: String): Result<StreamInfoData> {
-        return YouTubeStreamExtractor.extractStreamInfo(videoId)
+    suspend fun extractStreamInfo(videoId: String): Result<StreamInfoData> = withContext(Dispatchers.IO) {
+        // 1. NewPipeExtractor による直接抽出
+        val npResult = YouTubeStreamExtractor.extractStreamInfo(videoId)
+        if (npResult.isSuccess) {
+            val data = npResult.getOrNull()
+            if (data != null && (data.videoStreams.isNotEmpty() || data.hlsUrl != null)) {
+                return@withContext npResult
+            }
+        }
+        Log.w(TAG, "NewPipeExtractor failed or returned empty streams for $videoId, trying Piped...")
+
+        // 2. Piped API によるストリーム抽出フォールバック
+        val pipedResult = PipedApiClient.extractStreamInfo(videoId)
+        if (pipedResult.isSuccess) {
+            return@withContext pipedResult
+        }
+
+        npResult
     }
 }

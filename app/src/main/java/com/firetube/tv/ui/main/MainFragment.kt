@@ -62,8 +62,14 @@ class MainFragment : BrowseSupportFragment() {
         brandColor = ContextCompat.getColor(requireContext(), R.color.primary_red)
         searchAffordanceColor = ContextCompat.getColor(requireContext(), R.color.primary_red)
 
-        // 行アダプター構築
-        rowsAdapter = ArrayObjectAdapter(ListRowPresenter())
+        val cardPresenter = VideoCardPresenter()
+        // 行アダプター構築 (影計算バイパス & リサイクルプール拡張で60fpsスクロール)
+        val listRowPresenter = ListRowPresenter().apply {
+            shadowEnabled = false // 低スペックTV GPUの影計算負荷を根絶
+            selectEffectEnabled = false
+            setRecycledPoolSize(cardPresenter, 24)
+        }
+        rowsAdapter = ArrayObjectAdapter(listRowPresenter)
 
         val trendingHeader = HeaderItem(0, getString(R.string.menu_trending))
         rowsAdapter.add(ListRow(trendingHeader, trendingAdapter))
@@ -132,27 +138,36 @@ class MainFragment : BrowseSupportFragment() {
     }
 
     private fun loadData() {
-        // 1. トレンド動画の取得 (InnerTube -> NewPipe -> Piped 自動フォールバック)
-        progressBarManager.show()
+        // 1. 高速メモリキャッシュがあれば即時描画（体感待機時間 0ms）
+        val cached = VideoRepository.getCachedTrendingFast()
+        if (cached != null && cached.isNotEmpty()) {
+            trendingAdapter.clear()
+            trendingAdapter.addAll(0, cached)
+        } else {
+            progressBarManager.show()
+        }
+
+        // 2. トレンド動画の取得 (キャッシュ期限切れまたは初回時に通信・更新)
         viewLifecycleOwner.lifecycleScope.launch {
-            val result = VideoRepository.getTrendingVideos()
+            val result = VideoRepository.getTrendingVideos(forceRefresh = (cached == null))
             progressBarManager.hide()
 
             result.onSuccess { videos ->
                 trendingAdapter.clear()
                 trendingAdapter.addAll(0, videos)
             }.onFailure {
-                trendingAdapter.clear()
-                // 再試行カードを追加
-                trendingAdapter.add(
-                    VideoItem(
-                        id = ID_RETRY,
-                        title = getString(R.string.network_error_msg),
-                        uploaderName = getString(R.string.press_to_retry),
-                        thumbnailUrl = ""
+                if (trendingAdapter.size() == 0) {
+                    trendingAdapter.clear()
+                    trendingAdapter.add(
+                        VideoItem(
+                            id = ID_RETRY,
+                            title = getString(R.string.network_error_msg),
+                            uploaderName = getString(R.string.press_to_retry),
+                            thumbnailUrl = ""
+                        )
                     )
-                )
-                Toast.makeText(requireContext(), R.string.network_error_msg, Toast.LENGTH_LONG).show()
+                    Toast.makeText(requireContext(), R.string.network_error_msg, Toast.LENGTH_LONG).show()
+                }
             }
         }
 

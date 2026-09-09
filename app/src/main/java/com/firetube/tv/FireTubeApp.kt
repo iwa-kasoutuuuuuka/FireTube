@@ -31,8 +31,10 @@ class FireTubeApp : Application() {
         // 1. 低RAM対策: メモリ監視マネージャーの登録
         MemoryManager.init(this)
 
-        // 2. GMSフリー抽出エンジンの非同期初期化
-        YouTubeStreamExtractor.init()
+        // 2. GMSフリー抽出エンジンの非同期バックグラウンド事前初期化 (起動スレッド負荷ゼロ化)
+        Thread {
+            YouTubeStreamExtractor.init()
+        }.start()
 
         // 3. ローカルキャスト待受サーバー起動 (ポート8080)
         com.firetube.tv.cast.LocalCastServer.start(this)

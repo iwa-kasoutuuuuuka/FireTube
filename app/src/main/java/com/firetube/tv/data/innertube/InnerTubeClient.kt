@@ -27,12 +27,8 @@ object InnerTubeClient {
     private const val BASE_URL = "https://www.youtube.com/youtubei/v1"
     private val JSON_MEDIA = "application/json; charset=utf-8".toMediaType()
 
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
-        .build()
-
-    private val gson = Gson()
+    private val client = com.firetube.tv.data.network.NetworkClient.client
+    private val gson = com.firetube.tv.data.network.NetworkClient.gson
 
     private fun buildContext(): JsonObject {
         val clientObj = JsonObject().apply {
