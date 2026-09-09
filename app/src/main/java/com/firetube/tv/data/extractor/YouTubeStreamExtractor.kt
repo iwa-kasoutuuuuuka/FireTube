@@ -63,8 +63,8 @@ object YouTubeStreamExtractor {
                 } else null
             }
             Result.success(items)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error fetching trending videos", e)
+        } catch (e: Throwable) {
+            Log.e(TAG, "Error fetching stream data", e)
             Result.failure(e)
         }
     }
@@ -94,7 +94,7 @@ object YouTubeStreamExtractor {
                 } else null
             }
             Result.success(items)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Log.e(TAG, "Error searching videos for: $query", e)
             Result.failure(e)
         }
@@ -112,44 +112,56 @@ object YouTubeStreamExtractor {
             // 映像ストリーム抽出 (1080p, 720p, 480p, etc.)
             val videoStreams = mutableListOf<VideoStream>()
             info.videoStreams?.forEach { s ->
-                videoStreams.add(
-                    VideoStream(
-                        url = s.url,
-                        resolution = s.resolution ?: "720p",
-                        format = s.format?.getName() ?: "mp4",
-                        isVideoOnly = s.isVideoOnly,
-                        bitrate = s.averageBitrate
+                val url = s.content ?: s.url ?: ""
+                if (url.isNotEmpty()) {
+                    videoStreams.add(
+                        VideoStream(
+                            url = url,
+                            resolution = s.resolution ?: "720p",
+                            format = s.format?.name ?: "mp4",
+                            isVideoOnly = s.isVideoOnly,
+                            bitrate = s.bitrate
+                        )
                     )
-                )
+                }
             }
             info.videoOnlyStreams?.forEach { s ->
-                videoStreams.add(
-                    VideoStream(
-                        url = s.url,
-                        resolution = s.resolution ?: "1080p",
-                        format = s.format?.getName() ?: "mp4",
-                        isVideoOnly = true,
-                        bitrate = s.averageBitrate
+                val url = s.content ?: s.url ?: ""
+                if (url.isNotEmpty()) {
+                    videoStreams.add(
+                        VideoStream(
+                            url = url,
+                            resolution = s.resolution ?: "1080p",
+                            format = s.format?.name ?: "mp4",
+                            isVideoOnly = true,
+                            bitrate = s.bitrate
+                        )
                     )
-                )
+                }
             }
 
             // 音声ストリーム抽出
-            val audioStreams = info.audioStreams?.map { a ->
-                AudioStream(
-                    url = a.url,
-                    format = a.format?.getName() ?: "m4a",
-                    bitrate = a.averageBitrate
-                )
+            val audioStreams = info.audioStreams?.mapNotNull { a ->
+                val url = a.content ?: a.url ?: ""
+                if (url.isNotEmpty()) {
+                    AudioStream(
+                        url = url,
+                        format = a.format?.name ?: "m4a",
+                        bitrate = a.bitrate
+                    )
+                } else null
             } ?: emptyList()
 
             // 字幕トラック
-            val subtitles = info.subtitles?.map { sub ->
-                SubtitleTrack(
-                    url = sub.url,
-                    languageName = sub.displayLanguageName ?: "Japanese",
-                    languageCode = sub.languageTag ?: "ja"
-                )
+            val subtitles = info.subtitles?.mapNotNull { sub ->
+                val url = sub.content ?: sub.url ?: ""
+                if (url.isNotEmpty()) {
+                    SubtitleTrack(
+                        url = url,
+                        languageName = sub.displayLanguageName ?: "Japanese",
+                        languageCode = sub.languageTag ?: "ja"
+                    )
+                } else null
             } ?: emptyList()
 
             val streamData = StreamInfoData(
@@ -159,13 +171,13 @@ object YouTubeStreamExtractor {
                 videoStreams = videoStreams,
                 audioStreams = audioStreams,
                 hlsUrl = info.hlsUrl,
-                dashUrl = info.dashUrl,
+                dashUrl = null,
                 subtitles = subtitles,
                 durationSeconds = info.duration
             )
 
             Result.success(streamData)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Log.e(TAG, "Error extracting stream info for: $videoId", e)
             Result.failure(e)
         }

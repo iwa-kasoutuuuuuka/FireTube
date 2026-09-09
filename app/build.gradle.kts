@@ -33,6 +33,7 @@ android {
     }
 
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -40,8 +41,7 @@ android {
     kotlinOptions {
         jvmTarget = "17"
         freeCompilerArgs += listOf(
-            "-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
-            "-opt-in=androidx.media3.common.util.UnstableApi"
+            "-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi"
         )
     }
 
@@ -51,6 +51,8 @@ android {
 }
 
 dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+
     // Leanback (Native Android TV / Fire TV UI)
     implementation("androidx.leanback:leanback:1.0.0")
     implementation("androidx.cardview:cardview:1.0.0")
@@ -88,5 +90,6 @@ dependencies {
     implementation("com.google.code.gson:gson:2.10.1")
 
     // NewPipe Extractor (Standalone GMS-free YouTube extraction)
-    implementation("com.github.TeamNewPipe:NewPipeExtractor:v0.24.4")
+    implementation("com.github.TeamNewPipe:NewPipeExtractor:v0.26.4")
+    compileOnly("com.google.code.findbugs:jsr305:3.0.2")
 }
