@@ -23,8 +23,12 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Accept Android SDK Licenses
+        run: |
+          yes | sdkmanager --licenses || true
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
@@ -42,6 +46,8 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: |
             release-assets/FireTube-${{ github.ref_name }}.apk
@@ -55,11 +61,11 @@ jobs:
             Amazon Fire TV Stick HD (Fire OS 7〜8 / 1.5GB RAM) 専用 YouTube ネイティブクライアント
 
             ### 🚀 主な特徴
+            - **YouTube InnerTube / Piped / NewPipe 3重フォールバック**: 途切れない高可用性
             - **完全ネイティブ UI (AndroidX Leanback)**: 物理リモコン（D-Pad）対応・60fps
-            - **GMS 0% & 完全広告フリー**: NewPipeExtractor による生ストリーム直接再生
+            - **GMS 0% & 完全広告フリー**: 生ストリーム直接再生
             - **SponsorBlock 自動スキップ**: 案件セクション・OP/EDをミリ秒単位でスキップ
-            - **スマート・リモコン操作**: 早送り長押しで倍速切り替え（1.25x / 1.5x / 2.0x）
-            - **低RAM（1.5GB以下）チューニング**: Glide RGB_565 & ExoPlayer バッファ制限
-
-            ### 📥 インストール方法
-            下の `app-debug.apk` または `FireTube-v1.0.0-debug.apk` をダウンロードし、ADB または Fire TV の Downloader アプリでインストールしてください。
+            - **再生中の「関連動画（Up Next）」行**: 下キーでカルーセル表示
+            - **テレビ専用設定画面**: 画質（1080p/720p/480p）、倍速、SponsorBlock設定
+            - **同一Wi-Fiスマホキャスト**: ポート8080内蔵HTTPサーバーでURL共有
+            - **低RAM（1.5GB以下）チューニング**: Glide RGB_565 & ExoPlayer バッファ制限（実測124MB）
