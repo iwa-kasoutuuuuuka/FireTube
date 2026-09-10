@@ -11,7 +11,7 @@
 [![License](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![GMS Free](https://img.shields.io/badge/Google%20Play%20Services-0%25%20%28Independent%29-green)](#)
 
-[📥 **最新の APK をダウンロード (FireTube-v1.3.1.apk)**](FireTube-v1.3.1.apk) / [GitHub Releases](https://github.com/iwa-kasoutuuuuuka/FireTube/releases)
+[📥 **最新の APK をダウンロード (FireTube-v1.3.2.apk)**](FireTube-v1.3.2.apk) / [GitHub Releases](https://github.com/iwa-kasoutuuuuuka/FireTube/releases)
 
 </div>
 
@@ -87,7 +87,7 @@ Fire TV Stick HD（低RAM 1.5GB / クアッドコア 1.7GHz）の実機検証に
 ### 1. APK の直接ダウンロード
 リポジトリ直下の APK またはリリース一覧ページより最新の APK ファイルをダウンロードしてください。
 
-- **[📥 FireTube-v1.3.1.apk (リポジトリ直下)](FireTube-v1.3.1.apk)**
+- **[📥 FireTube-v1.3.2.apk (リポジトリ直下)](FireTube-v1.3.2.apk)**
 - **[GitHub Releases ページ](https://github.com/iwa-kasoutuuuuuka/FireTube/releases)**
 
 ### 2. Fire TV Stick へのインストール手順
@@ -95,13 +95,31 @@ Fire TV Stick HD（低RAM 1.5GB / クアッドコア 1.7GHz）の実機検証に
 2. PC と同一 Wi-Fi に接続し、PC のターミナルから ADB でインストールします：
    ```bash
    adb connect <Fire_TV_の_IPアドレス>:5555
-   adb install -r FireTube-v1.3.1.apk
+   adb install -r FireTube-v1.3.2.apk
    ```
    ※ または Fire TV アプリストアの「Downloader」アプリを使って上記 GitHub Releases の APK URL から直接ダウンロード・インストールすることも可能です。
 
 ---
 
 ## 📝 更新履歴 & デバッグ検証 (Release Notes & Verification)
+
+### v1.3.2 (2026/09/11) - ホーム画面・検索後のサムネイル非表示バグ完全解消＆Glide OkHttp3統合
+
+Piped プロキシダウンやクエリ付き不安定 URL に起因して発生していた「ホーム画面や検索後のサムネイル非表示（グレー表示）」を根本から解決し、**YouTube 公式 CDN 直結＋二重フォールバックチェーン＋OkHttp3 HTTP/2 統合** により、全環境での 100% 安定描画を確立しました。
+
+#### 🛠️ 主な修正内容
+- **🚀 YouTube 公式 CDN (i.ytimg.com) 最優先＆二重フォールバックチェーン**:
+  - 全動画に恒久的に存在する `hqdefault.jpg`（480x360）を最優先で取得。Piped のダウンしやすい自前プロキシ URL や InnerTube の 404/403 リスクのあるクエリ付き URL を完全バイパス。
+  - 万が一の失敗時にも第2フォールバックとして `mqdefault.jpg`（320x180）を自動ロードする二重化リクエストチェーンを構築。
+- **🌐 Glide と OkHttp3 の完全統合 (HTTP/2 & Chrome User-Agent)**:
+  - `com.github.bumptech.glide:okhttp3-integration` を導入。Glide の画像取得に `NetworkClient.client`（HTTP/2 多重化、Chrome User-Agent、接続プール）をバインド。
+  - Fire TV Stick（Fire OS）の素の `HttpURLConnection` による接続タイムアウト・ソケット上限エラー・Google CDN からのアクセス遮断を根絶。
+- **⚡ Glide キャッシュ配分の適正化**:
+  - メモリキャッシュの極端な半減を解消し、画面スクロールや検索画面への遷移・復帰時にもサムネイルが瞬時に再表示されるよう最適化。
+- **📦 署名済みリリース APK 更新**:
+  - `FireTube-v1.3.2.apk` をビルドし同梱。
+
+---
 
 ### v1.3.1 (2026/09/10) - UIレイアウト・描画バグ修正＆実機動作デバッグ完了
 

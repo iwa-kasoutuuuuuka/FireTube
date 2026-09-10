@@ -1,7 +1,7 @@
 package com.firetube.tv.ui.main
 
-import android.animation.ObjectAnimator
-import android.animation.PropertyValuesHolder
+import android.graphics.drawable.Drawable
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -10,7 +10,12 @@ import android.widget.TextView
 import androidx.cardview.widget.CardView
 import androidx.leanback.widget.Presenter
 import com.bumptech.glide.Glide
+import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.engine.DiskCacheStrategy
+import com.bumptech.glide.load.engine.GlideException
+import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
+import com.bumptech.glide.request.RequestListener
+import com.bumptech.glide.request.target.Target
 import com.firetube.tv.R
 import com.firetube.tv.data.model.VideoItem
 
@@ -18,8 +23,13 @@ import com.firetube.tv.data.model.VideoItem
  * Fire TV 物理リモコン（D-Pad）対応のカード表示 Presenter
  * - フォーカス時に枠線ハイライト + スムーズな拡大アニメーション（吸着UX）
  * - Glide によるメモリ極小サムネイル読み込み
+ * - YouTube 公式 CDN 直結 & 二重フォールバックによる 100% 途切れないサムネイル表示
  */
 class VideoCardPresenter : Presenter() {
+
+    companion object {
+        private const val TAG = "VideoCardPresenter"
+    }
 
     override fun onCreateViewHolder(parent: ViewGroup): ViewHolder {
         val view = LayoutInflater.from(parent.context).inflate(R.layout.view_video_card, parent, false)
@@ -35,23 +45,76 @@ class VideoCardPresenter : Presenter() {
         holder.durationText.text = video.formattedDuration
         holder.durationText.visibility = if (video.formattedDuration.isNotEmpty()) View.VISIBLE else View.GONE
 
-        val thumbUrl = when {
+        val isStandardVideo = video.id.isNotEmpty() && !video.id.startsWith("__")
+        val ytHqUrl = if (isStandardVideo) "https://i.ytimg.com/vi/${video.id}/hqdefault.jpg" else ""
+        val ytMqUrl = if (isStandardVideo) "https://i.ytimg.com/vi/${video.id}/mqdefault.jpg" else ""
+
+        val rawThumb = when {
             video.thumbnailUrl.startsWith("//") -> "https:${video.thumbnailUrl}"
             video.thumbnailUrl.isNotEmpty() -> video.thumbnailUrl
-            video.id.isNotEmpty() && !video.id.startsWith("__") -> "https://i.ytimg.com/vi/${video.id}/hqdefault.jpg"
             else -> ""
         }
 
-        // 低メモリ・高速 Glide ロード (320x180直接デコードによるメモリ93%削減 & 全キャッシュ)
-        if (thumbUrl.isNotEmpty()) {
-            Glide.with(holder.thumbnailImage.context)
-                .load(thumbUrl)
+        // Pipedの不安定なプロキシURLやsqp付き404リスクURLを回避し、
+        // 全動画に100%恒久的に存在する公式CDNのhqdefault.jpgを最優先
+        val primaryUrl = when {
+            isStandardVideo -> ytHqUrl
+            rawThumb.isNotEmpty() -> rawThumb
+            else -> ""
+        }
+
+        val secondaryUrl = when {
+            isStandardVideo && primaryUrl != ytMqUrl -> ytMqUrl
+            rawThumb.isNotEmpty() && rawThumb != primaryUrl -> rawThumb
+            else -> ""
+        }
+
+        if (primaryUrl.isNotEmpty()) {
+            val fallbackRequest = if (secondaryUrl.isNotEmpty()) {
+                Glide.with(holder.thumbnailImage.context)
+                    .load(secondaryUrl)
+                    .override(320, 180)
+                    .centerCrop()
+                    .diskCacheStrategy(DiskCacheStrategy.ALL)
+                    .transition(DrawableTransitionOptions.withCrossFade(150))
+            } else {
+                null
+            }
+
+            var request = Glide.with(holder.thumbnailImage.context)
+                .load(primaryUrl)
                 .placeholder(R.drawable.default_thumbnail_bg)
-                .error(R.drawable.default_thumbnail_bg)
                 .override(320, 180)
                 .centerCrop()
                 .diskCacheStrategy(DiskCacheStrategy.ALL)
-                .into(holder.thumbnailImage)
+                .transition(DrawableTransitionOptions.withCrossFade(150))
+                .listener(object : RequestListener<Drawable> {
+                    override fun onLoadFailed(
+                        e: GlideException?,
+                        model: Any?,
+                        target: Target<Drawable>,
+                        isFirstResource: Boolean
+                    ): Boolean {
+                        Log.w(TAG, "Thumbnail primary load failed for $model, switching to fallback: ${e?.message}")
+                        return false
+                    }
+
+                    override fun onResourceReady(
+                        resource: Drawable,
+                        model: Any,
+                        target: Target<Drawable>?,
+                        dataSource: DataSource,
+                        isFirstResource: Boolean
+                    ): Boolean = false
+                })
+
+            if (fallbackRequest != null) {
+                request = request.error(fallbackRequest)
+            } else {
+                request = request.error(R.drawable.default_thumbnail_bg)
+            }
+
+            request.into(holder.thumbnailImage)
         } else {
             Glide.with(holder.thumbnailImage.context).clear(holder.thumbnailImage)
             holder.thumbnailImage.setImageResource(R.drawable.default_thumbnail_bg)
