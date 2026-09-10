@@ -11,7 +11,7 @@
 [![License](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![GMS Free](https://img.shields.io/badge/Google%20Play%20Services-0%25%20%28Independent%29-green)](#)
 
-[📥 **最新の APK をダウンロード (GitHub Releases)**](https://github.com/iwa-kasoutuuuuuka/FireTube/releases/latest)
+[📥 **最新の APK をダウンロード (FireTube-v1.3.1.apk)**](FireTube-v1.3.1.apk) / [GitHub Releases](https://github.com/iwa-kasoutuuuuuka/FireTube/releases)
 
 </div>
 
@@ -85,18 +85,35 @@ Fire TV Stick HD（低RAM 1.5GB / クアッドコア 1.7GHz）の実機検証に
 ## 📥 インストール方法 (APK)
 
 ### 1. APK の直接ダウンロード
-リリース一覧ページより最新の APK ファイルをダウンロードしてください。
+リポジトリ直下の APK またはリリース一覧ページより最新の APK ファイルをダウンロードしてください。
 
-- **[GitHub Releases ページ（最新APKダウンロード）](https://github.com/iwa-kasoutuuuuuka/FireTube/releases)**
+- **[📥 FireTube-v1.3.1.apk (リポジトリ直下)](FireTube-v1.3.1.apk)**
+- **[GitHub Releases ページ](https://github.com/iwa-kasoutuuuuuka/FireTube/releases)**
 
 ### 2. Fire TV Stick へのインストール手順
 1. Fire TV の「設定」→「マイ Fire TV」→「開発者向けオプション」で「ADBデバッグ」と「未登録アプリのインストール」を **オン** にします。
 2. PC と同一 Wi-Fi に接続し、PC のターミナルから ADB でインストールします：
    ```bash
    adb connect <Fire_TV_の_IPアドレス>:5555
-   adb install -r FireTube-v1.2.0.apk
+   adb install -r FireTube-v1.3.1.apk
    ```
    ※ または Fire TV アプリストアの「Downloader」アプリを使って上記 GitHub Releases の APK URL から直接ダウンロード・インストールすることも可能です。
+
+---
+
+## 📝 更新履歴 (Release Notes)
+
+### v1.3.1 (2026/09/10)
+- **🎨 UIレイアウトズレ・重なりの完全解消**:
+  - Leanback のレイアウト計算を破壊していた `browseRowsMarginStart` / `browseRowsMarginTop` のカスタム上書きを削除。
+  - 左サイドバー項目「トレンド」と画面上部の検索マーク（🔍）の重なりを解消。
+  - 左サイドバー（設定・カテゴリ項目）の裏側に動画サムネイルカードが潜り込んで重なる不具合を解消。
+- **🖼️ サムネイル・テキスト非表示バグの修正**:
+  - フォーカス枠（`card_focus_border.xml`）の不透明塗りつぶし（`surface_dark`）を完全透過（`transparent`）に修正。前面に被さって単なる四角形に見えていたサムネイル画像、タイトル、チャンネル名、時間が正常に描画されるよう復元。
+- **🛡️ サムネイル耐障害性の強化**:
+  - Glide 読み込み時にプロトコル相対URL補正、プレースホルダー、および YouTube 公式高画質サムネイル（`hqdefault.jpg`）への自動フォールバックを追加。
+- **⚙️ ビルド & リリース整合性の最適化**:
+  - 重複クラス競合を解消し、署名済みリリース APK（`FireTube-v1.3.1.apk`）を生成・同梱。
 
 ---
 

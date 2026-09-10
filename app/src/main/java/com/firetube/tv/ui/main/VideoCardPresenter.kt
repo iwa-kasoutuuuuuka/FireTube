@@ -35,13 +35,27 @@ class VideoCardPresenter : Presenter() {
         holder.durationText.text = video.formattedDuration
         holder.durationText.visibility = if (video.formattedDuration.isNotEmpty()) View.VISIBLE else View.GONE
 
+        val thumbUrl = when {
+            video.thumbnailUrl.startsWith("//") -> "https:${video.thumbnailUrl}"
+            video.thumbnailUrl.isNotEmpty() -> video.thumbnailUrl
+            video.id.isNotEmpty() && !video.id.startsWith("__") -> "https://i.ytimg.com/vi/${video.id}/hqdefault.jpg"
+            else -> ""
+        }
+
         // 低メモリ・高速 Glide ロード (320x180直接デコードによるメモリ93%削減 & 全キャッシュ)
-        Glide.with(holder.thumbnailImage.context)
-            .load(video.thumbnailUrl)
-            .override(320, 180)
-            .centerCrop()
-            .diskCacheStrategy(DiskCacheStrategy.ALL)
-            .into(holder.thumbnailImage)
+        if (thumbUrl.isNotEmpty()) {
+            Glide.with(holder.thumbnailImage.context)
+                .load(thumbUrl)
+                .placeholder(R.drawable.default_thumbnail_bg)
+                .error(R.drawable.default_thumbnail_bg)
+                .override(320, 180)
+                .centerCrop()
+                .diskCacheStrategy(DiskCacheStrategy.ALL)
+                .into(holder.thumbnailImage)
+        } else {
+            Glide.with(holder.thumbnailImage.context).clear(holder.thumbnailImage)
+            holder.thumbnailImage.setImageResource(R.drawable.default_thumbnail_bg)
+        }
     }
 
     override fun onUnbindViewHolder(viewHolder: ViewHolder) {

@@ -6,8 +6,6 @@
         <item name="defaultBrandColor">@color/primary_red</item>
         <item name="defaultSearchColor">@color/primary_red</item>
         <item name="defaultSearchIcon">@drawable/ic_search</item>
-        <item name="browseRowsMarginStart">48dp</item>
-        <item name="browseRowsMarginTop">32dp</item>
         <item name="headersVerticalGridStyle">@style/FireTubeHeadersVerticalGridStyle</item>
     </style>
 
