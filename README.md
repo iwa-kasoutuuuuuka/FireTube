@@ -51,7 +51,7 @@ WebView（ブラウザベース）を1%も使用せず、**AndroidX Leanback** �
 | **ローカル・チャンネル登録** | Googleアカウント不要で好きなチャンネルをワンタップ登録。Room Database（`firetube_local.db`）に永続保存され、ホーム画面に専用行として即時反映。再生中は**リモコンのMENUキー**1発で登録/解除が可能。 |
 | **Return YouTube Dislike (RYD) 連携** | 非公式RYD公式APIと連携し、低評価数および高評価・低評価の比率（%）を再生HUDにゴールドバッジでリアルタイム表示。 |
 | **超低遅延再生 & 3段階可変バッファ** | **ExoPlayer** の初期バッファを環境に応じて `極小(500ms)` / `標準(1500ms)` / `安定(5000ms)` に設定画面から切替可能。最初のチャンクが届いた瞬間に即時描画開始。 |
-| **3重フォールバック高可用性** | **YouTube InnerTube API (公式JSON直結)** ⇄ **NewPipeExtractor** ⇄ **Piped API** の自動多重フォールバック。Android 9互換シャドウクラス（URLDecoder UTF-8強制）により抽出失敗を根絶。 |
+| **3重フォールバック高可用性** | **YouTube InnerTube API (公式JSON直結)** ⇄ **NewPipeExtractor** ⇄ **Piped API** の自動多重フォールバック。Android 9互換シャドウクラス（URLDecoder UTF-8強制）およびセキュリティソフト警告ホストの事前排除により、抽出失敗や通信遮断を根絶。 |
 | **統合 NetworkClient (HTTP/2)** | 全通信で共有 `ConnectionPool(8, 5分)` を利用し、Chrome User-AgentでGoogle公式CDNからのブロックを回避。ソケット再利用と TLS ハンドシェイクを省略し、**API通信時間を 55% 削減**。 |
 | **Zero-Latency 2層キャッシュ** | 5分間のメモリキャッシュ機構により、ホーム画面への復帰時や起動時に **0ms で即座にカード一覧を描画**。裏で最新データをサイレント同期。 |
 | **完全ネイティブ UI (ロック 60fps)** | 低スペック端末でカクつきの原因となる Compose を排し、テレビ専用に最適化された **AndroidX Leanback** を採用。Mali GPU の影計算バイパス、ViewPool 共有、`ViewPropertyAnimator` 駆動により物理リモコン操作時に吸い付くような 60fps 移動を実現。 |
@@ -127,6 +127,8 @@ Fire TV Stick HD（低RAM 1.5GB / クアッドコア 1.7GHz）の実機検証に
   - `category.LEANBACK_LAUNCHER` に加え `category.LAUNCHER` を併記し、Fire OS や各種カスタムランチャーでアイコンが欠落する問題を防止。
 - **🖥️ AVD 構築スクリプトのエンコーディング修正**:
   - `setup_firetv_emulator.ps1` が出力する `config.ini` を BOM なし UTF-8 に修正し、Android SDK による AVD 破損パースエラーを解消。
+- **🔒 セキュリティソフト誤検知・警告対象ホストの完全排除**:
+  - PC・ルーター等のセキュリティソフト（ウイルス対策・EDR）でブロックされやすい不安定ホスト（`pipedapi.aeong.one` 等）を接続先候補から完全に排除。安全性が確認された実績ある高可用性インスタンスのみを厳選採用し、不要な警告や通信遮断を根絶。
 
 ---
 
