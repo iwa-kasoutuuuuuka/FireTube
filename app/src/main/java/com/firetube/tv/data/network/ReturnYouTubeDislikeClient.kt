@@ -1,4 +1,4 @@
-package com.firetube.tv.data.network
+ï»¿package com.firetube.tv.data.network
 
 import android.util.Log
 import android.util.LruCache
@@ -8,16 +8,16 @@ import kotlinx.coroutines.withContext
 import okhttp3.Request
 
 /**
- * Return YouTube Dislike (RYD) API ƒNƒ‰ƒCƒAƒ“ƒg
- * ”ñŒö®‚È‚ª‚ç¢ŠE’†‚Ìå—vTV/ƒT[ƒhƒp[ƒeƒBƒNƒ‰ƒCƒAƒ“ƒg‚Å—˜—p‚³‚ê‚Ä‚¢‚é
- * ƒpƒuƒŠƒbƒN API (https://returnyoutubedislikeapi.com/votes?videoId=...)
+ * Return YouTube Dislike (RYD) API ã‚¯ãƒ©ã‚¤ã‚¢ãƒ³ãƒˆ
+ * éå…¬å¼ãªãŒã‚‰ä¸–ç•Œä¸­ã®ä¸»è¦TV/ã‚µãƒ¼ãƒ‰ãƒ‘ãƒ¼ãƒ†ã‚£ã‚¯ãƒ©ã‚¤ã‚¢ãƒ³ãƒˆã§åˆ©ç”¨ã•ã‚Œã¦ã„ã‚‹
+ * ãƒ‘ãƒ–ãƒªãƒƒã‚¯ API (https://returnyoutubedislikeapi.com/votes?videoId=...)
  */
 object ReturnYouTubeDislikeClient {
 
     private const val TAG = "RYDClient"
     private const val BASE_URL = "https://returnyoutubedislikeapi.com/votes?videoId="
 
-    // ’¼‹ß50Œ‚Ì•]‰¿‚ğƒƒ‚ƒŠƒLƒƒƒbƒVƒ…
+    // ç›´è¿‘50ä»¶ã®è©•ä¾¡ã‚’ãƒ¡ãƒ¢ãƒªã‚­ãƒ£ãƒƒã‚·ãƒ¥
     private val cache = LruCache<String, DislikeVotes>(50)
 
     suspend fun getVotes(videoId: String): Result<DislikeVotes> = withContext(Dispatchers.IO) {
@@ -34,18 +34,19 @@ object ReturnYouTubeDislikeClient {
                 .get()
                 .build()
 
-            val response = NetworkClient.client.newCall(request).execute()
-            if (!response.isSuccessful) {
-                return@withContext Result.failure(Exception("RYD API HTTP ${response.code}"))
-            }
+            NetworkClient.client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    return@withContext Result.failure(Exception("RYD API HTTP ${response.code}"))
+                }
 
-            val body = response.body?.string() ?: return@withContext Result.failure(Exception("Empty body"))
-            val votes = NetworkClient.gson.fromJson(body, DislikeVotes::class.java)
-            if (votes != null) {
-                cache.put(videoId, votes)
-                Result.success(votes)
-            } else {
-                Result.failure(Exception("Parse error"))
+                val body = response.body?.string() ?: return@withContext Result.failure(Exception("Empty body"))
+                val votes = NetworkClient.gson.fromJson(body, DislikeVotes::class.java)
+                if (votes != null) {
+                    cache.put(videoId, votes)
+                    Result.success(votes)
+                } else {
+                    Result.failure(Exception("Parse error"))
+                }
             }
         } catch (e: Exception) {
             Log.w(TAG, "Failed to fetch RYD votes for $videoId: ${e.message}")
@@ -53,4 +54,3 @@ object ReturnYouTubeDislikeClient {
         }
     }
 }
-

@@ -57,8 +57,9 @@ if (Test-Path $configPath) {
     if (-not $appliedKeys["vm.heapSize"]) { $newConfig += "vm.heapSize=192" }
     if (-not $appliedKeys["hw.keyboard"]) { $newConfig += "hw.keyboard=yes" }
 
-    $newConfig | Set-Content -Path $configPath -Encoding UTF8
-    Write-Host "config.ini のチューニングが完了しました: $configPath" -ForegroundColor Green
+    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllLines($configPath, $newConfig, $utf8NoBom)
+    Write-Host "config.ini のチューニングが完了しました (BOMなしUTF-8): $configPath" -ForegroundColor Green
 } else {
     Write-Warning "config.ini が見つかりませんでした: $configPath"
 }

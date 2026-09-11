@@ -25,10 +25,10 @@ object PipedApiClient {
 
     private const val TAG = "PipedApiClient"
 
-    // 実測最速の稼働インスタンスを優先配置
+    // 実測最速の稼働インスタンスを優先配置（HTMLを返すWebフロントエンドを除外）
     private val INSTANCES = listOf(
         "https://api.piped.private.coffee",
-        "https://piped.video",
+        "https://piped-api.garudalinux.org",
         "https://pipedapi.tokhmi.xyz",
         "https://pipedapi.kavin.rocks"
     )
@@ -159,7 +159,13 @@ object PipedApiClient {
                 client.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) return@use
                     val body = response.body?.string() ?: return@use
-                    val json = gson.fromJson(body, JsonObject::class.java)
+                    val jsonElement = try {
+                        gson.fromJson(body, com.google.gson.JsonElement::class.java)
+                    } catch (e: Exception) {
+                        return@use
+                    }
+                    if (!jsonElement.isJsonObject) return@use
+                    val json = jsonElement.asJsonObject
 
                     val title = json.getStringOrNull("title") ?: "Video"
                     val uploader = json.getStringOrNull("uploader") ?: "Channel"

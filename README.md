@@ -11,7 +11,7 @@
 [![License](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![GMS Free](https://img.shields.io/badge/Google%20Play%20Services-0%25%20%28Independent%29-green)](#)
 
-[📥 **最新の APK をダウンロード (FireTube-v1.3.2.apk)**](FireTube-v1.3.2.apk) / [GitHub Releases](https://github.com/iwa-kasoutuuuuuka/FireTube/releases)
+[📥 **最新の APK をダウンロード (FireTube-v1.3.3.apk)**](FireTube-v1.3.3.apk) / [GitHub Releases](https://github.com/iwa-kasoutuuuuuka/FireTube/releases)
 
 </div>
 
@@ -87,7 +87,7 @@ Fire TV Stick HD（低RAM 1.5GB / クアッドコア 1.7GHz）の実機検証に
 ### 1. APK の直接ダウンロード
 リポジトリ直下の APK またはリリース一覧ページより最新の APK ファイルをダウンロードしてください。
 
-- **[📥 FireTube-v1.3.2.apk (リポジトリ直下)](FireTube-v1.3.2.apk)**
+- **[📥 FireTube-v1.3.3.apk (リポジトリ直下)](FireTube-v1.3.3.apk)**
 - **[GitHub Releases ページ](https://github.com/iwa-kasoutuuuuuka/FireTube/releases)**
 
 ### 2. Fire TV Stick へのインストール手順
@@ -95,13 +95,40 @@ Fire TV Stick HD（低RAM 1.5GB / クアッドコア 1.7GHz）の実機検証に
 2. PC と同一 Wi-Fi に接続し、PC のターミナルから ADB でインストールします：
    ```bash
    adb connect <Fire_TV_の_IPアドレス>:5555
-   adb install -r FireTube-v1.3.2.apk
+   adb install -r FireTube-v1.3.3.apk
    ```
    ※ または Fire TV アプリストアの「Downloader」アプリを使って上記 GitHub Releases の APK URL から直接ダウンロード・インストールすることも可能です。
 
 ---
 
 ## 📝 更新履歴 & デバッグ検証 (Release Notes & Verification)
+
+### v1.3.3 (2026/09/11) - Android 9 (Fire OS 7) 互換性・パーサー・リソース管理の徹底修正＆高信頼性向上
+
+実機および Fire TV Stick HD (Android TV 9.0 API 28) エミュレーターを用いた徹底的なストレステストと構造化デバッグにより、潜在的な不具合を根絶し、抽出・再生・UI遷移の信頼性を飛躍的に高めました。
+
+#### 🛠️ 主な修正内容
+- **🛡️ Android 9 (API 28 / Fire OS 7) における NewPipeExtractor クラッシュの根本解決**:
+  - `NewPipeExtractor` が依存していた `java.net.URLDecoder.decode(String, Charset)`（Android 10 / API 29+ のみ存在）により、Fire OS 7 環境で `NoSuchMethodError` が発生し 100% 抽出失敗・Pipedフォールバックを引き起こしていた問題を特定。
+  - `Utils.class` を除外したパッチ版 jar と、UTF-8 文字列指定互換の `Utils.java` シャドウクラスを導入し、Android 9 上でのネイティブ抽出の完全な安定稼働を実現。
+- **📺 InnerTubeClient の関連動画・チャンネル動画取りこぼし修正**:
+  - YouTube の最新レスポンスに含まれる `compactVideoRenderer` や `gridVideoRenderer` のパースに対応。
+  - チャンネル `uploaderUrl`（`browseId` / `canonicalBaseUrl`）の抽出を強化し、関連動画およびチャンネル詳細画面への遷移の堅牢性を向上。
+- **🌐 PipedApiClient の不正ホスト除外 & 型安全パース強化**:
+  - Web SPA の HTML を返して JSON パースエラーを引き起こしていた `piped.video` を除外し、稼働中の高速エンドポイントを最優先化。
+  - レスポンスの `isJsonObject` 型安全ガードを徹底し、予期しない API レスポンスによる例外クラッシュを完全防止。
+- **🎬 再生切り替え時の音残り・二重再生防止 & 履歴ガード**:
+  - 関連動画（Up Next）切り替え時およびキャスト受信時に、冒頭で前動画を即座に `player?.stop()` してローディング状態へ移行。音声の二重重複再生を解消。
+  - 動画再生直後に終了した際、未確定 duration (`C.TIME_UNSET`) が負数として履歴 DB に記録される不具合をガード。
+- **🔌 リソースリーク & ポート競合の解消**:
+  - `ReturnYouTubeDislikeClient` の HTTP レスポンスを `use { ... }` で確実にクローズしソケットリークを解消。
+  - `LocalCastServer` に `reuseAddress = true` を適用し、アプリ再起動時のポート 8080 バインド競合を解消。
+- **📱 AndroidManifest ランチャー表示の改善**:
+  - `category.LEANBACK_LAUNCHER` に加え `category.LAUNCHER` を併記し、Fire OS や各種カスタムランチャーでアイコンが欠落する問題を防止。
+- **🖥️ AVD 構築スクリプトのエンコーディング修正**:
+  - `setup_firetv_emulator.ps1` が出力する `config.ini` を BOM なし UTF-8 に修正し、Android SDK による AVD 破損パースエラーを解消。
+
+---
 
 ### v1.3.2 (2026/09/11) - ホーム画面・検索後のサムネイル非表示バグ完全解消＆Glide OkHttp3統合
 

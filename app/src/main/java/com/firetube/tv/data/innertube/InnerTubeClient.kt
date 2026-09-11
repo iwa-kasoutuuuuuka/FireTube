@@ -186,8 +186,12 @@ object InnerTubeClient {
         for (entry in element.entrySet()) {
             val key = entry.key
             val value = entry.value
-            if (key == "videoRenderer" && value.isJsonObject) {
-                parseSingleRenderer(value.asJsonObject)?.let { result.add(it) }
+            if ((key == "videoRenderer" || key == "compactVideoRenderer" || key == "gridVideoRenderer") && value.isJsonObject) {
+                parseSingleRenderer(value.asJsonObject)?.let { item ->
+                    if (result.none { it.id == item.id }) {
+                        result.add(item)
+                    }
+                }
             } else if (value.isJsonObject) {
                 findVideoRenderersRecursive(value.asJsonObject, result)
             } else if (value.isJsonArray) {
@@ -208,20 +212,29 @@ object InnerTubeClient {
                 ?: titleObj?.get("simpleText")?.asString
                 ?: "No title"
 
-            val ownerObj = obj.getAsJsonObject("ownerText") ?: obj.getAsJsonObject("shortBylineText")
-            val uploaderName = ownerObj?.getAsJsonArray("runs")?.get(0)?.asJsonObject?.get("text")?.asString
-                ?: "Channel"
+            val ownerObj = obj.getAsJsonObject("ownerText")
+                ?: obj.getAsJsonObject("shortBylineText")
+                ?: obj.getAsJsonObject("longBylineText")
+            val firstRun = ownerObj?.getAsJsonArray("runs")?.get(0)?.asJsonObject
+            val uploaderName = firstRun?.get("text")?.asString ?: "Channel"
+
+            val browseEndpoint = firstRun?.getAsJsonObject("navigationEndpoint")?.getAsJsonObject("browseEndpoint")
+            val uploaderUrl = browseEndpoint?.get("canonicalBaseUrl")?.asString
+                ?: browseEndpoint?.get("browseId")?.asString
 
             val thumbnails = obj.getAsJsonObject("thumbnail")?.getAsJsonArray("thumbnails")
             val thumbUrl = thumbnails?.lastOrNull()?.asJsonObject?.get("url")?.asString ?: ""
 
-            val lengthText = obj.getAsJsonObject("lengthText")?.get("simpleText")?.asString
+            val lengthObj = obj.getAsJsonObject("lengthText")
+            val lengthText = lengthObj?.get("simpleText")?.asString
+                ?: lengthObj?.getAsJsonArray("runs")?.get(0)?.asJsonObject?.get("text")?.asString
             val durationSec = parseDurationToSeconds(lengthText)
 
             return VideoItem(
                 id = videoId,
                 title = title,
                 uploaderName = uploaderName,
+                uploaderUrl = uploaderUrl,
                 thumbnailUrl = thumbUrl,
                 durationSeconds = durationSec
             )

@@ -37,7 +37,10 @@ object LocalCastServer {
 
         serverJob = scope.launch {
             try {
-                serverSocket = ServerSocket(PORT)
+                serverSocket = ServerSocket().apply {
+                    reuseAddress = true
+                    bind(java.net.InetSocketAddress(PORT))
+                }
                 Log.i(TAG, "LocalCastServer started on port $PORT")
 
                 while (isActive) {

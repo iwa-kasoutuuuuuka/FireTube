@@ -12,8 +12,8 @@ android {
         applicationId = "com.firetube.tv"
         minSdk = 28 // Fire OS 7+ (Android 9+)
         targetSdk = 34
-        versionCode = 5
-        versionName = "1.3.2"
+        versionCode = 6
+        versionName = "1.3.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -88,6 +88,13 @@ dependencies {
     implementation("com.google.code.gson:gson:2.10.1")
 
     // NewPipe Extractor (Standalone GMS-free YouTube extraction)
-    implementation("com.github.TeamNewPipe:NewPipeExtractor:v0.26.4")
+    // Android 9 (API 28 / Fire OS 7) 互換性のため、API 29+専用の URLDecoder.decode(String, Charset) を呼ぶ
+    // Utils.class を除外した patched.jar を使用し、プロジェクト側の Android 9 互換 Utils.java をバインド
+    implementation(files("libs/NewPipeExtractor-v0.26.4-patched.jar"))
+    implementation("com.github.TeamNewPipe:nanojson:e9d656ddb49a412a5a0a5d5ef20ca7ef09549996")
+    implementation("org.jsoup:jsoup:1.22.2")
+    implementation("com.google.protobuf:protobuf-javalite:4.35.1")
+    implementation("org.mozilla:rhino:1.8.1")
+    implementation("org.mozilla:rhino-engine:1.8.1")
     compileOnly("com.google.code.findbugs:jsr305:3.0.2")
 }

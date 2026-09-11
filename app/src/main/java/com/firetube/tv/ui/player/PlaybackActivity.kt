@@ -135,6 +135,9 @@ class PlaybackActivity : FragmentActivity() {
         setIntent(intent)
         val newVideoId = intent?.getStringExtra(EXTRA_VIDEO_ID) ?: return
         if (newVideoId.isNotEmpty() && newVideoId != videoId) {
+            saveHistory(player?.currentPosition ?: 0)
+            player?.stop()
+            loadingView.visibility = View.VISIBLE
             videoId = newVideoId
             videoTitle = intent.getStringExtra(EXTRA_VIDEO_TITLE) ?: ""
             uploaderName = intent.getStringExtra(EXTRA_UPLOADER_NAME) ?: ""
@@ -375,6 +378,8 @@ class PlaybackActivity : FragmentActivity() {
 
     private fun switchVideo(item: VideoItem) {
         saveHistory(player?.currentPosition ?: 0)
+        player?.stop()
+        loadingView.visibility = View.VISIBLE
         hideUpNextPanel()
 
         videoId = item.id
@@ -613,12 +618,14 @@ class PlaybackActivity : FragmentActivity() {
         if (videoId.isEmpty()) return
         lifecycleScope.launch {
             val db = (application as FireTubeApp).database
+            val dur = player?.duration ?: 0L
+            val safeDurationSeconds = if (dur > 0L) dur / 1000L else 0L
             val entity = VideoHistoryEntity(
                 id = videoId,
                 title = videoTitle,
                 uploaderName = uploaderName,
                 thumbnailUrl = thumbnailUrl,
-                durationSeconds = (player?.duration ?: 0) / 1000,
+                durationSeconds = safeDurationSeconds,
                 lastPlayedPositionMs = positionMs
             )
             db.videoDao().insertOrUpdateHistory(entity)
