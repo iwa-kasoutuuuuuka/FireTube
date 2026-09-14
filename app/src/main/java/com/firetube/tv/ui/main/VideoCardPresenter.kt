@@ -18,6 +18,10 @@ import com.bumptech.glide.request.RequestListener
 import com.bumptech.glide.request.target.Target
 import com.firetube.tv.R
 import com.firetube.tv.data.model.VideoItem
+import com.firetube.tv.data.repository.VideoRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /**
  * Fire TV 物理リモコン（D-Pad）対応のカード表示 Presenter
@@ -39,6 +43,7 @@ class VideoCardPresenter : Presenter() {
     override fun onBindViewHolder(viewHolder: ViewHolder, item: Any?) {
         val video = item as? VideoItem ?: return
         val holder = viewHolder as VideoCardViewHolder
+        holder.boundVideoId = video.id
 
         holder.titleText.text = video.title
         holder.uploaderText.text = video.uploaderName
@@ -123,6 +128,8 @@ class VideoCardPresenter : Presenter() {
 
     override fun onUnbindViewHolder(viewHolder: ViewHolder) {
         val holder = viewHolder as VideoCardViewHolder
+        holder.cancelPrefetch()
+        holder.boundVideoId = null
         Glide.with(holder.thumbnailImage.context).clear(holder.thumbnailImage)
     }
 
@@ -132,6 +139,14 @@ class VideoCardPresenter : Presenter() {
         val durationText: TextView = view.findViewById(R.id.duration_badge)
         val titleText: TextView = view.findViewById(R.id.video_title)
         val uploaderText: TextView = view.findViewById(R.id.uploader_name)
+
+        var boundVideoId: String? = null
+        private var prefetchRunnable: Runnable? = null
+
+        fun cancelPrefetch() {
+            prefetchRunnable?.let { cardRoot.removeCallbacks(it) }
+            prefetchRunnable = null
+        }
 
         init {
             // リモコンD-Padのフォーカスアニメーション (RenderThread直結 ViewPropertyAnimator で60fps吸着)
@@ -145,6 +160,21 @@ class VideoCardPresenter : Presenter() {
                     .translationZ(elevation)
                     .setDuration(120)
                     .start()
+
+                cancelPrefetch()
+                if (hasFocus) {
+                    val targetId = boundVideoId
+                    if (!targetId.isNullOrEmpty() && !targetId.startsWith("__")) {
+                        // 700ms フォーカス滞在でバックグラウンド事前抽出を発火 (Focus-Dwell Prefetch)
+                        val runnable = Runnable {
+                            CoroutineScope(Dispatchers.IO).launch {
+                                VideoRepository.prefetchStreamInfo(targetId)
+                            }
+                        }
+                        prefetchRunnable = runnable
+                        v.postDelayed(runnable, 700L)
+                    }
+                }
             }
         }
     }

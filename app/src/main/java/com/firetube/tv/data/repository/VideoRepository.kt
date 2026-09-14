@@ -28,11 +28,47 @@ object VideoRepository {
     private var lastTrendingCacheTime: Long = 0L
     private const val CACHE_TTL_MS = 5 * 60 * 1000L // 5分間キャッシュ
 
+    // ストリーム情報 LRU キャッシュ (最大20件、有効期限15分)
+    private const val STREAM_CACHE_TTL_MS = 15 * 60 * 1000L
+    private const val MAX_STREAM_CACHE_SIZE = 20
+
+    private data class CachedStream(
+        val data: StreamInfoData,
+        val timestamp: Long
+    )
+
+    private val streamCache = object : LinkedHashMap<String, CachedStream>(MAX_STREAM_CACHE_SIZE, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, CachedStream>?): Boolean {
+            return size > MAX_STREAM_CACHE_SIZE
+        }
+    }
+    private val streamCacheLock = Any()
+
     /**
      * UI即時表示用の高速メモリキャッシュ取得（0ms）
      */
     fun getCachedTrendingFast(): List<VideoItem>? {
         return cachedTrendingVideos
+    }
+
+    /**
+     * ストリーム情報の即時キャッシュ取得 (0ms)
+     */
+    fun getCachedStreamInfo(videoId: String): StreamInfoData? {
+        val now = System.currentTimeMillis()
+        synchronized(streamCacheLock) {
+            val cached = streamCache[videoId]
+            if (cached != null && (now - cached.timestamp) < STREAM_CACHE_TTL_MS) {
+                return cached.data
+            }
+        }
+        return null
+    }
+
+    private fun putCachedStreamInfo(videoId: String, data: StreamInfoData) {
+        synchronized(streamCacheLock) {
+            streamCache[videoId] = CachedStream(data, System.currentTimeMillis())
+        }
     }
 
     /**
@@ -174,15 +210,22 @@ object VideoRepository {
     }
 
     /**
-     * 動画再生ストリーム情報取得（NewPipe -> Piped 高速多重フォールバック）
+     * 動画再生ストリーム情報取得（キャッシュ -> NewPipe -> Piped 高速多重フォールバック）
      */
     suspend fun extractStreamInfo(videoId: String): Result<StreamInfoData> = withContext(Dispatchers.IO) {
+        // 0. メモリキャッシュチェック (0ms)
+        getCachedStreamInfo(videoId)?.let { cached ->
+            Log.i(TAG, "Stream info cache HIT for $videoId (0ms immediate playback)")
+            return@withContext Result.success(cached)
+        }
+
         // 1. NewPipeExtractor による直接抽出 (API 28 LinkageErrorも捕捉)
         try {
             val npResult = YouTubeStreamExtractor.extractStreamInfo(videoId)
             if (npResult.isSuccess) {
                 val data = npResult.getOrNull()
                 if (data != null && (data.videoStreams.isNotEmpty() || data.hlsUrl != null)) {
+                    putCachedStreamInfo(videoId, data)
                     return@withContext npResult
                 }
             }
@@ -195,9 +238,29 @@ object VideoRepository {
         // 2. Piped API によるストリーム抽出フォールバック
         val pipedResult = PipedApiClient.extractStreamInfo(videoId)
         if (pipedResult.isSuccess) {
+            pipedResult.getOrNull()?.let { putCachedStreamInfo(videoId, it) }
             return@withContext pipedResult
         }
 
         Result.failure(Exception("All stream extraction providers failed for $videoId"))
+    }
+
+    /**
+     * リモコンフォーカス滞在時のスマート先読み (Focus-Dwell Prefetch)
+     * バックグラウンドで非同期にストリーム情報をキャッシュに蓄積する
+     */
+    suspend fun prefetchStreamInfo(videoId: String) = withContext(Dispatchers.IO) {
+        if (videoId.isEmpty() || videoId.startsWith("__")) return@withContext
+        if (getCachedStreamInfo(videoId) != null) {
+            Log.d(TAG, "Prefetch: $videoId already in cache, skipping")
+            return@withContext
+        }
+
+        Log.i(TAG, "Prefetch: Starting background stream extraction for $videoId")
+        try {
+            extractStreamInfo(videoId)
+        } catch (e: Exception) {
+            Log.w(TAG, "Prefetch failed silently for $videoId: ${e.message}")
+        }
     }
 }

@@ -12,6 +12,7 @@ import androidx.leanback.widget.ListRow
 import androidx.leanback.widget.ListRowPresenter
 import androidx.leanback.widget.OnItemViewClickedListener
 import androidx.lifecycle.lifecycleScope
+import com.bumptech.glide.Glide
 import com.firetube.tv.FireTubeApp
 import com.firetube.tv.R
 import com.firetube.tv.cast.CastActivity
@@ -160,6 +161,7 @@ class MainFragment : BrowseSupportFragment() {
         if (cached != null && cached.isNotEmpty()) {
             trendingAdapter.clear()
             trendingAdapter.addAll(0, cached)
+            preloadThumbnails(cached)
         } else {
             progressBarManager.show()
         }
@@ -172,6 +174,7 @@ class MainFragment : BrowseSupportFragment() {
             result.onSuccess { videos ->
                 trendingAdapter.clear()
                 trendingAdapter.addAll(0, videos)
+                preloadThumbnails(videos)
             }.onFailure {
                 if (trendingAdapter.size() == 0) {
                     trendingAdapter.clear()
@@ -193,6 +196,29 @@ class MainFragment : BrowseSupportFragment() {
 
         // 4. ローカル履歴の取得 (Room DB)
         loadHistory()
+    }
+
+    /**
+     * 初期表示領域にある上位カード (先頭6件) のサムネイルを事前デコード・キャッシュ (Smart Preload)
+     */
+    private fun preloadThumbnails(videos: List<VideoItem>) {
+        if (!isAdded || context == null) return
+        val glide = Glide.with(this)
+        videos.take(6).forEach { video ->
+            val isStandardVideo = video.id.isNotEmpty() && !video.id.startsWith("__")
+            val url = if (isStandardVideo) {
+                "https://i.ytimg.com/vi/${video.id}/hqdefault.jpg"
+            } else if (video.thumbnailUrl.isNotEmpty()) {
+                video.thumbnailUrl
+            } else {
+                null
+            }
+            if (url != null) {
+                glide.load(url)
+                    .override(320, 180)
+                    .preload(320, 180)
+            }
+        }
     }
 
     private fun loadSubscriptions() {

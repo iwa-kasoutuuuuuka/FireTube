@@ -23,6 +23,7 @@ object NetworkClient {
                 .build()
             chain.proceed(request)
         }
+        .dns(FastDns)
         .connectTimeout(8, TimeUnit.SECONDS)
         .readTimeout(12, TimeUnit.SECONDS)
         .writeTimeout(12, TimeUnit.SECONDS)

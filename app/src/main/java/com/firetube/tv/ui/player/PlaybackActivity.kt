@@ -175,9 +175,10 @@ class PlaybackActivity : FragmentActivity() {
             }
         }
 
-        val mediaSourceFactory = DefaultMediaSourceFactory(
-            OkHttpDataSource.Factory(NetworkClient.client)
-        )
+        val okHttpDataSourceFactory = OkHttpDataSource.Factory(NetworkClient.client)
+        val cachedDataSourceFactory = ExoPlayerCacheManager.createCacheDataSourceFactory(this, okHttpDataSourceFactory)
+
+        val mediaSourceFactory = DefaultMediaSourceFactory(cachedDataSourceFactory)
 
         player = ExoPlayer.Builder(this)
             .setMediaSourceFactory(mediaSourceFactory)
