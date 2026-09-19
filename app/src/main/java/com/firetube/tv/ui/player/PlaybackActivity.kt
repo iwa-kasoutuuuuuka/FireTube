@@ -41,6 +41,7 @@ import com.firetube.tv.data.model.SponsorSegment
 import com.firetube.tv.data.model.StreamInfoData
 import com.firetube.tv.data.model.VideoItem
 import com.firetube.tv.data.model.VideoStream
+import com.firetube.tv.data.network.GoogleVideoDataSource
 import com.firetube.tv.data.network.NetworkClient
 import com.firetube.tv.data.network.ReturnYouTubeDislikeClient
 import com.firetube.tv.data.repository.VideoRepository
@@ -197,7 +198,8 @@ class PlaybackActivity : FragmentActivity() {
         }
 
         val okHttpDataSourceFactory = OkHttpDataSource.Factory(NetworkClient.client)
-        val cachedDataSourceFactory = ExoPlayerCacheManager.createCacheDataSourceFactory(this, okHttpDataSourceFactory)
+        val googleVideoDataSourceFactory = GoogleVideoDataSource.Factory(NetworkClient.client, okHttpDataSourceFactory)
+        val cachedDataSourceFactory = ExoPlayerCacheManager.createCacheDataSourceFactory(this, googleVideoDataSourceFactory)
 
         val mediaSourceFactory = DefaultMediaSourceFactory(cachedDataSourceFactory)
         currentMediaSourceFactory = mediaSourceFactory

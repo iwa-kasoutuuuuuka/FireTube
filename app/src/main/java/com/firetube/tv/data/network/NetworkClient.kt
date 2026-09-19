@@ -32,7 +32,11 @@ object NetworkClient {
             } else {
                 original
             }
-            chain.proceed(request)
+            val response = chain.proceed(request)
+            if (request.url.host.contains("googlevideo.com")) {
+                android.util.Log.d("NetworkClient", "GoogleVideo HTTP ${response.code} for: ${request.url.encodedPath}?${request.url.encodedQuery?.take(60)} | Range=${request.header("Range")} | UA=${request.header("User-Agent")?.take(30)}")
+            }
+            response
         }
         .dns(FastDns)
         .connectTimeout(8, TimeUnit.SECONDS)
