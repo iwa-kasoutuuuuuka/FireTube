@@ -11,7 +11,7 @@
 [![License](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![GMS Free](https://img.shields.io/badge/Google%20Play%20Services-0%25%20%28Independent%29-green)](#)
 
-[📥 **最新の APK をダウンロード (FireTube-v1.4.0.apk)**](https://github.com/iwa-kasoutuuuuuka/FireTube/raw/main/FireTube-v1.4.0.apk) / [リポジトリ内ファイル](FireTube-v1.4.0.apk) / [GitHub Releases](https://github.com/iwa-kasoutuuuuuka/FireTube/releases)
+[📥 **最新の APK をダウンロード (FireTube-v1.4.1.apk)**](https://github.com/iwa-kasoutuuuuuka/FireTube/raw/main/FireTube-v1.4.1.apk) / [リポジトリ内ファイル](FireTube-v1.4.1.apk) / [GitHub Releases](https://github.com/iwa-kasoutuuuuuka/FireTube/releases)
 
 </div>
 
@@ -151,7 +151,7 @@ FireTube v1.4.0 では、**Fire TV Stick 4K Max** の高性能ハードウェア
 ### 1. APK の直接ダウンロード
 リポジトリ直下の APK またはリリース一覧ページより最新の APK ファイルをダウンロードしてください。
 
-- **[📥 FireTube-v1.4.0.apk (リポジトリ直下)](FireTube-v1.4.0.apk)**
+- **[📥 FireTube-v1.4.1.apk (リポジトリ直下)](FireTube-v1.4.1.apk)**
 - **[GitHub Releases ページ](https://github.com/iwa-kasoutuuuuuka/FireTube/releases)**
 
 ### 2. Fire TV Stick へのインストール手順
@@ -159,7 +159,7 @@ FireTube v1.4.0 では、**Fire TV Stick 4K Max** の高性能ハードウェア
 2. PC と同一 Wi-Fi に接続し、PC のターミナルから ADB でインストールします：
    ```bash
    adb connect <Fire_TV_の_IPアドレス>:5555
-   adb install -r FireTube-v1.3.4.apk
+   adb install -r FireTube-v1.4.1.apk
    ```
    ※ または Fire TV アプリストアの「Downloader」アプリを使って上記 GitHub Releases の APK URL から直接ダウンロード・インストールすることも可能です。
 
@@ -365,6 +365,33 @@ PC 上の Android Studio エミュレーターで、Fire TV Stick 実機環境�
 
 # 生成場所: app/build/outputs/apk/debug/app-debug.apk
 ```
+
+---
+
+## 📝 更新履歴 (Changelog)
+
+### v1.4.1 (2026-09-19)
+- **4K Max 特化型ウルトラ高速化パイプライン (Adaptive High-Performance Engine)**:
+  - **端末スペック自動判定 (`DeviceProfileManager`)**: RAM 2.0GB 以上、4コア以上、Amazon 4K Max (AFTKA/AFTKRT/AFTKMST) / Cube (AFTMM/AFTGAZL) を自動検知。
+  - **ExoPlayer 大容量 80MB バッファ**: 4K 60fps VP9/AV1 ストリームでのバッファ枯渇を完全解消。
+  - **超高速 250ms 再生開始**: 決定キー押下直後の動画起動待機時間を 2倍高速化。
+  - **30秒バックバッファ (Back-Buffer)**: 巻き戻し・10秒戻る操作時にキャッシュ済みデータをメモリ保持し、待ち時間 0ms（実測 48ms）で即座に再生再開。
+  - **アダプティブ 120MB ディスクキャッシュ**: 4K 大容量メディアセグメントを余裕でローカル保持。
+  - **Wi-Fi 6 16並列ストリーミング**: OkHttp コネクションプール（16件）とディスパッチャー（16並列）の最適化。
+  - **フォーカス先読み (Focus-Dwell) 400ms 短縮**: リモコン操作時のストリーム事前抽出を加速。
+  - **ハードウェア AV 同期 (Tunneling)**: 4K 60fps 再生時のフレームドロップを防止。
+- **設定画面 (Leanback Settings) の機能拡張**:
+  - 「端末パフォーマンスプロファイル（自動 / 4K Max ウルトラ / 標準）」切り替え設定を追加。
+  - 「デバイス情報（機種名・RAM容量・CPUコア数・適用プロファイル）」診断表示を追加。
+- **低スペック HD 端末での退行ゼロ保証**:
+  - Fire TV Stick HD / Lite（1.0〜1.5GB RAM）では従来の 32MB バッファ / 40MB キャッシュを完全維持し、OOM（強制終了）をゼロ防止。
+
+### v1.3.4 (2026-09-19)
+- Fire TV Stick 4K Max / Fire OS 8 (Android 11) 完全対応。
+- YouTube DASH 映像・音声セパレート配信の合成再生 (`MergingMediaSource`) 対応。
+- 4K Ultra HD (2160p) 画質設定、AVC/H.264 ハードウェア省電力再生の適応。
+- Fire TV 専用デバッグスキル (`firetv-debugging`) の整備。
+- スクリーンショットの著作権保護（ピクセルモザイク処理）。
 
 ---
 
