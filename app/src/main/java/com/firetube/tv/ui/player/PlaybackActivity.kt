@@ -103,6 +103,10 @@ class PlaybackActivity : FragmentActivity() {
     private var sponsorSegments: List<SponsorSegment> = emptyList()
     private var sponsorMonitorJob: Job? = null
     private var speedHudDismissJob: Job? = null
+    private var loadStreamJob: Job? = null
+    private var upNextJob: Job? = null
+    private var sponsorJob: Job? = null
+    private var rydJob: Job? = null
 
     private val speedList = listOf(1.0f, 1.25f, 1.5f, 2.0f)
     private var currentSpeedIndex = 0
@@ -136,29 +140,73 @@ class PlaybackActivity : FragmentActivity() {
 
         setupUpNextGrid()
         initPlayer()
-        loadStreamAndPlay()
-        loadSponsorBlock()
-        loadRydVotes()
-        loadUpNextVideos()
+        startNewVideoSession(videoId, videoTitle, uploaderName, thumbnailUrl)
     }
 
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
         setIntent(intent)
         val newVideoId = intent?.getStringExtra(EXTRA_VIDEO_ID) ?: return
-        if (newVideoId.isNotEmpty() && newVideoId != videoId) {
-            saveHistory(player?.currentPosition ?: 0)
-            player?.stop()
-            loadingView.visibility = View.VISIBLE
-            videoId = newVideoId
-            videoTitle = intent.getStringExtra(EXTRA_VIDEO_TITLE) ?: ""
-            uploaderName = intent.getStringExtra(EXTRA_UPLOADER_NAME) ?: ""
-            thumbnailUrl = intent.getStringExtra(EXTRA_THUMBNAIL_URL) ?: ""
-            loadStreamAndPlay()
-            loadSponsorBlock()
-            loadRydVotes()
-            loadUpNextVideos()
+        if (newVideoId.isNotEmpty()) {
+            val newTitle = intent.getStringExtra(EXTRA_VIDEO_TITLE) ?: ""
+            val newUploader = intent.getStringExtra(EXTRA_UPLOADER_NAME) ?: ""
+            val newThumb = intent.getStringExtra(EXTRA_THUMBNAIL_URL) ?: ""
+            startNewVideoSession(newVideoId, newTitle, newUploader, newThumb)
         }
+    }
+
+    /**
+     * 新しい動画再生セッションのクリーン開始
+     * - 前回のストリーム取得・Up Next・SponsorBlock 等の非同期ジョブを即座に全キャンセル
+     * - 前回の SponsorBlock スキップ区間・HUD・Up Next を完全リセット
+     * - ExoPlayer を停止＆クリアし、SurfaceView 描画を確実に再バインド
+     */
+    private fun startNewVideoSession(
+        targetId: String,
+        title: String,
+        uploader: String,
+        thumb: String
+    ) {
+        // 1. 前回の再生履歴を非同期保存
+        saveHistory(player?.currentPosition ?: 0)
+
+        // 2. 走行中の非同期ジョブを全て即座にキャンセル（Race Condition防止）
+        loadStreamJob?.cancel()
+        upNextJob?.cancel()
+        sponsorJob?.cancel()
+        rydJob?.cancel()
+        sponsorMonitorJob?.cancel()
+        hudDismissJob?.cancel()
+
+        // 3. SponsorBlock セグメントおよび UI 状態を完全リセット（誤爆スキップ防止）
+        sponsorSegments = emptyList()
+        sponsorBanner.visibility = View.GONE
+        upNextContainer.visibility = View.GONE
+        videoInfoHud.visibility = View.GONE
+        upNextAdapter.clear()
+
+        // 4. ExoPlayer を停止＆キュー・トラックを完全クリア
+        player?.let { p ->
+            p.stop()
+            p.clearMediaItems()
+        }
+        if (playerView.player == null && player != null) {
+            playerView.player = player
+        }
+
+        // 5. 新しい動画メタデータをセット
+        videoId = targetId
+        videoTitle = title
+        uploaderName = uploader
+        thumbnailUrl = thumb
+
+        loadingView.visibility = View.VISIBLE
+
+        // 6. 各種取得処理を起動
+        loadStreamAndPlay()
+        loadSponsorBlock()
+        loadRydVotes()
+        loadUpNextVideos()
     }
 
     private fun setupUpNextGrid() {
@@ -231,6 +279,7 @@ class PlaybackActivity : FragmentActivity() {
 
                     override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
                         Log.e(TAG, "ExoPlayer error [${error.errorCodeName} / ${error.errorCode}]: ${error.message}", error)
+                        VideoRepository.invalidateStreamCache(videoId)
                         loadingView.visibility = View.GONE
                         val message = when (error.errorCode) {
                             androidx.media3.common.PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
@@ -281,8 +330,10 @@ class PlaybackActivity : FragmentActivity() {
             return
         }
 
-        lifecycleScope.launch {
-            val result = ReturnYouTubeDislikeClient.getVotes(videoId)
+        val currentTargetId = videoId
+        rydJob = lifecycleScope.launch {
+            val result = ReturnYouTubeDislikeClient.getVotes(currentTargetId)
+            if (!isActive || videoId != currentTargetId) return@launch
             result.onSuccess { votes ->
                 videoHudRyd.text = votes.formattedSummary
                 videoHudRyd.visibility = View.VISIBLE
@@ -313,12 +364,14 @@ class PlaybackActivity : FragmentActivity() {
 
     private fun loadStreamAndPlay() {
         loadingView.visibility = View.VISIBLE
-        lifecycleScope.launch {
-            val result = VideoRepository.extractStreamInfo(videoId)
+        val currentTargetId = videoId
+        loadStreamJob = lifecycleScope.launch {
+            val result = VideoRepository.extractStreamInfo(currentTargetId)
+            if (!isActive || videoId != currentTargetId) return@launch
             result.onSuccess { streamInfo ->
                 startPlayback(streamInfo)
             }.onFailure { e ->
-                Log.e(TAG, "Stream extraction error for $videoId: ${e.message}", e)
+                Log.e(TAG, "Stream extraction error for $currentTargetId: ${e.message}", e)
                 loadingView.visibility = View.GONE
                 val errorMsg = if (e.message?.contains("network", ignoreCase = true) == true) {
                     getString(R.string.network_error_msg)
@@ -426,15 +479,22 @@ class PlaybackActivity : FragmentActivity() {
     }
 
     private fun executePlayback(mediaItem: MediaItem? = null, mediaSource: MediaSource? = null, durationMs: Long) {
+        val currentTargetId = videoId
         lifecycleScope.launch {
             val db = (application as FireTubeApp).database
-            val lastPos = db.videoDao().getLastPosition(videoId)
-            Log.i(TAG, "Restoring position for $videoId: lastPos=$lastPos, durationMs=$durationMs")
+            val lastPos = db.videoDao().getLastPosition(currentTargetId)
+            Log.i(TAG, "Restoring position for $currentTargetId: lastPos=$lastPos, durationMs=$durationMs")
+            if (!isActive || videoId != currentTargetId) return@launch
+
             player?.let { p ->
+                if (playerView.player == null) {
+                    playerView.player = p
+                }
+                p.clearMediaItems()
                 if (mediaSource != null) {
-                    p.setMediaSource(mediaSource)
+                    p.setMediaSource(mediaSource, /* resetPosition = */ true)
                 } else if (mediaItem != null) {
-                    p.setMediaItem(mediaItem)
+                    p.setMediaItem(mediaItem, /* resetPosition = */ true)
                 }
                 val shouldSeek = lastPos != null && lastPos > 5000 && (durationMs <= 0 || lastPos < durationMs - 10000)
                 if (shouldSeek) {
@@ -443,6 +503,7 @@ class PlaybackActivity : FragmentActivity() {
                 } else {
                     p.seekTo(0)
                 }
+                p.playWhenReady = true
                 p.prepare()
                 p.play()
                 startSponsorMonitor()
@@ -451,17 +512,24 @@ class PlaybackActivity : FragmentActivity() {
     }
 
     private fun loadSponsorBlock() {
-        lifecycleScope.launch {
-            sponsorSegments = SponsorBlockService.getSkipSegments(videoId)
+        val currentTargetId = videoId
+        sponsorJob = lifecycleScope.launch {
+            val segments = SponsorBlockService.getSkipSegments(currentTargetId)
+            if (isActive && videoId == currentTargetId) {
+                sponsorSegments = segments
+                Log.d(TAG, "Loaded ${segments.size} SponsorBlock segments for $currentTargetId")
+            }
         }
     }
 
     private fun loadUpNextVideos() {
         // 再生開始直後のWi-Fi帯域とCPUをストリーム取得に集中させるため、関連動画は2.5秒遅延取得
-        lifecycleScope.launch {
+        val currentTargetId = videoId
+        upNextJob = lifecycleScope.launch {
             delay(2500)
-            if (!isActive) return@launch
-            val result = VideoRepository.getUpNextVideos(videoId)
+            if (!isActive || videoId != currentTargetId) return@launch
+            val result = VideoRepository.getUpNextVideos(currentTargetId)
+            if (!isActive || videoId != currentTargetId) return@launch
             result.onSuccess { videos ->
                 upNextAdapter.clear()
                 upNextAdapter.addAll(0, videos)
@@ -470,20 +538,7 @@ class PlaybackActivity : FragmentActivity() {
     }
 
     private fun switchVideo(item: VideoItem) {
-        saveHistory(player?.currentPosition ?: 0)
-        player?.stop()
-        loadingView.visibility = View.VISIBLE
-        hideUpNextPanel()
-
-        videoId = item.id
-        videoTitle = item.title
-        uploaderName = item.uploaderName
-        thumbnailUrl = item.thumbnailUrl
-
-        loadStreamAndPlay()
-        loadSponsorBlock()
-        loadRydVotes()
-        loadUpNextVideos()
+        startNewVideoSession(item.id, item.title, item.uploaderName, item.thumbnailUrl)
     }
 
     private fun showUpNextPanel() {
@@ -751,7 +806,6 @@ class PlaybackActivity : FragmentActivity() {
         player?.let { p ->
             saveHistory(p.currentPosition)
         }
-        playerView.player = null
         if (!isChangingConfigurations) {
             player?.pause()
         }
@@ -765,11 +819,16 @@ class PlaybackActivity : FragmentActivity() {
     }
 
     override fun onDestroy() {
+        loadStreamJob?.cancel()
+        upNextJob?.cancel()
+        sponsorJob?.cancel()
+        rydJob?.cancel()
         sponsorMonitorJob?.cancel()
         speedHudDismissJob?.cancel()
         hudDismissJob?.cancel()
         loudnessEnhancer?.release()
         loudnessEnhancer = null
+        playerView.player = null
         player?.release()
         player = null
         super.onDestroy()

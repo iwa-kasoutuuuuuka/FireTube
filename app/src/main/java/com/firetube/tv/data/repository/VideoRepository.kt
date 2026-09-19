@@ -29,8 +29,8 @@ object VideoRepository {
     private var lastTrendingCacheTime: Long = 0L
     private const val CACHE_TTL_MS = 5 * 60 * 1000L // 5分間キャッシュ
 
-    // ストリーム情報 LRU キャッシュ (最大20件、有効期限15分)
-    private const val STREAM_CACHE_TTL_MS = 15 * 60 * 1000L
+    // ストリーム情報 LRU キャッシュ (最大20件、有効期限5分: YouTube CDN の URL 失効防止)
+    private const val STREAM_CACHE_TTL_MS = 5 * 60 * 1000L
     private const val MAX_STREAM_CACHE_SIZE = 20
 
     private data class CachedStream(
@@ -64,6 +64,16 @@ object VideoRepository {
             }
         }
         return null
+    }
+
+    /**
+     * エラー発生時などにキャッシュを即時無効化する
+     */
+    fun invalidateStreamCache(videoId: String) {
+        synchronized(streamCacheLock) {
+            streamCache.remove(videoId)
+            Log.i(TAG, "Invalidated stream cache for $videoId")
+        }
     }
 
     private fun putCachedStreamInfo(videoId: String, data: StreamInfoData) {

@@ -323,8 +323,9 @@ object InnerTubeClient {
      * 動画再生ストリーム情報の取得
      * 1. IOS_KIDS コンテキスト（Made for Kids 動画用 HLS アダプティブマニフェスト最優先）
      * 2. VISIONOS コンテキスト（Made for Kids 対象外の一般動画用 HLS アダプティブマニフェスト最優先）
-     * 3. ANDROID_KIDS コンテキスト（単一 Muxed MP4 ストリーム取得）
-     * 4. IOS コンテキスト（PoToken不要の DASH フォールバック）
+     * 3. IOS_EMBEDDED コンテキスト（音楽PV・公式チャンネル等、VISIONOSでLOGIN_REQUIREDになる動画の救済フォールバック）
+     * 4. ANDROID_KIDS コンテキスト（単一 Muxed MP4 ストリーム取得）
+     * 5. IOS コンテキスト（PoToken不要の DASH フォールバック）
      */
     suspend fun extractStreamInfo(videoId: String): Result<StreamInfoData> = withContext(Dispatchers.IO) {
         // 1. IOS_KIDS (Made for Kids 動画の HLS 最優先)
@@ -347,7 +348,17 @@ object InnerTubeClient {
             }
         }
 
-        // 3. ANDROID_KIDS (Muxed MP4)
+        // 3. IOS_EMBEDDED (音楽PV・公式チャンネル等、VISIONOSでLOGIN_REQUIREDになる動画用埋め込みコンテキスト)
+        val iosEmbedResult = fetchPlayerStream(videoId, buildIosContext(), IOS_USER_AGENT, isEmbedded = true)
+        if (iosEmbedResult.isSuccess) {
+            val data = iosEmbedResult.getOrNull()
+            if (data != null && (data.hlsUrl != null || data.videoStreams.isNotEmpty())) {
+                Log.i(TAG, "Successfully extracted stream via IOS_EMBEDDED context for $videoId (${data.videoStreams.size} video, ${data.audioStreams.size} audio)")
+                return@withContext iosEmbedResult
+            }
+        }
+
+        // 4. ANDROID_KIDS (Muxed MP4)
         val androidKidsResult = fetchPlayerStream(videoId, buildAndroidKidsContext(), ANDROID_KIDS_USER_AGENT)
         if (androidKidsResult.isSuccess) {
             val data = androidKidsResult.getOrNull()
@@ -357,7 +368,7 @@ object InnerTubeClient {
             }
         }
 
-        // 4. IOS (フォールバック)
+        // 5. IOS (標準フォールバック)
         val iosResult = fetchPlayerStream(videoId, buildIosContext(), IOS_USER_AGENT)
         if (iosResult.isSuccess) {
             Log.i(TAG, "Extracted stream via standard IOS context for $videoId")
@@ -461,12 +472,29 @@ object InnerTubeClient {
     private fun fetchPlayerStream(
         videoId: String,
         contextJson: JsonObject,
-        userAgent: String
+        userAgent: String,
+        isEmbedded: Boolean = false
     ): Result<StreamInfoData> {
         return try {
             val payload = JsonObject().apply {
                 add("context", contextJson)
                 addProperty("videoId", videoId)
+                if (isEmbedded) {
+                    val playbackContext = JsonObject().apply {
+                        val contentPlaybackContext = JsonObject().apply {
+                            addProperty("html5Preference", "HTML5_PREF_WANTS")
+                            addProperty("signatureTimestamp", cachedSignatureTimestamp)
+                        }
+                        add("contentPlaybackContext", contentPlaybackContext)
+                    }
+                    add("playbackContext", playbackContext)
+                    val thirdParty = JsonObject().apply {
+                        addProperty("embedUrl", "https://www.google.com")
+                    }
+                    add("thirdParty", thirdParty)
+                    addProperty("contentCheckOk", true)
+                    addProperty("racyCheckOk", true)
+                }
             }
 
             val request = Request.Builder()

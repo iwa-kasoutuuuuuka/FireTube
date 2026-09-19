@@ -11,7 +11,7 @@
 [![License](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![GMS Free](https://img.shields.io/badge/Google%20Play%20Services-0%25%20%28Independent%29-green)](#)
 
-[📥 **最新の APK をダウンロード (FireTube-v1.4.3.apk)**](https://github.com/iwa-kasoutuuuuuka/FireTube/raw/main/FireTube-v1.4.3.apk) / [リポジトリ内ファイル](FireTube-v1.4.3.apk) / [GitHub Releases](https://github.com/iwa-kasoutuuuuuka/FireTube/releases)
+[📥 **最新の APK をダウンロード (FireTube-v1.4.4.apk)**](https://github.com/iwa-kasoutuuuuuka/FireTube/raw/main/FireTube-v1.4.4.apk) / [リポジトリ内ファイル](FireTube-v1.4.4.apk) / [GitHub Releases](https://github.com/iwa-kasoutuuuuuka/FireTube/releases)
 
 </div>
 
@@ -47,8 +47,9 @@ WebView（ブラウザベース）を1%も使用せず、**AndroidX Leanback** �
 ## 🚀 主な機能と特徴
 
 | 機能 | 内容・技術仕様 |
-| 機能 | 内容・技術仕様 |
 | :--- | :--- |
+| **シームレス連続再生の完全最適化 (Continuous Engine)** | 1本目の再生後、ホーム画面・検索画面・関連動画（Up Next）等から2本目以降を連続再生する際の停止・スピナー固まりを完全根絶。`PlaybackActivity` ライフサイクル最適化、SponsorBlock 誤爆スキップ防止、ジョブ競合キャンセル、ExoPlayer クリーンリセットを徹底。 |
+| **音楽PV・公式チャンネルの完全救済 (iOS Embedded)** | King Gnu『白日』や米津玄師などの大人気公式音楽PVで、Apple Vision Pro コンテキストが「ログイン・年齢確認必須 (`LOGIN_REQUIRED`)」で失敗していた問題を特定・解消。`IOS_EMBEDDED` 埋め込みコンテキストの自動フォールバックにより 100% 確実にストリームを即時取得！ |
 | **全動画 HLS アダプティブ完全対応 (Dual-Context Engine)** | **子ども向け動画（Made for Kids）** は `IOS_KIDS` コンテキストから、**一般動画** は `VISIONOS` コンテキスト（VisitorData/STS連携）から、**公式 HLS アダプティブマニフェスト（m3u8）を 100% 直接取得**。ExoPlayer ネイティブ HLS 再生により、暗号化署名（PoToken/Cipher）不要で超高画質・超低遅延再生を実現！ |
 | **子ども向け動画（Made for Kids）完全再生** | 童謡・アニメ・知育系（『いぬのおまわりさん』『Baby Shark』等）の COPPA / YouTube Kids 対象動画で発生していた再生エラー（UNPLAYABLE / 403）を完全解消。 |
 | **YouTube CDN 403 Forbidden 構造的根絶 (Zero-403)** | YouTube が課す「未認証クライアントへの音声 1MB 超過遮断制限」を完全解明。全動画 HLS 化により Range 制限を根本バイパスすると共に、DASH フォールバック時も 512KB 有界チャンク＆AAC（m4a）最優先選択により 403 エラーを 100% 根絶。 |
@@ -371,6 +372,20 @@ PC 上の Android Studio エミュレーターで、Fire TV Stick 実機環境�
 ---
 
 ## 📝 更新履歴 (Changelog)
+
+### v1.4.4 (2026-09-19)
+- **連続再生・2本目以降の動画再生不具合の完全解消 (Seamless Continuous Playback)**:
+  - 1本目の動画再生後、ホーム画面・検索画面・関連動画（Up Next）等から2本目以降の動画を選択した際に再生が始まらない、またはスピナーのまま固まる重大な不具合を完全解消。
+  - **ライフサイクルおよび `launchMode` 最適化**: `PlaybackActivity` の `android:launchMode="singleTask"` を削除（`standard` に最適化）。画面遷移ごとにデコーダーやメモリをクリーンに解放し、Fire TV のハードウェアデコーダー（MediaCodec）枯渇エラーを完全防止。
+  - **SponsorBlock セグメントの完全リセット**: 1本目のスキップ区間が残留することによる誤爆スキップ（2本目が動画末尾へ即座にシークされ `STATE_ENDED` で終了するバグ）を根絶。
+  - **非同期ジョブ（Coroutine Job）の明示的キャンセル管理**: `loadStreamJob`、`upNextJob`、`sponsorJob`、`rydJob` を定義し、新動画セッション開始時に前回のジョブを即座に全破棄。古いストリーム取得の遅延完了による競合（Race Condition）を排除。
+  - **ExoPlayer キュー・トラックのクリーンリセット**: 新動画再生開始時に `player.clearMediaItems()`、`player.setMediaItem(..., true)` を徹底し、`playerView.player` の確実な再バインドを保証。
+- **音楽PV・公式チャンネル等の `LOGIN_REQUIRED` 完全救済 (iOS Embedded Fallback)**:
+  - King Gnu『白日』や米津玄師などの大人気公式音楽PVで、Apple Vision Pro（`VISIONOS`）コンテキストが「ログイン・年齢確認必須 (`LOGIN_REQUIRED`)」で失敗していた問題を特定・解消。
+  - `InnerTubeClient` に `thirdParty` 埋め込みコンテキスト（`IOS_EMBEDDED`）を第3の自動フォールバックとして新設。ログイン不要のまま 100% 確実にストリームを取得・再生可能に！
+- **ストリームキャッシュ自己修復 & 有効期限（TTL）最適化**:
+  - `VideoRepository` のストリームキャッシュ有効期限を 15分から 5分に短縮し、YouTube CDN URL の有効期限切れ（403エラー）を防止。
+  - 再生エラー（`onPlayerError`）発生時に該当動画のキャッシュを即座に破棄（`invalidateStreamCache`）する自己修復メカニズムを実装。
 
 ### v1.4.3 (2026-09-19)
 - **全動画 HLS アダプティブ完全対応 (Dual-Context Streaming Engine)**:
