@@ -11,7 +11,7 @@
 [![License](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![GMS Free](https://img.shields.io/badge/Google%20Play%20Services-0%25%20%28Independent%29-green)](#)
 
-[📥 **最新の APK をダウンロード (FireTube-v1.3.4.apk)**](FireTube-v1.3.4.apk) / [GitHub Releases](https://github.com/iwa-kasoutuuuuuka/FireTube/releases)
+[📥 **最新の APK をダウンロード (FireTube-v1.3.4.apk)**](https://github.com/iwa-kasoutuuuuuka/FireTube/raw/main/FireTube-v1.3.4.apk) / [リポジトリ内ファイル](FireTube-v1.3.4.apk) / [GitHub Releases](https://github.com/iwa-kasoutuuuuuka/FireTube/releases)
 
 </div>
 
