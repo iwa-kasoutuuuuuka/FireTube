@@ -166,9 +166,12 @@ class PlaybackActivity : FragmentActivity() {
         bridgeAdapter.setAdapterListener(object : ItemBridgeAdapter.AdapterListener() {
             override fun onBind(viewHolder: ItemBridgeAdapter.ViewHolder) {
                 viewHolder.itemView.setOnClickListener {
-                    val item = upNextAdapter.get(viewHolder.adapterPosition) as? VideoItem
-                    if (item != null) {
-                        switchVideo(item)
+                    val pos = viewHolder.bindingAdapterPosition
+                    if (pos != androidx.recyclerview.widget.RecyclerView.NO_POSITION && pos < upNextAdapter.size()) {
+                        val item = upNextAdapter.get(pos) as? VideoItem
+                        if (item != null) {
+                            switchVideo(item)
+                        }
                     }
                 }
             }
@@ -338,7 +341,7 @@ class PlaybackActivity : FragmentActivity() {
 
         // 1. HLS (アダプティブビットレート) を最優先（ライブ配信および対応VOD）
         if (streamInfo.hlsUrl != null) {
-            Log.i(TAG, "Playing via HLS adaptive stream: ${streamInfo.hlsUrl?.take(80)}")
+            Log.i(TAG, "Playing via HLS adaptive stream: ${streamInfo.hlsUrl.take(80)}")
             val mediaItem = MediaItem.Builder()
                 .setUri(streamInfo.hlsUrl)
                 .setMimeType(MimeTypes.APPLICATION_M3U8)
@@ -664,6 +667,7 @@ class PlaybackActivity : FragmentActivity() {
         }
     }
 
+    @Suppress("DEPRECATION")
     override fun onBackPressed() {
         if (upNextContainer.visibility == View.VISIBLE) {
             hideUpNextPanel()

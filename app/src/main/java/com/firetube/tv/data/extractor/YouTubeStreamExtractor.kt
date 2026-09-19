@@ -95,6 +95,7 @@ object YouTubeStreamExtractor {
             }
             Result.success(items)
         } catch (e: Throwable) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Log.e(TAG, "Error searching videos for: $query", e)
             Result.failure(e)
         }
@@ -178,6 +179,7 @@ object YouTubeStreamExtractor {
 
             Result.success(streamData)
         } catch (e: Throwable) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Log.e(TAG, "Error extracting stream info for: $videoId", e)
             Result.failure(e)
         }

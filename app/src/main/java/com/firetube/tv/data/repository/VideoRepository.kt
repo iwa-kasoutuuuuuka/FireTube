@@ -7,6 +7,7 @@ import com.firetube.tv.data.model.StreamInfoData
 import com.firetube.tv.data.model.VideoItem
 import com.firetube.tv.data.piped.PipedApiClient
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import org.schabi.newpipe.extractor.ServiceList
 import org.schabi.newpipe.extractor.stream.StreamInfo
@@ -230,9 +231,11 @@ object VideoRepository {
                 }
             }
         } catch (t: Throwable) {
+            if (t is kotlinx.coroutines.CancellationException) throw t
             Log.w(TAG, "NewPipeExtractor stream extraction unavailable on this device: ${t.message}")
         }
 
+        coroutineContext.ensureActive()
         Log.w(TAG, "NewPipeExtractor failed or empty, falling back to Piped...")
 
         // 2. Piped API によるストリーム抽出フォールバック
@@ -260,6 +263,7 @@ object VideoRepository {
         try {
             extractStreamInfo(videoId)
         } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Log.w(TAG, "Prefetch failed silently for $videoId: ${e.message}")
         }
     }
