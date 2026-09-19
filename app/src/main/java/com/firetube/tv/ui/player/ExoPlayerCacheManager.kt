@@ -1,4 +1,4 @@
-﻿package com.firetube.tv.ui.player
+package com.firetube.tv.ui.player
 
 import android.content.Context
 import android.net.Uri
@@ -28,14 +28,19 @@ object ExoPlayerCacheManager {
     private var simpleCache: SimpleCache? = null
     private val lock = Any()
 
-    fun getCache(context: Context): SimpleCache {
+    fun getCache(context: Context): SimpleCache? {
         return simpleCache ?: synchronized(lock) {
             simpleCache ?: run {
-                val cacheDir = File(context.applicationContext.cacheDir, "firetube_media_cache")
-                val evictor = LeastRecentlyUsedCacheEvictor(MAX_CACHE_BYTES)
-                val databaseProvider = StandaloneDatabaseProvider(context.applicationContext)
-                SimpleCache(cacheDir, evictor, databaseProvider).also {
-                    simpleCache = it
+                try {
+                    val cacheDir = File(context.applicationContext.cacheDir, "firetube_media_cache")
+                    val evictor = LeastRecentlyUsedCacheEvictor(MAX_CACHE_BYTES)
+                    val databaseProvider = StandaloneDatabaseProvider(context.applicationContext)
+                    SimpleCache(cacheDir, evictor, databaseProvider).also {
+                        simpleCache = it
+                    }
+                } catch (e: Throwable) {
+                    android.util.Log.w("ExoPlayerCacheManager", "Failed to initialize SimpleCache, bypassing cache: ${e.message}")
+                    null
                 }
             }
         }
@@ -43,12 +48,14 @@ object ExoPlayerCacheManager {
 
     /**
      * マニフェストバイパス機能付きのスマート CacheDataSource.Factory を生成
+     * キャッシュ初期化不能時は安全に upstreamFactory へフォールバック
      */
     fun createCacheDataSourceFactory(
         context: Context,
         upstreamFactory: DataSource.Factory
     ): DataSource.Factory {
-        val cache = getCache(context)
+        val cache = getCache(context) ?: return upstreamFactory
+
         val rawCacheFactory = CacheDataSource.Factory()
             .setCache(cache)
             .setUpstreamDataSourceFactory(upstreamFactory)

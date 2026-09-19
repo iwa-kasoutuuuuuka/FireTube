@@ -51,6 +51,18 @@ class ChannelActivity : FragmentActivity() {
             updateButtonState()
         }
 
+        btnSubscribe.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus) {
+                btnSubscribe.setTextColor(ContextCompat.getColor(this@ChannelActivity, R.color.background_dark))
+                btnSubscribe.backgroundTintList = ColorStateList.valueOf(
+                    ContextCompat.getColor(this@ChannelActivity, R.color.accent_focus)
+                )
+            } else {
+                btnSubscribe.setTextColor(ContextCompat.getColor(this@ChannelActivity, android.R.color.white))
+                updateButtonState()
+            }
+        }
+
         btnSubscribe.setOnClickListener {
             lifecycleScope.launch {
                 if (isCurrentlySubscribed) {
@@ -75,15 +87,41 @@ class ChannelActivity : FragmentActivity() {
     private fun updateButtonState() {
         if (isCurrentlySubscribed) {
             btnSubscribe.text = getString(R.string.subscribed)
-            btnSubscribe.backgroundTintList = ColorStateList.valueOf(
-                ContextCompat.getColor(this, R.color.card_unfocused)
-            )
+            if (!btnSubscribe.isFocused) {
+                btnSubscribe.backgroundTintList = ColorStateList.valueOf(
+                    ContextCompat.getColor(this, R.color.card_unfocused)
+                )
+            }
         } else {
             btnSubscribe.text = getString(R.string.subscribe)
-            btnSubscribe.backgroundTintList = ColorStateList.valueOf(
-                ContextCompat.getColor(this, R.color.primary_red)
-            )
+            if (!btnSubscribe.isFocused) {
+                btnSubscribe.backgroundTintList = ColorStateList.valueOf(
+                    ContextCompat.getColor(this, R.color.primary_red)
+                )
+            }
         }
+    }
+
+    override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+        if (event.action == android.view.KeyEvent.ACTION_DOWN) {
+            val keyCode = event.keyCode
+            if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_UP && !btnSubscribe.isFocused) {
+                val view = currentFocus
+                if (view != null && btnSubscribe.visibility == android.view.View.VISIBLE) {
+                    val next = view.focusSearch(android.view.View.FOCUS_UP)
+                    // Leanback の TitleView やフォーカス不可 View が探索された場合、または上方向に進めない場合はボタンに遷移
+                    if (next == null || next == view || !next.isFocusable || next.id == androidx.leanback.R.id.browse_title_group || next.id == R.id.channel_fragment_container) {
+                        btnSubscribe.requestFocus()
+                        return true
+                    }
+                }
+            } else if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_DOWN && btnSubscribe.isFocused) {
+                val container = findViewById<android.view.View>(R.id.channel_fragment_container)
+                container?.requestFocus()
+                return true
+            }
+        }
+        return super.dispatchKeyEvent(event)
     }
 
     private fun extractChannelId(url: String): String {

@@ -26,7 +26,7 @@ class SettingsFragment : GuidedStepSupportFragment() {
         private const val ACTION_RYD = 9L
         private const val ACTION_PREFER_AVC = 10L
 
-        private val QUALITY_OPTIONS = listOf("720p", "1080p", "480p")
+        private val QUALITY_OPTIONS = listOf("720p", "1080p", "4K (2160p)", "480p")
         private val SPEED_OPTIONS = listOf(1.0f, 1.25f, 1.5f, 2.0f)
         private val API_OPTIONS = listOf(
             AppPreferences.API_SOURCE_INNERTUBE,
@@ -149,7 +149,7 @@ class SettingsFragment : GuidedStepSupportFragment() {
             GuidedAction.Builder(requireContext())
                 .id(ACTION_PREFER_AVC)
                 .title(getString(R.string.pref_prefer_avc))
-                .description(if (pref.preferAvcCodec) "有効 (推奨・低発熱)" else "無効 (OFF)")
+                .description(if (pref.preferAvcCodec) "有効 (HD推奨 / 4Kは自動で高画質再生)" else "無効 (OFF)")
                 .checkSetId(GuidedAction.CHECKBOX_CHECK_SET_ID)
                 .checked(pref.preferAvcCodec)
                 .build()

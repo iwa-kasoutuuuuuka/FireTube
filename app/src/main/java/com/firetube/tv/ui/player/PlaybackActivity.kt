@@ -12,6 +12,7 @@ import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
+import androidx.annotation.OptIn
 import androidx.fragment.app.FragmentActivity
 import androidx.leanback.widget.ArrayObjectAdapter
 import androidx.leanback.widget.HorizontalGridView
@@ -22,9 +23,12 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.source.MediaSource
+import androidx.media3.exoplayer.source.MergingMediaSource
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.ui.PlayerView
 import com.firetube.tv.FireTubeApp
@@ -32,18 +36,24 @@ import com.firetube.tv.R
 import com.firetube.tv.data.extractor.SponsorBlockService
 import com.firetube.tv.data.local.SubscriptionEntity
 import com.firetube.tv.data.local.VideoHistoryEntity
+import com.firetube.tv.data.model.AudioStream
 import com.firetube.tv.data.model.SponsorSegment
 import com.firetube.tv.data.model.StreamInfoData
 import com.firetube.tv.data.model.VideoItem
+import com.firetube.tv.data.model.VideoStream
 import com.firetube.tv.data.network.NetworkClient
 import com.firetube.tv.data.network.ReturnYouTubeDislikeClient
 import com.firetube.tv.data.repository.VideoRepository
 import com.firetube.tv.ui.main.VideoCardPresenter
 import com.firetube.tv.util.AppPreferences
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Fire TV 物理リモコン操作対応 高速ネイティブ動画プレイヤー
@@ -56,6 +66,7 @@ import kotlinx.coroutines.launch
  * - Return YouTube Dislike (RYD) 評価比率バッジ
  * - ハードウェア AVC/VP9 コーデック優先
  */
+@OptIn(UnstableApi::class)
 class PlaybackActivity : FragmentActivity() {
 
     companion object {
@@ -164,6 +175,8 @@ class PlaybackActivity : FragmentActivity() {
         })
     }
 
+    private var currentMediaSourceFactory: DefaultMediaSourceFactory? = null
+
     private fun initPlayer() {
         val pref = AppPreferences.getInstance(this)
 
@@ -179,6 +192,7 @@ class PlaybackActivity : FragmentActivity() {
         val cachedDataSourceFactory = ExoPlayerCacheManager.createCacheDataSourceFactory(this, okHttpDataSourceFactory)
 
         val mediaSourceFactory = DefaultMediaSourceFactory(cachedDataSourceFactory)
+        currentMediaSourceFactory = mediaSourceFactory
 
         player = ExoPlayer.Builder(this)
             .setMediaSourceFactory(mediaSourceFactory)
@@ -206,9 +220,16 @@ class PlaybackActivity : FragmentActivity() {
                     }
 
                     override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-                        Log.e(TAG, "ExoPlayer error: ${error.message}", error)
+                        Log.e(TAG, "ExoPlayer error [${error.errorCodeName} / ${error.errorCode}]: ${error.message}", error)
                         loadingView.visibility = View.GONE
-                        Toast.makeText(this@PlaybackActivity, R.string.error_loading, Toast.LENGTH_SHORT).show()
+                        val message = when (error.errorCode) {
+                            androidx.media3.common.PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
+                            androidx.media3.common.PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT -> getString(R.string.network_error_msg)
+                            androidx.media3.common.PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED,
+                            androidx.media3.common.PlaybackException.ERROR_CODE_DECODING_FAILED -> "デコーダー非対応または再生エラーが発生しました"
+                            else -> getString(R.string.error_loading)
+                        }
+                        Toast.makeText(this@PlaybackActivity, message, Toast.LENGTH_SHORT).show()
                     }
 
                     override fun onAudioSessionIdChanged(audioSessionId: Int) {
@@ -287,9 +308,14 @@ class PlaybackActivity : FragmentActivity() {
             result.onSuccess { streamInfo ->
                 startPlayback(streamInfo)
             }.onFailure { e ->
-                Log.e(TAG, "Stream extraction error", e)
+                Log.e(TAG, "Stream extraction error for $videoId: ${e.message}", e)
                 loadingView.visibility = View.GONE
-                Toast.makeText(this@PlaybackActivity, R.string.error_loading, Toast.LENGTH_SHORT).show()
+                val errorMsg = if (e.message?.contains("network", ignoreCase = true) == true) {
+                    getString(R.string.network_error_msg)
+                } else {
+                    getString(R.string.error_loading)
+                }
+                Toast.makeText(this@PlaybackActivity, errorMsg, Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -298,52 +324,100 @@ class PlaybackActivity : FragmentActivity() {
         val pref = AppPreferences.getInstance(this)
         val targetQuality = pref.defaultQuality
 
-        Log.i(TAG, "startPlayback: streamInfo has ${streamInfo.videoStreams.size} video streams, hlsUrl=${streamInfo.hlsUrl}")
+        Log.i(TAG, "startPlayback: videoStreams=${streamInfo.videoStreams.size}, audioStreams=${streamInfo.audioStreams.size}, hlsUrl=${streamInfo.hlsUrl != null}")
         streamInfo.videoStreams.forEachIndexed { i, s ->
-            Log.d(TAG, "Stream[$i]: res=${s.resolution}, fmt=${s.format}, videoOnly=${s.isVideoOnly}, url=${s.url.take(60)}")
+            Log.d(TAG, "Stream[$i]: res=${s.resolution}, fmt=${s.format}, videoOnly=${s.isVideoOnly}")
         }
 
-        // 設定画質に適合するストリームを検索（AVC優先時は MP4 / H.264 を最優先）
-        val matchingStreams = streamInfo.videoStreams.filter { !it.isVideoOnly }
-        val qualityFiltered = matchingStreams.filter { it.resolution.contains(targetQuality, ignoreCase = true) }
-        val candidates = if (qualityFiltered.isNotEmpty()) qualityFiltered else matchingStreams
+        val durationMs = streamInfo.durationSeconds * 1000L
 
-        val preferredStream = if (pref.preferAvcCodec) {
-            candidates.firstOrNull { it.format.equals("mp4", ignoreCase = true) || it.url.contains("mime=video%2Fmp4") }
-                ?: candidates.firstOrNull()
-        } else {
-            candidates.firstOrNull()
-        }
-
-        // HLS (アダプティブビットレート) を最優先。なければ設定画質の MP4 / 単一ストリームへフォールバック
-        val streamUrl = streamInfo.hlsUrl
-            ?: preferredStream?.url
-            ?: streamInfo.videoStreams.firstOrNull { !it.isVideoOnly }?.url
-            ?: streamInfo.videoStreams.firstOrNull()?.url
-
-        Log.i(TAG, "Selected streamUrl (HLS=${streamUrl == streamInfo.hlsUrl}): ${streamUrl?.take(100)}")
-
-        if (streamUrl == null) {
-            Toast.makeText(this, R.string.error_loading, Toast.LENGTH_SHORT).show()
+        // 1. HLS (アダプティブビットレート) を最優先（ライブ配信および対応VOD）
+        if (streamInfo.hlsUrl != null) {
+            Log.i(TAG, "Playing via HLS adaptive stream: ${streamInfo.hlsUrl?.take(80)}")
+            val mediaItem = MediaItem.Builder()
+                .setUri(streamInfo.hlsUrl)
+                .setMimeType(MimeTypes.APPLICATION_M3U8)
+                .build()
+            executePlayback(mediaItem = mediaItem, durationMs = durationMs)
             return
         }
 
-        val mediaItem = if (streamUrl.contains(".m3u8") || streamUrl == streamInfo.hlsUrl) {
-            MediaItem.Builder()
-                .setUri(streamUrl)
-                .setMimeType(MimeTypes.APPLICATION_M3U8)
-                .build()
+        // 2. 音声付き単一ストリーム (Muxed) を検索
+        val muxedStreams = streamInfo.videoStreams.filter { !it.isVideoOnly }
+        val qualityFilteredMuxed = muxedStreams.filter { it.resolution.contains(targetQuality.take(4), ignoreCase = true) }
+        val bestMuxed = if (qualityFilteredMuxed.isNotEmpty()) qualityFilteredMuxed.first() else muxedStreams.firstOrNull()
+
+        // 3. DASH セパレートストリーム (映像ストリーム + 音声ストリームの合成)
+        val bestVideo = selectBestVideoStream(streamInfo.videoStreams, targetQuality, pref.preferAvcCodec)
+        val bestAudio = selectBestAudioStream(streamInfo.audioStreams)
+        val factory = currentMediaSourceFactory
+
+        if (bestVideo != null && bestAudio != null && factory != null) {
+            Log.i(TAG, "Playing via DASH MergingMediaSource: video=${bestVideo.resolution} (${bestVideo.format}), audio=${bestAudio.format} (${bestAudio.bitrate}bps)")
+            val videoSource = factory.createMediaSource(MediaItem.fromUri(bestVideo.url))
+            val audioSource = factory.createMediaSource(MediaItem.fromUri(bestAudio.url))
+            val mergedSource = MergingMediaSource(videoSource, audioSource)
+            executePlayback(mediaSource = mergedSource, durationMs = durationMs)
+        } else if (bestMuxed != null) {
+            Log.i(TAG, "Playing via Muxed stream: ${bestMuxed.resolution} (${bestMuxed.format})")
+            val mediaItem = MediaItem.fromUri(bestMuxed.url)
+            executePlayback(mediaItem = mediaItem, durationMs = durationMs)
+        } else if (bestVideo != null) {
+            Log.w(TAG, "Playing video-only stream (audio stream missing): ${bestVideo.resolution}")
+            val mediaItem = MediaItem.fromUri(bestVideo.url)
+            executePlayback(mediaItem = mediaItem, durationMs = durationMs)
         } else {
-            MediaItem.fromUri(streamUrl)
+            Log.e(TAG, "No playable stream found for video: $videoId")
+            loadingView.visibility = View.GONE
+            Toast.makeText(this, R.string.error_loading, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun selectBestVideoStream(
+        streams: List<VideoStream>,
+        targetQuality: String,
+        preferAvc: Boolean
+    ): VideoStream? {
+        if (streams.isEmpty()) return null
+
+        val qualityKeyword = when {
+            targetQuality.contains("4K", ignoreCase = true) || targetQuality.contains("2160") -> "2160"
+            targetQuality.contains("1440") -> "1440"
+            targetQuality.contains("1080") -> "1080"
+            targetQuality.contains("720") -> "720"
+            targetQuality.contains("480") -> "480"
+            else -> "720"
         }
 
+        val matchedByQuality = streams.filter { it.resolution.contains(qualityKeyword) }
+        val pool = if (matchedByQuality.isNotEmpty()) matchedByQuality else streams
+
+        return if (preferAvc) {
+            pool.firstOrNull { it.format.equals("mp4", ignoreCase = true) || it.url.contains("mime=video%2Fmp4") }
+                ?: pool.firstOrNull()
+        } else {
+            pool.firstOrNull()
+        }
+    }
+
+    private fun selectBestAudioStream(streams: List<AudioStream>): AudioStream? {
+        if (streams.isEmpty()) return null
+        return streams.maxByOrNull { it.bitrate }
+            ?: streams.firstOrNull { it.format.equals("m4a", ignoreCase = true) }
+            ?: streams.firstOrNull()
+    }
+
+    private fun executePlayback(mediaItem: MediaItem? = null, mediaSource: MediaSource? = null, durationMs: Long) {
         lifecycleScope.launch {
             val db = (application as FireTubeApp).database
             val lastPos = db.videoDao().getLastPosition(videoId)
-            val durationMs = streamInfo.durationSeconds * 1000L
             Log.i(TAG, "Restoring position for $videoId: lastPos=$lastPos, durationMs=$durationMs")
             player?.let { p ->
-                p.setMediaItem(mediaItem)
+                if (mediaSource != null) {
+                    p.setMediaSource(mediaSource)
+                } else if (mediaItem != null) {
+                    p.setMediaItem(mediaItem)
+                }
                 val shouldSeek = lastPos != null && lastPos > 5000 && (durationMs <= 0 || lastPos < durationMs - 10000)
                 if (shouldSeek) {
                     Log.i(TAG, "Seeking to saved position: $lastPos ms")
@@ -513,17 +587,28 @@ class PlaybackActivity : FragmentActivity() {
 
             KeyEvent.KEYCODE_DPAD_LEFT,
             KeyEvent.KEYCODE_MEDIA_REWIND -> {
-                val newPos = (p.currentPosition - 10_000).coerceAtLeast(0)
-                p.seekTo(newPos)
-                showVideoInfoHud()
+                if (p.isCurrentMediaItemLive) {
+                    // ライブ配信時の巻き戻しはバッファ枯渇を防ぐため無効化または通知
+                    Toast.makeText(this, "ライブ配信中はシークできません", Toast.LENGTH_SHORT).show()
+                } else {
+                    val newPos = (p.currentPosition - 10_000).coerceAtLeast(0)
+                    p.seekTo(newPos)
+                    showVideoInfoHud()
+                }
                 return true
             }
 
             KeyEvent.KEYCODE_DPAD_RIGHT,
             KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
-                val newPos = (p.currentPosition + 10_000).coerceAtMost(p.duration)
-                p.seekTo(newPos)
-                showVideoInfoHud()
+                if (p.isCurrentMediaItemLive) {
+                    // ライブ配信時は最新のライブエッジ位置へ追っかけ同期
+                    p.seekToDefaultPosition()
+                    showVideoInfoHud()
+                } else {
+                    val newPos = (p.currentPosition + 10_000).coerceAtMost(p.duration)
+                    p.seekTo(newPos)
+                    showVideoInfoHud()
+                }
                 return true
             }
 
@@ -617,19 +702,28 @@ class PlaybackActivity : FragmentActivity() {
 
     private fun saveHistory(positionMs: Long) {
         if (videoId.isEmpty()) return
-        lifecycleScope.launch {
-            val db = (application as FireTubeApp).database
-            val dur = player?.duration ?: 0L
-            val safeDurationSeconds = if (dur > 0L) dur / 1000L else 0L
-            val entity = VideoHistoryEntity(
-                id = videoId,
-                title = videoTitle,
-                uploaderName = uploaderName,
-                thumbnailUrl = thumbnailUrl,
-                durationSeconds = safeDurationSeconds,
-                lastPlayedPositionMs = positionMs
-            )
-            db.videoDao().insertOrUpdateHistory(entity)
+        val app = application as FireTubeApp
+        val targetId = videoId
+        val targetTitle = videoTitle
+        val targetUploader = uploaderName
+        val targetThumb = thumbnailUrl
+        val dur = player?.duration ?: 0L
+        val safeDurationSeconds = if (dur > 0L) dur / 1000L else 0L
+
+        // Activity破棄後でも確実に保存を完了させるため NonCancellable で実行
+        CoroutineScope(Dispatchers.IO).launch {
+            withContext(NonCancellable) {
+                val db = app.database
+                val entity = VideoHistoryEntity(
+                    id = targetId,
+                    title = targetTitle,
+                    uploaderName = targetUploader,
+                    thumbnailUrl = targetThumb,
+                    durationSeconds = safeDurationSeconds,
+                    lastPlayedPositionMs = positionMs
+                )
+                db.videoDao().insertOrUpdateHistory(entity)
+            }
         }
     }
 

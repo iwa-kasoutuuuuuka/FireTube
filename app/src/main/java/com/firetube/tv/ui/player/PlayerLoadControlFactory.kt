@@ -1,6 +1,8 @@
 package com.firetube.tv.ui.player
 
+import androidx.annotation.OptIn
 import androidx.media3.common.C
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.LoadControl
 import androidx.media3.exoplayer.upstream.DefaultAllocator
@@ -10,6 +12,7 @@ import androidx.media3.exoplayer.upstream.DefaultAllocator
  * メモリ枯渇による強制終了 (Task Kill) を完全に防ぐため、
  * 先読みバッファサイズと最大メモリを厳格に制限する
  */
+@OptIn(UnstableApi::class)
 object PlayerLoadControlFactory {
 
     private const val MIN_BUFFER_MS = 15_000 // 15秒

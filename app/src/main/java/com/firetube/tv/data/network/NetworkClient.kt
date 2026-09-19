@@ -18,9 +18,14 @@ object NetworkClient {
     val client: OkHttpClient = OkHttpClient.Builder()
         .connectionPool(connectionPool)
         .addInterceptor { chain ->
-            val request = chain.request().newBuilder()
-                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-                .build()
+            val original = chain.request()
+            val request = if (original.header("User-Agent") == null) {
+                original.newBuilder()
+                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+                    .build()
+            } else {
+                original
+            }
             chain.proceed(request)
         }
         .dns(FastDns)

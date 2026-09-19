@@ -21,6 +21,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+import androidx.core.content.ContextCompat
+import androidx.leanback.widget.SearchOrbView
+
 /**
  * Fire TV 検索画面 (Leanback SearchSupportFragment)
  * 物理リモコンのオンスクリーンキーボードおよび音声認識入力に対応
@@ -34,6 +37,12 @@ class SearchFragment : SearchSupportFragment(), SearchSupportFragment.SearchResu
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setSearchResultProvider(this)
+
+        // 10-foot UI: 離れたテレビからでもフォーカスが即座に視認できるよう、黄色ハイライト色を設定
+        val primaryRed = ContextCompat.getColor(requireContext(), R.color.primary_red)
+        val accentFocus = ContextCompat.getColor(requireContext(), R.color.accent_focus)
+        val colors = SearchOrbView.Colors(primaryRed, accentFocus, ContextCompat.getColor(requireContext(), R.color.text_primary))
+        setSearchAffordanceColors(colors)
 
         val header = HeaderItem(0, getString(R.string.menu_search))
         rowsAdapter.add(ListRow(header, resultsAdapter))

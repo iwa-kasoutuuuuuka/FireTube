@@ -23,6 +23,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
+import android.app.Activity
+import android.content.ContextWrapper
+import kotlinx.coroutines.Job
+
 /**
  * Fire TV 物理リモコン（D-Pad）対応のカード表示 Presenter
  * - フォーカス時に枠線ハイライト + スムーズな拡大アニメーション（吸着UX）
@@ -33,6 +37,17 @@ class VideoCardPresenter : Presenter() {
 
     companion object {
         private const val TAG = "VideoCardPresenter"
+
+        private fun isActivityDestroyed(view: View): Boolean {
+            var ctx = view.context
+            while (ctx is ContextWrapper) {
+                if (ctx is Activity) {
+                    return ctx.isDestroyed || ctx.isFinishing
+                }
+                ctx = ctx.baseContext
+            }
+            return false
+        }
     }
 
     override fun onCreateViewHolder(parent: ViewGroup): ViewHolder {
@@ -74,54 +89,64 @@ class VideoCardPresenter : Presenter() {
             else -> ""
         }
 
-        if (primaryUrl.isNotEmpty()) {
-            val fallbackRequest = if (secondaryUrl.isNotEmpty()) {
-                Glide.with(holder.thumbnailImage.context)
-                    .load(secondaryUrl)
+        if (primaryUrl.isNotEmpty() && !isActivityDestroyed(holder.thumbnailImage)) {
+            try {
+                val fallbackRequest = if (secondaryUrl.isNotEmpty()) {
+                    Glide.with(holder.thumbnailImage)
+                        .load(secondaryUrl)
+                        .override(320, 180)
+                        .centerCrop()
+                        .diskCacheStrategy(DiskCacheStrategy.ALL)
+                        .transition(DrawableTransitionOptions.withCrossFade(150))
+                } else {
+                    null
+                }
+
+                var request = Glide.with(holder.thumbnailImage)
+                    .load(primaryUrl)
+                    .placeholder(R.drawable.default_thumbnail_bg)
                     .override(320, 180)
                     .centerCrop()
                     .diskCacheStrategy(DiskCacheStrategy.ALL)
                     .transition(DrawableTransitionOptions.withCrossFade(150))
-            } else {
-                null
+                    .listener(object : RequestListener<Drawable> {
+                        override fun onLoadFailed(
+                            e: GlideException?,
+                            model: Any?,
+                            target: Target<Drawable>,
+                            isFirstResource: Boolean
+                        ): Boolean {
+                            Log.w(TAG, "Thumbnail primary load failed for $model, switching to fallback: ${e?.message}")
+                            return false
+                        }
+
+                        override fun onResourceReady(
+                            resource: Drawable,
+                            model: Any,
+                            target: Target<Drawable>?,
+                            dataSource: DataSource,
+                            isFirstResource: Boolean
+                        ): Boolean = false
+                    })
+
+                if (fallbackRequest != null) {
+                    request = request.error(fallbackRequest)
+                } else {
+                    request = request.error(R.drawable.default_thumbnail_bg)
+                }
+
+                request.into(holder.thumbnailImage)
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to initiate Glide load: ${e.message}")
             }
-
-            var request = Glide.with(holder.thumbnailImage.context)
-                .load(primaryUrl)
-                .placeholder(R.drawable.default_thumbnail_bg)
-                .override(320, 180)
-                .centerCrop()
-                .diskCacheStrategy(DiskCacheStrategy.ALL)
-                .transition(DrawableTransitionOptions.withCrossFade(150))
-                .listener(object : RequestListener<Drawable> {
-                    override fun onLoadFailed(
-                        e: GlideException?,
-                        model: Any?,
-                        target: Target<Drawable>,
-                        isFirstResource: Boolean
-                    ): Boolean {
-                        Log.w(TAG, "Thumbnail primary load failed for $model, switching to fallback: ${e?.message}")
-                        return false
-                    }
-
-                    override fun onResourceReady(
-                        resource: Drawable,
-                        model: Any,
-                        target: Target<Drawable>?,
-                        dataSource: DataSource,
-                        isFirstResource: Boolean
-                    ): Boolean = false
-                })
-
-            if (fallbackRequest != null) {
-                request = request.error(fallbackRequest)
-            } else {
-                request = request.error(R.drawable.default_thumbnail_bg)
-            }
-
-            request.into(holder.thumbnailImage)
         } else {
-            Glide.with(holder.thumbnailImage.context).clear(holder.thumbnailImage)
+            if (!isActivityDestroyed(holder.thumbnailImage)) {
+                try {
+                    Glide.with(holder.thumbnailImage).clear(holder.thumbnailImage)
+                } catch (e: Exception) {
+                    // ignore
+                }
+            }
             holder.thumbnailImage.setImageResource(R.drawable.default_thumbnail_bg)
         }
     }
@@ -130,7 +155,13 @@ class VideoCardPresenter : Presenter() {
         val holder = viewHolder as VideoCardViewHolder
         holder.cancelPrefetch()
         holder.boundVideoId = null
-        Glide.with(holder.thumbnailImage.context).clear(holder.thumbnailImage)
+        if (!isActivityDestroyed(holder.thumbnailImage)) {
+            try {
+                Glide.with(holder.thumbnailImage.context.applicationContext).clear(holder.thumbnailImage)
+            } catch (e: Exception) {
+                Log.w(TAG, "Error clearing Glide in onUnbind: ${e.message}")
+            }
+        }
     }
 
     inner class VideoCardViewHolder(view: View) : ViewHolder(view) {
@@ -142,10 +173,13 @@ class VideoCardPresenter : Presenter() {
 
         var boundVideoId: String? = null
         private var prefetchRunnable: Runnable? = null
+        private var prefetchJob: Job? = null
 
         fun cancelPrefetch() {
             prefetchRunnable?.let { cardRoot.removeCallbacks(it) }
             prefetchRunnable = null
+            prefetchJob?.cancel()
+            prefetchJob = null
         }
 
         init {
@@ -167,7 +201,7 @@ class VideoCardPresenter : Presenter() {
                     if (!targetId.isNullOrEmpty() && !targetId.startsWith("__")) {
                         // 700ms フォーカス滞在でバックグラウンド事前抽出を発火 (Focus-Dwell Prefetch)
                         val runnable = Runnable {
-                            CoroutineScope(Dispatchers.IO).launch {
+                            prefetchJob = CoroutineScope(Dispatchers.IO).launch {
                                 VideoRepository.prefetchStreamInfo(targetId)
                             }
                         }

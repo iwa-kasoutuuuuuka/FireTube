@@ -25,12 +25,10 @@ object PipedApiClient {
 
     private const val TAG = "PipedApiClient"
 
-    // 実測最速の稼働インスタンスを優先配置（HTMLを返すWebフロントエンドを除外）
+    // 実測稼働中のインスタンスを優先配置（死滅ホスト・セキュリティソフト警告ホストを除外）
     private val INSTANCES = listOf(
         "https://api.piped.private.coffee",
-        "https://piped-api.garudalinux.org",
-        "https://pipedapi.tokhmi.xyz",
-        "https://pipedapi.kavin.rocks"
+        "https://pipedapi-libre.kavin.rocks"
     )
 
     private val client = NetworkClient.client

@@ -16,6 +16,7 @@ import com.firetube.tv.R
  * バックグラウンドオーディオ再生用 Foreground MediaSessionService
  * ホーム画面に戻っても音楽やラジオ音声を流し続け、OSによる強制終了を阻止
  */
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 class PlaybackService : MediaSessionService() {
 
     private var mediaSession: MediaSession? = null

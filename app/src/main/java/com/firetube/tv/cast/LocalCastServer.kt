@@ -133,18 +133,23 @@ object LocalCastServer {
                 } else if (path.startsWith("/play")) {
                     var urlParam = ""
                     if (method.equals("POST", ignoreCase = true)) {
-                        for (param in postBody.split("&")) {
-                            val pair = param.split("=", limit = 2)
-                            if (pair.size == 2 && pair[0] == "url") {
-                                urlParam = URLDecoder.decode(pair[1], "UTF-8")
+                        // postBody から url= 以降を安全に抽出
+                        if (postBody.contains("url=")) {
+                            val encoded = postBody.substringAfter("url=")
+                            urlParam = try {
+                                URLDecoder.decode(encoded, "UTF-8")
+                            } catch (e: Exception) {
+                                encoded
                             }
                         }
                     } else {
                         val query = if (path.contains("?")) path.substringAfter("?") else ""
-                        for (param in query.split("&")) {
-                            val pair = param.split("=", limit = 2)
-                            if (pair.size == 2 && pair[0] == "url") {
-                                urlParam = URLDecoder.decode(pair[1], "UTF-8")
+                        if (query.contains("url=")) {
+                            val encoded = query.substringAfter("url=")
+                            urlParam = try {
+                                URLDecoder.decode(encoded, "UTF-8")
+                            } catch (e: Exception) {
+                                encoded
                             }
                         }
                     }
