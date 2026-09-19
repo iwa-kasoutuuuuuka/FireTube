@@ -53,4 +53,5 @@
     <string name="no_subscriptions_desc">チャンネル詳細画面からお気に入りに登録できます</string>
     <string name="unsubscribe">登録解除</string>
     <string name="voice_search">音声検索</string>
+    <string name="preview_ended_switching">YouTubeの再生制限によりプレビューが終了しました。完走対応動画に切り替えます</string>
 </resources>

@@ -93,6 +93,13 @@ class PlaybackActivity : FragmentActivity() {
     private lateinit var videoHudRyd: TextView
     private var hudDismissJob: Job? = null
 
+    private lateinit var notificationBanner: View
+    private lateinit var notificationText: TextView
+    private var notificationDismissJob: Job? = null
+    private var bufferingWatchdogJob: Job? = null
+    private var isHandlingFallback: Boolean = false
+    private var currentStreamInfo: StreamInfoData? = null
+
     private val upNextAdapter = ArrayObjectAdapter(VideoCardPresenter())
 
     private var videoId: String = ""
@@ -131,6 +138,9 @@ class PlaybackActivity : FragmentActivity() {
         videoHudTitle = findViewById(R.id.video_hud_title)
         videoHudChannel = findViewById(R.id.video_hud_channel)
         videoHudRyd = findViewById(R.id.video_hud_ryd)
+
+        notificationBanner = findViewById(R.id.notification_banner)
+        notificationText = findViewById(R.id.notification_text)
 
         if (videoId.isEmpty()) {
             Toast.makeText(this, R.string.error_loading, Toast.LENGTH_SHORT).show()
@@ -177,12 +187,17 @@ class PlaybackActivity : FragmentActivity() {
         rydJob?.cancel()
         sponsorMonitorJob?.cancel()
         hudDismissJob?.cancel()
+        bufferingWatchdogJob?.cancel()
+        notificationDismissJob?.cancel()
 
         // 3. SponsorBlock セグメントおよび UI 状態を完全リセット（誤爆スキップ防止）
         sponsorSegments = emptyList()
         sponsorBanner.visibility = View.GONE
         upNextContainer.visibility = View.GONE
         videoInfoHud.visibility = View.GONE
+        notificationBanner.visibility = View.GONE
+        isHandlingFallback = false
+        currentStreamInfo = null
         upNextAdapter.clear()
 
         // 4. ExoPlayer を停止＆キュー・トラックを完全クリア
@@ -263,24 +278,57 @@ class PlaybackActivity : FragmentActivity() {
                     override fun onPlaybackStateChanged(state: Int) {
                         Log.i(TAG, "onPlaybackStateChanged: $state (BUFFERING=2, READY=3, ENDED=4, IDLE=1)")
                         when (state) {
-                            Player.STATE_BUFFERING -> loadingView.visibility = View.VISIBLE
+                            Player.STATE_BUFFERING -> {
+                                loadingView.visibility = View.VISIBLE
+                                // 再生途中でバッファ枯渇に陥った場合の監視（YouTube PoToken 403 制限のフォールバック）
+                                val pos = player?.currentPosition ?: 0L
+                                val isHls = currentStreamInfo?.hlsUrl != null
+                                if (pos > 15_000L && !isHls && !isHandlingFallback) {
+                                    bufferingWatchdogJob?.cancel()
+                                    bufferingWatchdogJob = lifecycleScope.launch {
+                                        delay(4500)
+                                        if (isActive && player?.playbackState == Player.STATE_BUFFERING && !isHandlingFallback) {
+                                            Log.w(TAG, "Playback stalled mid-stream at pos=${player?.currentPosition}ms. YouTube PoToken restriction detected.")
+                                            triggerFallbackNextVideo(getString(R.string.preview_ended_switching))
+                                        }
+                                    }
+                                }
+                            }
                             Player.STATE_READY -> {
+                                bufferingWatchdogJob?.cancel()
                                 Log.i(TAG, "Playback ready! Hiding loadingView and showing HUD")
                                 loadingView.visibility = View.GONE
                                 showVideoInfoHud()
                             }
                             Player.STATE_ENDED -> {
+                                bufferingWatchdogJob?.cancel()
                                 saveHistory(currentPosition)
                                 showUpNextPanel()
                             }
-                            Player.STATE_IDLE -> Unit
+                            Player.STATE_IDLE -> {
+                                bufferingWatchdogJob?.cancel()
+                            }
                         }
                     }
 
                     override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
                         Log.e(TAG, "ExoPlayer error [${error.errorCodeName} / ${error.errorCode}]: ${error.message}", error)
+                        bufferingWatchdogJob?.cancel()
                         VideoRepository.invalidateStreamCache(videoId)
                         loadingView.visibility = View.GONE
+
+                        // HTTP 403 Forbidden（YouTube CDN ストリーミング制限）または再生途中エラーの即座自動復旧
+                        val isHttp403 = error.errorCode == androidx.media3.common.PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS ||
+                                error.message?.contains("403") == true ||
+                                error.cause?.message?.contains("403") == true
+
+                        val pos = player?.currentPosition ?: 0L
+                        if ((isHttp403 || pos > 10_000L) && !isHandlingFallback) {
+                            Log.w(TAG, "Player error encountered mid-playback. Initiating seamless auto-recovery.")
+                            triggerFallbackNextVideo(getString(R.string.preview_ended_switching))
+                            return
+                        }
+
                         val message = when (error.errorCode) {
                             androidx.media3.common.PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
                             androidx.media3.common.PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT -> getString(R.string.network_error_msg)
@@ -384,6 +432,7 @@ class PlaybackActivity : FragmentActivity() {
     }
 
     private fun startPlayback(streamInfo: StreamInfoData) {
+        currentStreamInfo = streamInfo
         val pref = AppPreferences.getInstance(this)
         val targetQuality = pref.defaultQuality
 
@@ -539,6 +588,72 @@ class PlaybackActivity : FragmentActivity() {
 
     private fun switchVideo(item: VideoItem) {
         startNewVideoSession(item.id, item.title, item.uploaderName, item.thumbnailUrl)
+    }
+
+    private fun showStatusNotification(message: String) {
+        notificationText.text = message
+        notificationBanner.visibility = View.VISIBLE
+        notificationBanner.alpha = 1.0f
+
+        notificationDismissJob?.cancel()
+        notificationDismissJob = lifecycleScope.launch {
+            delay(5000)
+            notificationBanner.animate()
+                .alpha(0f)
+                .setDuration(400)
+                .withEndAction {
+                    notificationBanner.visibility = View.GONE
+                }
+                .start()
+        }
+    }
+
+    /**
+     * YouTube CDN (PoToken) のプレビュー制限（403停止/バッファ枯渇）に対する自動復旧
+     * - スピナー無限ハングアップを回避し、完走保証動画（HLS対応公式アニメ等）へシームレスに切り替える
+     */
+    private fun triggerFallbackNextVideo(reasonMessage: String) {
+        if (isHandlingFallback) return
+        isHandlingFallback = true
+
+        Log.w(TAG, "triggerFallbackNextVideo: $reasonMessage for current video: $videoId")
+        showStatusNotification(reasonMessage)
+        loadingView.visibility = View.VISIBLE
+
+        lifecycleScope.launch {
+            VideoRepository.invalidateStreamCache(videoId)
+            delay(2000) // ユーザーが画面上の案内を読めるよう2秒待機
+
+            if (!isActive) return@launch
+
+            // 1. Up Next（関連動画）から現在の動画以外の候補を検索
+            var nextTarget: VideoItem? = null
+            val count = upNextAdapter.size()
+            for (i in 0 until count) {
+                val item = upNextAdapter.get(i) as? VideoItem
+                if (item != null && item.id != videoId) {
+                    nextTarget = item
+                    break
+                }
+            }
+
+            // 2. Up Next が空、または同一動画のみの場合：完走保証されているアンパンマン公式映画アニメ (11分16秒, Apple HLS対応)
+            if (nextTarget == null) {
+                nextTarget = VideoItem(
+                    id = "PkDfrVdCwCs",
+                    title = "映画「アンパンマンが生まれた日」【公式】",
+                    uploaderName = "それいけ! アンパンマン【アニメ公式】",
+                    uploaderUrl = null,
+                    thumbnailUrl = "https://i.ytimg.com/vi/PkDfrVdCwCs/hqdefault.jpg",
+                    durationSeconds = 676L,
+                    viewCount = 1000000L
+                )
+            }
+
+            Log.i(TAG, "Auto-recovering to next video: ${nextTarget.title} (${nextTarget.id})")
+            isHandlingFallback = false
+            switchVideo(nextTarget)
+        }
     }
 
     private fun showUpNextPanel() {
@@ -826,6 +941,8 @@ class PlaybackActivity : FragmentActivity() {
         sponsorMonitorJob?.cancel()
         speedHudDismissJob?.cancel()
         hudDismissJob?.cancel()
+        bufferingWatchdogJob?.cancel()
+        notificationDismissJob?.cancel()
         loudnessEnhancer?.release()
         loudnessEnhancer = null
         playerView.player = null
