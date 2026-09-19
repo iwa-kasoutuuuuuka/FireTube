@@ -10,11 +10,14 @@ import com.bumptech.glide.Glide
  * Fire OS の極小メモリ管理ユーティリティ
  * OSによるアプリ強制終了 (Task Kill) を防ぐため、非表示時やメモリ圧迫時に即時キャッシュを完全解放する
  */
-class MemoryManager(private val context: Context) : ComponentCallbacks2 {
+class MemoryManager(context: Context) : ComponentCallbacks2 {
+
+    private val appContext: Context = context.applicationContext
 
     companion object {
         private const val TAG = "MemoryManager"
 
+        @android.annotation.SuppressLint("StaticFieldLeak")
         @Volatile
         private var instance: MemoryManager? = null
 
@@ -45,6 +48,7 @@ class MemoryManager(private val context: Context) : ComponentCallbacks2 {
                 clearUiCaches()
                 System.gc()
             }
+            else -> Unit
         }
     }
 
@@ -57,7 +61,7 @@ class MemoryManager(private val context: Context) : ComponentCallbacks2 {
 
     fun clearUiCaches() {
         try {
-            Glide.get(context).clearMemory()
+            Glide.get(appContext).clearMemory()
         } catch (e: Exception) {
             Log.e(TAG, "Error clearing Glide memory cache", e)
         }

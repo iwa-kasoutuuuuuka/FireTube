@@ -223,7 +223,7 @@ class MainFragment : BrowseSupportFragment() {
 
     private fun loadSubscriptions() {
         viewLifecycleOwner.lifecycleScope.launch {
-            val db = (requireActivity().application as FireTubeApp).database
+            val db = (context?.applicationContext as? FireTubeApp)?.database ?: return@launch
             val subs = db.videoDao().getAllSubscriptions().firstOrNull() ?: emptyList()
             subscriptionsAdapter.clear()
             if (subs.isEmpty()) {
@@ -251,7 +251,7 @@ class MainFragment : BrowseSupportFragment() {
 
     private fun loadHistory() {
         viewLifecycleOwner.lifecycleScope.launch {
-            val db = (requireActivity().application as FireTubeApp).database
+            val db = (context?.applicationContext as? FireTubeApp)?.database ?: return@launch
             val historyList = db.videoDao().getHistoryVideos().firstOrNull() ?: emptyList()
             val historyVideos = historyList.map { entity ->
                 VideoItem(

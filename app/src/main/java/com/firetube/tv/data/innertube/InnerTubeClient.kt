@@ -248,7 +248,8 @@ object InnerTubeClient {
         return result
     }
 
-    private fun findVideoRenderersRecursive(element: JsonObject, result: MutableList<VideoItem>) {
+    private fun findVideoRenderersRecursive(element: JsonObject, result: MutableList<VideoItem>, depth: Int = 0) {
+        if (depth > 15) return
         for (entry in element.entrySet()) {
             val key = entry.key
             val value = entry.value
@@ -259,11 +260,11 @@ object InnerTubeClient {
                     }
                 }
             } else if (value.isJsonObject) {
-                findVideoRenderersRecursive(value.asJsonObject, result)
+                findVideoRenderersRecursive(value.asJsonObject, result, depth + 1)
             } else if (value.isJsonArray) {
                 for (subElem in value.asJsonArray) {
                     if (subElem.isJsonObject) {
-                        findVideoRenderersRecursive(subElem.asJsonObject, result)
+                        findVideoRenderersRecursive(subElem.asJsonObject, result, depth + 1)
                     }
                 }
             }

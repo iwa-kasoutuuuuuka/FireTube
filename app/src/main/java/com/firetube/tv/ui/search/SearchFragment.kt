@@ -12,7 +12,6 @@ import androidx.leanback.widget.ObjectAdapter
 import androidx.leanback.widget.OnItemViewClickedListener
 import androidx.lifecycle.lifecycleScope
 import com.firetube.tv.R
-import com.firetube.tv.data.extractor.YouTubeStreamExtractor
 import com.firetube.tv.data.model.VideoItem
 import com.firetube.tv.ui.main.VideoCardPresenter
 import com.firetube.tv.ui.player.PlaybackActivity

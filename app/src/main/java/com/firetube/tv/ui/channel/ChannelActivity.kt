@@ -102,6 +102,7 @@ class ChannelActivity : FragmentActivity() {
         }
     }
 
+    @android.annotation.SuppressLint("RestrictedApi")
     override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
         if (event.action == android.view.KeyEvent.ACTION_DOWN) {
             val keyCode = event.keyCode

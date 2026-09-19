@@ -43,17 +43,15 @@ class PlaybackService : MediaSessionService() {
     }
 
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                getString(R.string.background_playback_running),
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "FireTube Media Playback"
-            }
-            val notificationManager = getSystemService(NotificationManager::class.java)
-            notificationManager?.createNotificationChannel(channel)
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            getString(R.string.background_playback_running),
+            NotificationManager.IMPORTANCE_LOW
+        ).apply {
+            description = "FireTube Media Playback"
         }
+        val notificationManager = getSystemService(NotificationManager::class.java)
+        notificationManager?.createNotificationChannel(channel)
     }
 
     override fun onDestroy() {
