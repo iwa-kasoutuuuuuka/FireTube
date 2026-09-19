@@ -417,9 +417,12 @@ class PlaybackActivity : FragmentActivity() {
 
     private fun selectBestAudioStream(streams: List<AudioStream>): AudioStream? {
         if (streams.isEmpty()) return null
-        return streams.maxByOrNull { it.bitrate }
-            ?: streams.firstOrNull { it.format.equals("m4a", ignoreCase = true) }
-            ?: streams.firstOrNull()
+        // Fire TV ハードウェアデコーダー互換性と YouTube CDN 安定性が最も高い m4a (AAC) を最優先
+        val m4aStreams = streams.filter { it.format.equals("m4a", ignoreCase = true) }
+        if (m4aStreams.isNotEmpty()) {
+            return m4aStreams.maxByOrNull { it.bitrate } ?: m4aStreams.first()
+        }
+        return streams.maxByOrNull { it.bitrate } ?: streams.firstOrNull()
     }
 
     private fun executePlayback(mediaItem: MediaItem? = null, mediaSource: MediaSource? = null, durationMs: Long) {

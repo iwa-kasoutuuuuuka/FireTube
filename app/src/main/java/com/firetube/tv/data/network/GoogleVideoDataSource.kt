@@ -33,7 +33,7 @@ import java.io.InputStream
 class GoogleVideoDataSource(
     private val client: OkHttpClient,
     private val upstream: DataSource,
-    private val chunkSize: Long = 1024 * 1024L // 1MB 有界チャンク
+    private val chunkSize: Long = 512 * 1024L // 512KB 有界チャンク（YouTube CDN の初期バースト制限に完全適合）
 ) : BaseDataSource(/* isNetwork = */ true) {
 
     companion object {
@@ -242,7 +242,7 @@ class GoogleVideoDataSource(
     class Factory(
         private val client: OkHttpClient,
         private val upstreamFactory: DataSource.Factory,
-        private val chunkSize: Long = 1024 * 1024L
+        private val chunkSize: Long = 512 * 1024L
     ) : DataSource.Factory {
         override fun createDataSource(): DataSource {
             return GoogleVideoDataSource(
