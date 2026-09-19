@@ -179,13 +179,18 @@ class PlaybackActivity : FragmentActivity() {
 
     private fun initPlayer() {
         val pref = AppPreferences.getInstance(this)
+        val isHigh = com.firetube.tv.util.DeviceProfileManager.isHighPerformance(this)
 
         val trackSelector = DefaultTrackSelector(this).apply {
-            if (pref.preferAvcCodec) {
-                parameters = buildUponParameters()
-                    .setPreferredVideoMimeType(MimeTypes.VIDEO_H264)
-                    .build()
+            var paramsBuilder = buildUponParameters()
+            if (isHigh) {
+                // 4K Max 向け: ハードウェアオーディオ/ビデオ同期 (AV同期) の最適化
+                paramsBuilder = paramsBuilder.setTunnelingEnabled(true)
             }
+            if (pref.preferAvcCodec && !isHigh) {
+                paramsBuilder = paramsBuilder.setPreferredVideoMimeType(MimeTypes.VIDEO_H264)
+            }
+            parameters = paramsBuilder.build()
         }
 
         val okHttpDataSourceFactory = OkHttpDataSource.Factory(NetworkClient.client)
@@ -197,7 +202,7 @@ class PlaybackActivity : FragmentActivity() {
         player = ExoPlayer.Builder(this)
             .setMediaSourceFactory(mediaSourceFactory)
             .setTrackSelector(trackSelector)
-            .setLoadControl(PlayerLoadControlFactory.createLowRamLoadControl(pref.bufferProfile))
+            .setLoadControl(PlayerLoadControlFactory.createAdaptiveLoadControl(this, pref.bufferProfile))
             .build()
             .apply {
                 playWhenReady = true
@@ -392,11 +397,16 @@ class PlaybackActivity : FragmentActivity() {
         val matchedByQuality = streams.filter { it.resolution.contains(qualityKeyword) }
         val pool = if (matchedByQuality.isNotEmpty()) matchedByQuality else streams
 
-        return if (preferAvc) {
+        // 4K (2160p) または 1440p は YouTube の仕様上 AVC (H.264) が存在しないため、
+        // preferAvc 設定に関わらず VP9 / AV1 ストリームをフル活用
+        val isHighResolution = qualityKeyword == "2160" || qualityKeyword == "1440"
+
+        return if (preferAvc && !isHighResolution) {
             pool.firstOrNull { it.format.equals("mp4", ignoreCase = true) || it.url.contains("mime=video%2Fmp4") }
                 ?: pool.firstOrNull()
         } else {
-            pool.firstOrNull()
+            // 4K Max 等の高スペック環境では最高ビットレート（60fps / 高品質）ストリームを優先
+            pool.maxByOrNull { it.bitrate } ?: pool.firstOrNull()
         }
     }
 

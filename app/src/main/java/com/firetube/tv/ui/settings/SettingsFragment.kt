@@ -25,6 +25,8 @@ class SettingsFragment : GuidedStepSupportFragment() {
         private const val ACTION_BUFFER_PROFILE = 8L
         private const val ACTION_RYD = 9L
         private const val ACTION_PREFER_AVC = 10L
+        private const val ACTION_PERFORMANCE_PROFILE = 11L
+        private const val ACTION_DEVICE_INFO = 12L
 
         private val QUALITY_OPTIONS = listOf("720p", "1080p", "4K (2160p)", "480p")
         private val SPEED_OPTIONS = listOf(1.0f, 1.25f, 1.5f, 2.0f)
@@ -37,6 +39,11 @@ class SettingsFragment : GuidedStepSupportFragment() {
             AppPreferences.BUFFER_FAST to "超高速 (500ms)",
             AppPreferences.BUFFER_NORMAL to "標準 (1500ms)",
             AppPreferences.BUFFER_STABLE to "安定重視 (5000ms)"
+        )
+        private val PERFORMANCE_OPTIONS = listOf(
+            AppPreferences.PROFILE_AUTO to "自動 (推奨・スペック連動)",
+            AppPreferences.PROFILE_HIGH to "4K Max ウルトラ (80MB / 瞬時再生)",
+            AppPreferences.PROFILE_STANDARD to "標準 (32MB / 省メモリ)"
         )
     }
 
@@ -154,6 +161,27 @@ class SettingsFragment : GuidedStepSupportFragment() {
                 .checked(pref.preferAvcCodec)
                 .build()
         )
+
+        // 11. 端末パフォーマンスプロファイル
+        val currentPerfDesc = PERFORMANCE_OPTIONS.firstOrNull { it.first == pref.performanceProfile }?.second ?: "自動 (推奨)"
+        actions.add(
+            GuidedAction.Builder(requireContext())
+                .id(ACTION_PERFORMANCE_PROFILE)
+                .title(getString(R.string.pref_performance_profile))
+                .description("$currentPerfDesc (決定で切替)")
+                .build()
+        )
+
+        // 12. 端末スペック情報 (診断)
+        val deviceSummary = com.firetube.tv.util.DeviceProfileManager.getDeviceSummary(requireContext())
+        actions.add(
+            GuidedAction.Builder(requireContext())
+                .id(ACTION_DEVICE_INFO)
+                .title(getString(R.string.pref_device_info))
+                .description(deviceSummary)
+                .focusable(false)
+                .build()
+        )
     }
 
     override fun onGuidedActionClicked(action: GuidedAction) {
@@ -246,6 +274,24 @@ class SettingsFragment : GuidedStepSupportFragment() {
                 action.isChecked = newValue
                 action.description = if (newValue) "有効 (推奨・低発熱)" else "無効 (OFF)"
                 notifyActionChanged(findActionPositionById(ACTION_PREFER_AVC))
+            }
+
+            ACTION_PERFORMANCE_PROFILE -> {
+                val currentIdx = PERFORMANCE_OPTIONS.indexOfFirst { it.first == pref.performanceProfile }.let { if (it < 0) 0 else it }
+                val nextIdx = (currentIdx + 1) % PERFORMANCE_OPTIONS.size
+                val (newProfile, newDesc) = PERFORMANCE_OPTIONS[nextIdx]
+                pref.performanceProfile = newProfile
+                action.description = "$newDesc (決定で切替)"
+                notifyActionChanged(findActionPositionById(ACTION_PERFORMANCE_PROFILE))
+
+                val infoPos = findActionPositionById(ACTION_DEVICE_INFO)
+                if (infoPos >= 0) {
+                    val infoAction = findActionById(ACTION_DEVICE_INFO)
+                    infoAction?.description = com.firetube.tv.util.DeviceProfileManager.getDeviceSummary(requireContext())
+                    notifyActionChanged(infoPos)
+                }
+
+                Toast.makeText(requireContext(), "パフォーマンス: $newDesc", Toast.LENGTH_SHORT).show()
             }
         }
     }

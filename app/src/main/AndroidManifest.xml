@@ -69,13 +69,13 @@
         <!-- Settings Activity -->
         <activity
             android:name=".ui.settings.SettingsActivity"
-            android:exported="false"
+            android:exported="true"
             android:screenOrientation="landscape" />
 
         <!-- Cast Info Activity -->
         <activity
             android:name=".cast.CastActivity"
-            android:exported="false"
+            android:exported="true"
             android:screenOrientation="landscape" />
 
         <!-- Channel Video Grid Activity -->

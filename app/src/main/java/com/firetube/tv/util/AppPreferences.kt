@@ -32,6 +32,11 @@ class AppPreferences private constructor(context: Context) {
         const val KEY_BUFFER_PROFILE = "pref_buffer_profile"
         const val KEY_SHOW_RYD = "pref_show_ryd"
         const val KEY_PREFER_AVC = "pref_prefer_avc"
+        const val KEY_PERFORMANCE_PROFILE = "pref_performance_profile"
+
+        const val PROFILE_AUTO = "AUTO"
+        const val PROFILE_HIGH = "HIGH"
+        const val PROFILE_STANDARD = "STANDARD"
 
         const val API_SOURCE_INNERTUBE = "InnerTube (推奨)"
         const val API_SOURCE_NEWPIPE = "NewPipe"
@@ -81,5 +86,9 @@ class AppPreferences private constructor(context: Context) {
     var preferAvcCodec: Boolean
         get() = prefs.getBoolean(KEY_PREFER_AVC, true)
         set(value) = prefs.edit().putBoolean(KEY_PREFER_AVC, value).apply()
+
+    var performanceProfile: String
+        get() = prefs.getString(KEY_PERFORMANCE_PROFILE, PROFILE_AUTO) ?: PROFILE_AUTO
+        set(value) = prefs.edit().putString(KEY_PERFORMANCE_PROFILE, value).apply()
 }
 

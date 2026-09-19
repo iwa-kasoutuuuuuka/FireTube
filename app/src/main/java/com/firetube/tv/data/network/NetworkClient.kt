@@ -2,21 +2,27 @@ package com.firetube.tv.data.network
 
 import com.google.gson.Gson
 import okhttp3.ConnectionPool
+import okhttp3.Dispatcher
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
 
 /**
  * Fire TV 向け統合ネットワーククライアント
  * - 共有 ConnectionPool による HTTP/2 ソケット再利用と TLS ハンドシェイク省略
+ * - Wi-Fi 6 / 4K Max 向けの 16並列ホスト通信 (DASH映像+音声+サムネイルのノンブロッキング並列ロード)
  * - 各種 API クライアント（Piped, InnerTube, SponsorBlock, NewPipe）の接続を集約
- * - 低RAM環境でのバックグラウンドスレッド浪費を抑制
  */
 object NetworkClient {
 
-    private val connectionPool = ConnectionPool(8, 5, TimeUnit.MINUTES)
+    private val connectionPool = ConnectionPool(16, 5, TimeUnit.MINUTES)
+    private val dispatcher = Dispatcher().apply {
+        maxRequests = 64
+        maxRequestsPerHost = 16
+    }
 
     val client: OkHttpClient = OkHttpClient.Builder()
         .connectionPool(connectionPool)
+        .dispatcher(dispatcher)
         .addInterceptor { chain ->
             val original = chain.request()
             val request = if (original.header("User-Agent") == null) {

@@ -199,14 +199,14 @@ class VideoCardPresenter : Presenter() {
                 if (hasFocus) {
                     val targetId = boundVideoId
                     if (!targetId.isNullOrEmpty() && !targetId.startsWith("__")) {
-                        // 700ms フォーカス滞在でバックグラウンド事前抽出を発火 (Focus-Dwell Prefetch)
+                        val dwellMs = com.firetube.tv.util.DeviceProfileManager.getPrefetchDwellMs(v.context)
                         val runnable = Runnable {
                             prefetchJob = CoroutineScope(Dispatchers.IO).launch {
                                 VideoRepository.prefetchStreamInfo(targetId)
                             }
                         }
                         prefetchRunnable = runnable
-                        v.postDelayed(runnable, 700L)
+                        v.postDelayed(runnable, dwellMs)
                     }
                 }
             }

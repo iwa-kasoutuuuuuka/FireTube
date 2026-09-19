@@ -23,7 +23,7 @@ import java.io.File
 @OptIn(UnstableApi::class)
 object ExoPlayerCacheManager {
 
-    private const val MAX_CACHE_BYTES = 40L * 1024 * 1024 // 40MB
+    private const val TAG = "ExoPlayerCacheManager"
     @Volatile
     private var simpleCache: SimpleCache? = null
     private val lock = Any()
@@ -32,14 +32,17 @@ object ExoPlayerCacheManager {
         return simpleCache ?: synchronized(lock) {
             simpleCache ?: run {
                 try {
-                    val cacheDir = File(context.applicationContext.cacheDir, "firetube_media_cache")
-                    val evictor = LeastRecentlyUsedCacheEvictor(MAX_CACHE_BYTES)
-                    val databaseProvider = StandaloneDatabaseProvider(context.applicationContext)
+                    val appContext = context.applicationContext
+                    val cacheBytes = com.firetube.tv.util.DeviceProfileManager.getDiskCacheBytes(appContext)
+                    android.util.Log.i(TAG, "Initializing SimpleCache with capacity: ${cacheBytes / (1024 * 1024)}MB")
+                    val cacheDir = File(appContext.cacheDir, "firetube_media_cache")
+                    val evictor = LeastRecentlyUsedCacheEvictor(cacheBytes)
+                    val databaseProvider = StandaloneDatabaseProvider(appContext)
                     SimpleCache(cacheDir, evictor, databaseProvider).also {
                         simpleCache = it
                     }
                 } catch (e: Throwable) {
-                    android.util.Log.w("ExoPlayerCacheManager", "Failed to initialize SimpleCache, bypassing cache: ${e.message}")
+                    android.util.Log.w(TAG, "Failed to initialize SimpleCache, bypassing cache: ${e.message}")
                     null
                 }
             }
