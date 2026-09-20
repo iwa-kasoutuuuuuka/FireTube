@@ -12,8 +12,8 @@ android {
         applicationId = "com.firetube.tv"
         minSdk = 28 // Fire OS 7+ (Android 9+)
         targetSdk = 34
-        versionCode = 13
-        versionName = "1.4.5"
+        versionCode = 14
+        versionName = "1.4.6"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

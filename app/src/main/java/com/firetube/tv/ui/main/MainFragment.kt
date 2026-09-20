@@ -23,6 +23,8 @@ import com.firetube.tv.ui.player.PlaybackActivity
 import com.firetube.tv.ui.search.SearchActivity
 import com.firetube.tv.ui.settings.SettingsActivity
 import com.firetube.tv.util.MemoryManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 
@@ -38,6 +40,7 @@ class MainFragment : BrowseSupportFragment() {
 
     private lateinit var rowsAdapter: ArrayObjectAdapter
     private val trendingAdapter = ArrayObjectAdapter(VideoCardPresenter())
+    private val kidsAdapter = ArrayObjectAdapter(VideoCardPresenter())
     private val subscriptionsAdapter = ArrayObjectAdapter(VideoCardPresenter())
     private val historyAdapter = ArrayObjectAdapter(VideoCardPresenter())
     private val toolsAdapter = ArrayObjectAdapter(VideoCardPresenter())
@@ -78,13 +81,16 @@ class MainFragment : BrowseSupportFragment() {
         val trendingHeader = HeaderItem(0, getString(R.string.menu_trending))
         rowsAdapter.add(ListRow(trendingHeader, trendingAdapter))
 
-        val subHeader = HeaderItem(1, getString(R.string.menu_subscriptions))
+        val kidsHeader = HeaderItem(1, getString(R.string.menu_kids))
+        rowsAdapter.add(ListRow(kidsHeader, kidsAdapter))
+
+        val subHeader = HeaderItem(2, getString(R.string.menu_subscriptions))
         rowsAdapter.add(ListRow(subHeader, subscriptionsAdapter))
 
-        val historyHeader = HeaderItem(2, getString(R.string.menu_history))
+        val historyHeader = HeaderItem(3, getString(R.string.menu_history))
         rowsAdapter.add(ListRow(historyHeader, historyAdapter))
 
-        val toolsHeader = HeaderItem(3, "設定 & 便利機能")
+        val toolsHeader = HeaderItem(4, "設定 & 便利機能")
         rowsAdapter.add(ListRow(toolsHeader, toolsAdapter))
 
         adapter = rowsAdapter
@@ -191,10 +197,21 @@ class MainFragment : BrowseSupportFragment() {
             }
         }
 
-        // 3. ローカル登録チャンネルの取得
+        // 3. キッズ＆ファミリー向け人気定番動画の即時表示 (0ms) & バックグラウンド・プリウォーム
+        val kidsVideos = VideoRepository.getPopularKidsVideos()
+        kidsAdapter.clear()
+        kidsAdapter.addAll(0, kidsVideos)
+        preloadThumbnails(kidsVideos)
+
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            delay(1500) // ホーム画面の初期描画負荷を避けて低優先度で実行
+            VideoRepository.prewarmStreamCache(kidsVideos.map { it.id })
+        }
+
+        // 4. ローカル登録チャンネルの取得
         loadSubscriptions()
 
-        // 4. ローカル履歴の取得 (Room DB)
+        // 5. ローカル履歴の取得 (Room DB)
         loadHistory()
     }
 

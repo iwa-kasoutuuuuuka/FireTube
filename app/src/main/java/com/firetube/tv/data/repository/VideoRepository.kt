@@ -302,4 +302,74 @@ object VideoRepository {
             Log.w(TAG, "Prefetch failed silently for $videoId: ${e.message}")
         }
     }
+
+    /**
+     * キッズ＆ファミリー向け定番人気動画一覧 (即時0ms表示用)
+     */
+    fun getPopularKidsVideos(): List<VideoItem> {
+        return listOf(
+            VideoItem(
+                id = "PkDfrVdCwCs",
+                title = "映画「アンパンマンが生まれた日」【公式】",
+                uploaderName = "それいけ! アンパンマン【アニメ公式】",
+                uploaderUrl = null,
+                thumbnailUrl = "https://i.ytimg.com/vi/PkDfrVdCwCs/hqdefault.jpg",
+                durationSeconds = 676L,
+                viewCount = 3500000L
+            ),
+            VideoItem(
+                id = "iJmFyqH-W24",
+                title = "アニメ「ぼくらの ほしの ミラクル」【しまじろうチャンネル公式】",
+                uploaderName = "しまじろうチャンネル（公式）",
+                uploaderUrl = null,
+                thumbnailUrl = "https://i.ytimg.com/vi/iJmFyqH-W24/hqdefault.jpg",
+                durationSeconds = 917L,
+                viewCount = 1200000L
+            ),
+            VideoItem(
+                id = "XqZsoesa55w",
+                title = "Baby Shark Dance | Sing and Dance! | @BabyShark",
+                uploaderName = "Pinkfong Baby Shark - Kids' Songs & Stories",
+                uploaderUrl = null,
+                thumbnailUrl = "https://i.ytimg.com/vi/XqZsoesa55w/hqdefault.jpg",
+                durationSeconds = 136L,
+                viewCount = 14000000000L
+            ),
+            VideoItem(
+                id = "Fk9xJFjpRxI",
+                title = "【公式】ぽけもん☆かぞえうた【ポケモンKids TV】",
+                uploaderName = "ポケモン Kids TV: Pokémon Kids TV",
+                uploaderUrl = null,
+                thumbnailUrl = "https://i.ytimg.com/vi/Fk9xJFjpRxI/hqdefault.jpg",
+                durationSeconds = 148L,
+                viewCount = 850000L
+            ),
+            VideoItem(
+                id = "7-7C_1d1Skg",
+                title = "いぬのおまわりさん | 童謡・てあそびうた",
+                uploaderName = "東京ハイジ TOKYO HEIDI",
+                uploaderUrl = null,
+                thumbnailUrl = "https://i.ytimg.com/vi/7-7C_1d1Skg/hqdefault.jpg",
+                durationSeconds = 180L,
+                viewCount = 2000000L
+            )
+        )
+    }
+
+    /**
+     * キッズ動画・定番動画のストリーム情報を非同期バックグラウンドで先読みキャッシュ（Pre-warming）
+     * 決定キー押下時の抽出待機時間を 0ms に短縮
+     */
+    suspend fun prewarmStreamCache(videoIds: List<String>) = withContext(Dispatchers.IO) {
+        for (vId in videoIds) {
+            if (getCachedStreamInfo(vId) != null) continue
+            try {
+                Log.d(TAG, "Pre-warming stream cache for: $vId")
+                extractStreamInfo(vId)
+            } catch (e: Throwable) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                Log.w(TAG, "Pre-warm failed for $vId: ${e.message}")
+            }
+        }
+    }
 }

@@ -3,6 +3,7 @@
     <string name="app_name">FireTube</string>
     <string name="menu_home">ホーム</string>
     <string name="menu_trending">トレンド</string>
+    <string name="menu_kids">👶 キッズ &amp; ファミリー</string>
     <string name="menu_subscriptions">登録チャンネル</string>
     <string name="menu_history">視聴履歴</string>
     <string name="menu_search">検索</string>
