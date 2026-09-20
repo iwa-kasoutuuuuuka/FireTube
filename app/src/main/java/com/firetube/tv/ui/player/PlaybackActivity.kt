@@ -245,6 +245,8 @@ class PlaybackActivity : FragmentActivity() {
 
     @SuppressLint("SetJavaScriptEnabled")
     private fun setupWebViewPlayer() {
+        WebView.setWebContentsDebuggingEnabled(true)
+        webViewPlayer.setLayerType(View.LAYER_TYPE_HARDWARE, null)
         webViewPlayer.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
@@ -307,14 +309,22 @@ class PlaybackActivity : FragmentActivity() {
             <head>
             <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
             <style>
-              * { margin: 0; padding: 0; box-sizing: border-box; background: #000; overflow: hidden; }
-              html, body, #player { width: 100vw; height: 100vh; }
-              iframe { width: 100vw; height: 100vh; border: none; }
+              html, body { margin: 0; padding: 0; width: 100vw; height: 100vh; background-color: #000; overflow: hidden; }
+              #player, iframe { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; border: none; }
             </style>
             </head>
             <body>
             <div id="player"></div>
             <script>
+              // Polyfill queueMicrotask for older WebViews (Chrome < 71 / Android 9)
+              if (typeof window.queueMicrotask !== 'function') {
+                window.queueMicrotask = function(cb) {
+                  Promise.resolve().then(cb).catch(function(err) {
+                    setTimeout(function() { throw err; }, 0);
+                  });
+                };
+              }
+
               var tag = document.createElement('script');
               tag.src = "https://www.youtube.com/iframe_api";
               var firstScriptTag = document.getElementsByTagName('script')[0];
@@ -407,11 +417,13 @@ class PlaybackActivity : FragmentActivity() {
             // 1. ExoPlayer 停止
             player?.pause()
             player?.stop()
+            playerView.player = null
             playerView.visibility = View.GONE
 
             // 2. WebView 表示 & 続きから再生
             val startSec = (startMs / 1000f).coerceAtLeast(0f)
             webViewPlayer.visibility = View.VISIBLE
+            webViewPlayer.bringToFront()
             loadIframeVideo(videoId, startSec)
             showStatusNotification(getString(R.string.switching_to_compatible_mode))
         }
