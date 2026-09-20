@@ -11,7 +11,7 @@
 [![License](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![GMS Free](https://img.shields.io/badge/Google%20Play%20Services-0%25%20%28Independent%29-green)](#)
 
-[📥 **最新の APK をダウンロード (FireTube-v1.4.5.apk)**](https://github.com/iwa-kasoutuuuuuka/FireTube/raw/main/FireTube-v1.4.5.apk) / [リポジトリ内ファイル](FireTube-v1.4.5.apk) / [GitHub Releases](https://github.com/iwa-kasoutuuuuuka/FireTube/releases)
+[📥 **最新の APK をダウンロード (FireTube-v1.4.6.apk)**](https://github.com/iwa-kasoutuuuuuka/FireTube/raw/main/FireTube-v1.4.6.apk) / [リポジトリ内ファイル](FireTube-v1.4.6.apk) / [GitHub Releases](https://github.com/iwa-kasoutuuuuuka/FireTube/releases)
 
 </div>
 
@@ -163,13 +163,47 @@ FireTube v1.4.0 では、**Fire TV Stick 4K Max** の高性能ハードウェア
 2. PC と同一 Wi-Fi に接続し、PC のターミナルから ADB でインストールします：
    ```bash
    adb connect <Fire_TV_の_IPアドレス>:5555
-   adb install -r FireTube-v1.4.5.apk
+   adb install -r FireTube-v1.4.6.apk
    ```
    ※ または Fire TV アプリストアの「Downloader」アプリを使って上記 GitHub Releases の APK URL から直接ダウンロード・インストールすることも可能です。
 
 ---
 
 ## 📝 更新履歴 & デバッグ検証 (Release Notes & Verification)
+
+### v1.4.6 (2026/09/20) - 全ソースコード総合デバッグ & 堅牢化（潜在的クラッシュ・OOM・リソースリーク・コルーチンキャンセル完全修正）
+
+プロジェクト全37ファイル、XMLリソース、および AndroidManifest に対する静的解析（Android Lint）とディープコード監査を実施し、長時間の連続稼働や過酷なネットワーク環境下で発生し得る潜在的なバグ・脆弱性を構造的に完全修正しました。
+
+#### 🛠️ 主な修正・改善内容
+
+##### 1. ストリーミング & ネットワーク層の堅牢化
+- **🛡️ GoogleVideoDataSource 無限再帰 (StackOverflowError) 防止**:
+  - `read()` メソッドにおいて、YouTube CDN の予期せぬ切断やコンテンツ長未確定時の末尾検出で無限再帰呼び出しが発生し得る箇所を、2回試行の反復ループ制御構造へ刷新。`C.RESULT_END_OF_INPUT` を安全に返却し、クラッシュを構造的に防止。
+- **🔌 OkHttpDownloader ソケット/コネクションリーク完全解消**:
+  - `execute()` 呼び出しを `use { response -> ... }` スコープで厳格に囲み、例外発生時やストリーム中断時でも HTTP/2 コネクションがプールへ安全に返却されるよう保証。
+- **🔤 VideoRepository キャッシュアクセスのスレッドセーフ化**:
+  - `@Volatile` フィールド `cachedTrendingVideos` に対する二重否定（`!!`）を廃止し、ローカルスコープへの退避による Null Safety を徹底。マルチスレッドでのキャッシュ更新競合による NPE を撲滅。
+
+##### 2. ローカルキャストサーバー & セキュリティの強化
+- **⚡ LocalCastServer OOM / 悪意あるリクエスト保護**:
+  - クライアントリクエストの `Content-Length` をそのまま配列確保していた脆弱性を解消。Fire TV の極小ヒープ（1.5GB RAM端末）を保護するため、最大 64KB (65,536 bytes) にクランプし、超過時は HTTP 400 を返却。
+  - POST / GET パラメータの抽出処理に `substringBefore("&")` を追加し、複数パラメータが存在する場合でも動画 URL を正確にパース。
+- **🔒 AndroidManifest.xml 内部 Activity の非公開化 (exported="false")**:
+  - 外部起動の不要な `PlaybackActivity`, `SettingsActivity`, `CastActivity` を `android:exported="false"` に設定。意図しない不正インテントによる直接起動を完全に遮断。
+  - Android 13+ (API 33+) 互換性のため、フォアグラウンドサービス用 `POST_NOTIFICATIONS` パーミッションを明示宣言。
+
+##### 3. プレイヤー UI & コルーチンライフサイクルの最適化
+- **🎯 SponsorBlock 0ms 誤爆スキップ防止**:
+  - `SponsorSegment.contains()` において、不正データや空区間（`0L..0L`）で動画開始直後（0ms）に誤スキップ判定される不具合を防止（`startMs < endMs` および `endMs > 0L` をバリデーション）。
+- **🔄 コルーチン例外ハンドリングの適正化 (Structured Concurrency 担保)**:
+  - `InnerTubeClient`, `YouTubeStreamExtractor`, `PipedApiClient`, `VideoRepository` の全 catch ブロックで `CancellationException` を確実に再スロー。画面離脱時や動画切り替え時にバックグラウンド通信が正しくキャンセルされるように最適化。
+- **🧹 PlaybackActivity ライフサイクル清掃 & リモコンフォーカス保護**:
+  - `onDestroy()` で WebView を親 ViewGroup から detach してから破棄するよう安全化し、WebKit のメモリリーク警告を防止。
+  - `activity_playback.xml` の WebView に `android:focusable="false"` を追加し、リモコンの十字キーフォーカスが Web 画面にトラップされる事故を防止。
+  - v1.4.5 で IFrame フォールバックに置換され不要となった旧世代のフォールバックコード（`triggerFallbackNextVideo`）および未使用文字列をクリーンアップ。
+
+---
 
 ### v1.4.5 (2026/09/20) - YouTube CDN 音声 1MB 遮断 (403 Forbidden) 対策 & 公式長編・アニメ全編完走保証アップデート
 

@@ -115,9 +115,10 @@ object LocalCastServer {
                     line = reader.readLine()
                 }
 
-                // POSTボディ読み込み
+                // POSTボディ読み込み (Fire TV の低RAM保護のため最大64KBに制限)
                 var postBody = ""
-                if (contentLength > 0) {
+                val maxBodySize = 65536
+                if (contentLength in 1..maxBodySize) {
                     val buffer = CharArray(contentLength)
                     var read = 0
                     while (read < contentLength) {
@@ -126,6 +127,9 @@ object LocalCastServer {
                         read += r
                     }
                     postBody = String(buffer, 0, read)
+                } else if (contentLength > maxBodySize) {
+                    sendError(out, "リクエストサイズが上限を超えています (Max 64KB)")
+                    return
                 }
 
                 if (path == "/" || path.startsWith("/?")) {
@@ -133,9 +137,9 @@ object LocalCastServer {
                 } else if (path.startsWith("/play")) {
                     var urlParam = ""
                     if (method.equals("POST", ignoreCase = true)) {
-                        // postBody から url= 以降を安全に抽出
+                        // postBody から url= 以降を安全に抽出（他パラメータとの混ざりを防止）
                         if (postBody.contains("url=")) {
-                            val encoded = postBody.substringAfter("url=")
+                            val encoded = postBody.substringAfter("url=").substringBefore("&")
                             urlParam = try {
                                 URLDecoder.decode(encoded, "UTF-8")
                             } catch (e: Exception) {
@@ -145,7 +149,7 @@ object LocalCastServer {
                     } else {
                         val query = if (path.contains("?")) path.substringAfter("?") else ""
                         if (query.contains("url=")) {
-                            val encoded = query.substringAfter("url=")
+                            val encoded = query.substringAfter("url=").substringBefore("&")
                             urlParam = try {
                                 URLDecoder.decode(encoded, "UTF-8")
                             } catch (e: Exception) {

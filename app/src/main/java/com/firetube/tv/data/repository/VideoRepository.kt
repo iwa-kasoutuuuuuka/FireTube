@@ -88,9 +88,10 @@ object VideoRepository {
      */
     suspend fun getTrendingVideos(forceRefresh: Boolean = false): Result<List<VideoItem>> = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
-        if (!forceRefresh && cachedTrendingVideos != null && (now - lastTrendingCacheTime) < CACHE_TTL_MS) {
-            Log.i(TAG, "Returning cached trending videos (${cachedTrendingVideos?.size} items)")
-            return@withContext Result.success(cachedTrendingVideos!!)
+        val cached = cachedTrendingVideos
+        if (!forceRefresh && cached != null && (now - lastTrendingCacheTime) < CACHE_TTL_MS) {
+            Log.i(TAG, "Returning cached trending videos (${cached.size} items)")
+            return@withContext Result.success(cached)
         }
 
         // 1. YouTube InnerTube API (公式JSON直結・超高速・パースエラーなし)
@@ -199,6 +200,7 @@ object VideoRepository {
                 return@withContext Result.success(items)
             }
         } catch (t: Throwable) {
+            if (t is kotlinx.coroutines.CancellationException) throw t
             Log.w(TAG, "NewPipeExtractor Up Next failed or incompatible on API level: ${t.message}")
         }
 

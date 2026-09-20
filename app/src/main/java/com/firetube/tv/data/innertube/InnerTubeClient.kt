@@ -135,6 +135,7 @@ object InnerTubeClient {
                 Result.success(items)
             }
         } catch (e: Throwable) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Log.e(TAG, "InnerTube getTrendingVideos failed", e)
             Result.failure(e)
         }
@@ -172,6 +173,7 @@ object InnerTubeClient {
                 Result.success(items)
             }
         } catch (e: Throwable) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Log.e(TAG, "InnerTube getChannelVideos failed", e)
             Result.failure(e)
         }
@@ -203,6 +205,7 @@ object InnerTubeClient {
                 Result.success(items)
             }
         } catch (e: Throwable) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Log.e(TAG, "InnerTube search failed", e)
             Result.failure(e)
         }
@@ -234,6 +237,7 @@ object InnerTubeClient {
                 Result.success(items)
             }
         } catch (e: Throwable) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Log.e(TAG, "InnerTube getUpNextVideos failed", e)
             Result.failure(e)
         }

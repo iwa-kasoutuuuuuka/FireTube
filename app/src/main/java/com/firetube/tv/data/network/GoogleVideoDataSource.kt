@@ -181,39 +181,45 @@ class GoogleVideoDataSource(
             return C.RESULT_END_OF_INPUT
         }
 
-        if (currentChunkRemaining <= 0L) {
-            if (totalLength != C.LENGTH_UNSET.toLong() && currentPosition >= totalLength) {
-                return C.RESULT_END_OF_INPUT
-            }
-            openNextChunk()
+        var attempts = 0
+        while (attempts < 2) {
             if (currentChunkRemaining <= 0L) {
-                return C.RESULT_END_OF_INPUT
+                if (totalLength != C.LENGTH_UNSET.toLong() && currentPosition >= totalLength) {
+                    return C.RESULT_END_OF_INPUT
+                }
+                openNextChunk()
+                if (currentChunkRemaining <= 0L) {
+                    return C.RESULT_END_OF_INPUT
+                }
             }
-        }
 
-        val bytesToRead = if (bytesRemaining != C.LENGTH_UNSET.toLong()) {
-            minOf(length.toLong(), bytesRemaining, currentChunkRemaining).toInt()
-        } else {
-            minOf(length.toLong(), currentChunkRemaining).toInt()
-        }
-
-        val bytesRead = currentStream?.read(buffer, offset, bytesToRead) ?: -1
-        if (bytesRead == -1) {
-            if (totalLength != C.LENGTH_UNSET.toLong() && currentPosition >= totalLength) {
-                return C.RESULT_END_OF_INPUT
+            val bytesToRead = if (bytesRemaining != C.LENGTH_UNSET.toLong()) {
+                minOf(length.toLong(), bytesRemaining, currentChunkRemaining).toInt()
+            } else {
+                minOf(length.toLong(), currentChunkRemaining).toInt()
             }
-            openNextChunk()
-            return read(buffer, offset, length)
+
+            val bytesRead = currentStream?.read(buffer, offset, bytesToRead) ?: -1
+            if (bytesRead == -1) {
+                if (totalLength != C.LENGTH_UNSET.toLong() && currentPosition >= totalLength) {
+                    return C.RESULT_END_OF_INPUT
+                }
+                currentChunkRemaining = 0L
+                attempts++
+                continue
+            }
+
+            currentPosition += bytesRead
+            currentChunkRemaining -= bytesRead
+            if (bytesRemaining != C.LENGTH_UNSET.toLong()) {
+                bytesRemaining -= bytesRead
+            }
+
+            bytesTransferred(bytesRead)
+            return bytesRead
         }
 
-        currentPosition += bytesRead
-        currentChunkRemaining -= bytesRead
-        if (bytesRemaining != C.LENGTH_UNSET.toLong()) {
-            bytesRemaining -= bytesRead
-        }
-
-        bytesTransferred(bytesRead)
-        return bytesRead
+        return C.RESULT_END_OF_INPUT
     }
 
     override fun getUri(): Uri? {

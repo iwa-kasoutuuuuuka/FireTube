@@ -80,6 +80,7 @@ object PipedApiClient {
                     }
                 }
             } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 Log.w(TAG, "Piped instance $baseUrl failed: ${e.message}")
             }
         }
@@ -137,6 +138,7 @@ object PipedApiClient {
                     }
                 }
             } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 Log.w(TAG, "Piped search on $baseUrl failed: ${e.message}")
             }
         }
@@ -225,6 +227,7 @@ object PipedApiClient {
                     }
                 }
             } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 Log.w(TAG, "Piped stream info on $baseUrl failed: ${e.message}")
             }
         }

@@ -24,6 +24,7 @@ import org.schabi.newpipe.extractor.stream.StreamType
 object YouTubeStreamExtractor {
 
     private const val TAG = "YouTubeExtractor"
+    @Volatile
     private var isInitialized = false
 
     fun init() {
@@ -64,6 +65,7 @@ object YouTubeStreamExtractor {
             }
             Result.success(items)
         } catch (e: Throwable) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Log.e(TAG, "Error fetching stream data", e)
             Result.failure(e)
         }

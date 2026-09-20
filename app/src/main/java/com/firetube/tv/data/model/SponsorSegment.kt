@@ -22,6 +22,7 @@ data class SponsorSegment(
         get() = (segment.getOrNull(1)?.times(1000))?.toLong() ?: 0L
 
     fun contains(positionMs: Long): Boolean {
+        if (startMs >= endMs || endMs <= 0L) return false
         return positionMs in startMs..endMs
     }
 }

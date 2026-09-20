@@ -45,20 +45,20 @@ class OkHttpDownloader(private val client: OkHttpClient) : Downloader() {
         requestBuilder.method(httpMethod, requestBody)
 
         val call = client.newCall(requestBuilder.build())
-        val response = call.execute()
+        return call.execute().use { response ->
+            val responseBody = response.body?.string() ?: ""
+            val responseHeaders = mutableMapOf<String, List<String>>()
+            response.headers.names().forEach { name ->
+                responseHeaders[name] = response.headers.values(name)
+            }
 
-        val responseBody = response.body?.string() ?: ""
-        val responseHeaders = mutableMapOf<String, List<String>>()
-        response.headers.names().forEach { name ->
-            responseHeaders[name] = response.headers.values(name)
+            Response(
+                response.code,
+                response.message,
+                responseHeaders,
+                responseBody,
+                response.request.url.toString()
+            )
         }
-
-        return Response(
-            response.code,
-            response.message,
-            responseHeaders,
-            responseBody,
-            response.request.url.toString()
-        )
     }
 }

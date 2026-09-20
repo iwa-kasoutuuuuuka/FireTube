@@ -850,53 +850,6 @@ class PlaybackActivity : FragmentActivity() {
         }
     }
 
-    /**
-     * YouTube CDN (PoToken) のプレビュー制限（403停止/バッファ枯渇）に対する自動復旧
-     * - スピナー無限ハングアップを回避し、完走保証動画（HLS対応公式アニメ等）へシームレスに切り替える
-     */
-    private fun triggerFallbackNextVideo(reasonMessage: String) {
-        if (isHandlingFallback) return
-        isHandlingFallback = true
-
-        Log.w(TAG, "triggerFallbackNextVideo: $reasonMessage for current video: $videoId")
-        showStatusNotification(reasonMessage)
-        loadingView.visibility = View.VISIBLE
-
-        lifecycleScope.launch {
-            VideoRepository.invalidateStreamCache(videoId)
-            delay(2000) // ユーザーが画面上の案内を読めるよう2秒待機
-
-            if (!isActive) return@launch
-
-            // 1. Up Next（関連動画）から現在の動画以外の候補を検索
-            var nextTarget: VideoItem? = null
-            val count = upNextAdapter.size()
-            for (i in 0 until count) {
-                val item = upNextAdapter.get(i) as? VideoItem
-                if (item != null && item.id != videoId) {
-                    nextTarget = item
-                    break
-                }
-            }
-
-            // 2. Up Next が空、または同一動画のみの場合：完走保証されているアンパンマン公式映画アニメ (11分16秒, Apple HLS対応)
-            if (nextTarget == null) {
-                nextTarget = VideoItem(
-                    id = "PkDfrVdCwCs",
-                    title = "映画「アンパンマンが生まれた日」【公式】",
-                    uploaderName = "それいけ! アンパンマン【アニメ公式】",
-                    uploaderUrl = null,
-                    thumbnailUrl = "https://i.ytimg.com/vi/PkDfrVdCwCs/hqdefault.jpg",
-                    durationSeconds = 676L,
-                    viewCount = 1000000L
-                )
-            }
-
-            Log.i(TAG, "Auto-recovering to next video: ${nextTarget.title} (${nextTarget.id})")
-            isHandlingFallback = false
-            switchVideo(nextTarget)
-        }
-    }
 
     private fun showUpNextPanel() {
         if (upNextAdapter.size() == 0) return
@@ -1250,6 +1203,7 @@ class PlaybackActivity : FragmentActivity() {
         player = null
         if (::webViewPlayer.isInitialized) {
             webViewPlayer.loadUrl("about:blank")
+            (webViewPlayer.parent as? android.view.ViewGroup)?.removeView(webViewPlayer)
             webViewPlayer.destroy()
         }
         super.onDestroy()
