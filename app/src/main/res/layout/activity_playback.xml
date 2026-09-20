@@ -5,7 +5,9 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@android:color/black"
-    android:keepScreenOn="true">
+    android:keepScreenOn="true"
+    android:focusable="true"
+    android:focusableInTouchMode="true">
 
     <!-- Video Surface -->
     <androidx.media3.ui.PlayerView
@@ -163,7 +165,7 @@
     <LinearLayout
         android:id="@+id/up_next_container"
         android:layout_width="match_parent"
-        android:layout_height="250dp"
+        android:layout_height="310dp"
         android:layout_gravity="bottom"
         android:background="#E6101010"
         android:orientation="vertical"

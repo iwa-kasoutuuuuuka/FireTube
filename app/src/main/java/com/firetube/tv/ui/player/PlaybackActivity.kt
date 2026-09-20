@@ -86,6 +86,7 @@ class PlaybackActivity : FragmentActivity() {
 
     private var player: ExoPlayer? = null
     private var loudnessEnhancer: LoudnessEnhancer? = null
+    private lateinit var playbackRoot: View
     private lateinit var playerView: PlayerView
     private lateinit var webViewPlayer: WebView
     private var isUsingWebViewFallback: Boolean = false
@@ -136,6 +137,7 @@ class PlaybackActivity : FragmentActivity() {
         uploaderName = intent.getStringExtra(EXTRA_UPLOADER_NAME) ?: ""
         thumbnailUrl = intent.getStringExtra(EXTRA_THUMBNAIL_URL) ?: ""
 
+        playbackRoot = findViewById(R.id.playback_root)
         playerView = findViewById(R.id.player_view)
         webViewPlayer = findViewById(R.id.web_view_player)
         loadingView = findViewById(R.id.player_loading)
@@ -871,7 +873,11 @@ class PlaybackActivity : FragmentActivity() {
 
     private fun hideUpNextPanel() {
         upNextContainer.visibility = View.GONE
-        playerView.requestFocus()
+        if (isUsingWebViewFallback || playerView.visibility != View.VISIBLE) {
+            playbackRoot.requestFocus()
+        } else {
+            playerView.requestFocus()
+        }
     }
 
     /**
