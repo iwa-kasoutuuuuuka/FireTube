@@ -16,6 +16,13 @@
         app:surface_type="surface_view"
         app:resize_mode="fit" />
 
+    <!-- Fallback YouTube IFrame Player (for PoToken 403 restricted videos) -->
+    <WebView
+        android:id="@+id/web_view_player"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone" />
+
     <!-- Leanback Playback Fragment Container -->
     <FrameLayout
         android:id="@+id/playback_controls_fragment"

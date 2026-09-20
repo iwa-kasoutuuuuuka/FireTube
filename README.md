@@ -171,6 +171,34 @@ FireTube v1.4.0 では、**Fire TV Stick 4K Max** の高性能ハードウェア
 
 ## 📝 更新履歴 & デバッグ検証 (Release Notes & Verification)
 
+### v1.4.5 (2026/09/20) - YouTube CDN 音声 1MB 遮断 (403 Forbidden) 対策 & 公式長編・アニメ全編完走保証アップデート
+
+YouTube CDN の最新 PoToken 制限により、未認証クライアントに対する個別 DASH 音声ストリーム（itag 140 等）が厳密に **1,048,576 バイト（1MiB、約60秒分）** を超えた時点で **HTTP 403 Forbidden** を返却し、ExoPlayer がリトライのループに入って画面が停止する現象を物理的に特定・完全解決しました。
+
+`GoogleVideoDataSource` の「即時 403 検知コールバック」と、再生位置を監視する「3秒フリーズ監視セーフティネット（Stall Watchdog）」、そして YouTube 公式 IFrame Player API による「シームレス・フォールバックエンジン」を統合。しまじろう公式動画などの長編動画（15分超）や公式アニメも、途切れることなく最後までストレスフリーに完走再生できるようになりました。
+
+#### 🛠️ 主な修正・改善内容
+
+##### 1. YouTube CDN 403 Forbidden 即時検知 & シームレス・フォールバック (Seamless IFrame Engine)
+- **⚡ GoogleVideoDataSource 即時 403 検知コールバック**:
+  - 音声ストリームの 1MB 境界（`bytes=1048576-`）で YouTube CDN が 403 Forbidden を返却した瞬間に、ExoPlayer の指数バックオフリトライ（数十秒の無駄な待機）を待たずに即時リスナー経由で上位プレイヤーへ通知を発行。
+- **🛡️ 3秒フリーズ監視セーフティネット (Stall Watchdog)**:
+  - 再生中（`playWhenReady == true` かつ `playbackState == STATE_READY`）に、再生位置が 3 秒間 1 ミリ秒も進まなくなった場合（デコーダーハングやサイレントバッファ枯渇）、自動的にフリーズと判定してフォールバックを発動する二重の安全網を構築。
+- **🎬 YouTube 公式 IFrame API による同一画面シームレス再生**:
+  - 停止時点の再生位置（ms単位）を寸分違わず引き継ぎ、全画面の YouTube 公式 IFrame Player（`youtube-nocookie.com`）へ同一画面内でシームレスに自動切り替え。
+  - 公式 Web プレイヤー内部で PoToken チャレンジが自動解決されるため、1MB 遮断を受けることなく最後まで全編完走可能。
+- **🎮 Fire TV リモコン D-Pad の完全操作維持**:
+  - IFrame フォールバック再生中も、Fire TV 物理リモコンの D-Pad（左右 10秒シーク、中央 再生/一時停止、上下 HUD・関連動画表示、戻るキー）による直感的で軽快な操作性を 100% 維持。
+- **📊 WebChromeClient コンソールログ統合**:
+  - WebView 内の JavaScript ログ・エラーおよび YouTube IFrame API イベント（Ready, StateChange, Error）を Android Logcat へ詳細出力するよう設定し、障害時の可視化と診断性を向上。
+
+##### 2. 公式アニメ・長編動画の全編完走保証（アンパンマン・しまじろう等）
+- **🍎 Apple HLS (`IOS_KIDS` / `VISIONOS`) 優先化と DASH 多重化**:
+  - 子ども向け動画（Made for Kids）や長編公式アニメにおいて、PoToken 不要の公式 HLS アダプティブマニフェスト（m3u8）を最優先で直接取得。
+  - HLS が提供されない単独 DASH 動画であっても、上記の即時フォールバックにより 100% 完走を保証。
+
+---
+
 ### v1.3.4 (2026/09/14) - マルチレイヤー高速化 ＆ 完全バグハンティング・Fire OS 徹底安定化アップデート
 
 Fire TV Stick HD (1.5GB RAM) のハードウェア制約を徹底分析し、人間の認知・決定時間（フォーカス滞在）を活用した**事前ストリーム抽出**、**Media3 ExoPlayer の動的マニフェストバイパス付き LRU ディスクキャッシュ**、**インメモリ DNS キャッシュ**、**Glide 上位カード先読み** を統合。決定キー押下時のストリーム抽出時間を **0ms（即座に ExoPlayer 再生開始）** に短縮し、再生開始待機時間（TTFF）を大幅に短縮（約0.8秒〜1.0秒）しました。

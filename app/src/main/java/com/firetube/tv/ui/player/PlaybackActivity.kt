@@ -2,12 +2,18 @@ package com.firetube.tv.ui.player
 
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.media.audiofx.LoudnessEnhancer
 import android.os.Bundle
 import android.util.Log
 import android.view.KeyEvent
 import android.view.View
+import android.webkit.ConsoleMessage
+import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -81,6 +87,8 @@ class PlaybackActivity : FragmentActivity() {
     private var player: ExoPlayer? = null
     private var loudnessEnhancer: LoudnessEnhancer? = null
     private lateinit var playerView: PlayerView
+    private lateinit var webViewPlayer: WebView
+    private var isUsingWebViewFallback: Boolean = false
     private lateinit var loadingView: ProgressBar
     private lateinit var sponsorBanner: View
     private lateinit var speedIndicator: TextView
@@ -97,6 +105,7 @@ class PlaybackActivity : FragmentActivity() {
     private lateinit var notificationText: TextView
     private var notificationDismissJob: Job? = null
     private var bufferingWatchdogJob: Job? = null
+    private var stallWatchdogJob: Job? = null
     private var isHandlingFallback: Boolean = false
     private var currentStreamInfo: StreamInfoData? = null
 
@@ -128,6 +137,7 @@ class PlaybackActivity : FragmentActivity() {
         thumbnailUrl = intent.getStringExtra(EXTRA_THUMBNAIL_URL) ?: ""
 
         playerView = findViewById(R.id.player_view)
+        webViewPlayer = findViewById(R.id.web_view_player)
         loadingView = findViewById(R.id.player_loading)
         sponsorBanner = findViewById(R.id.sponsor_banner)
         speedIndicator = findViewById(R.id.speed_indicator)
@@ -148,6 +158,7 @@ class PlaybackActivity : FragmentActivity() {
             return
         }
 
+        setupWebViewPlayer()
         setupUpNextGrid()
         initPlayer()
         startNewVideoSession(videoId, videoTitle, uploaderName, thumbnailUrl)
@@ -188,6 +199,7 @@ class PlaybackActivity : FragmentActivity() {
         sponsorMonitorJob?.cancel()
         hudDismissJob?.cancel()
         bufferingWatchdogJob?.cancel()
+        stallWatchdogJob?.cancel()
         notificationDismissJob?.cancel()
 
         // 3. SponsorBlock セグメントおよび UI 状態を完全リセット（誤爆スキップ防止）
@@ -201,6 +213,13 @@ class PlaybackActivity : FragmentActivity() {
         upNextAdapter.clear()
 
         // 4. ExoPlayer を停止＆キュー・トラックを完全クリア
+        isUsingWebViewFallback = false
+        if (::webViewPlayer.isInitialized) {
+            webViewPlayer.visibility = View.GONE
+            webViewPlayer.loadUrl("about:blank")
+        }
+        playerView.visibility = View.VISIBLE
+
         player?.let { p ->
             p.stop()
             p.clearMediaItems()
@@ -224,6 +243,180 @@ class PlaybackActivity : FragmentActivity() {
         loadUpNextVideos()
     }
 
+    @SuppressLint("SetJavaScriptEnabled")
+    private fun setupWebViewPlayer() {
+        webViewPlayer.settings.apply {
+            javaScriptEnabled = true
+            domStorageEnabled = true
+            mediaPlaybackRequiresUserGesture = false
+            useWideViewPort = true
+            loadWithOverviewMode = true
+        }
+        webViewPlayer.setBackgroundColor(android.graphics.Color.BLACK)
+        webViewPlayer.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean = false
+        }
+        webViewPlayer.webChromeClient = object : WebChromeClient() {
+            override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
+                Log.d("WebViewPlayer", "[JS ${consoleMessage?.messageLevel()}]: ${consoleMessage?.message()} (${consoleMessage?.sourceId()}:${consoleMessage?.lineNumber()})")
+                return true
+            }
+        }
+        webViewPlayer.addJavascriptInterface(object {
+            @android.webkit.JavascriptInterface
+            fun onPlayerReady() {
+                runOnUiThread {
+                    Log.i(TAG, "WebView IFrame player ready. Hiding loadingView and showing HUD.")
+                    loadingView.visibility = View.GONE
+                    showVideoInfoHud()
+                }
+            }
+
+            @android.webkit.JavascriptInterface
+            fun onPlayerStateChange(state: Int) {
+                runOnUiThread {
+                    Log.d(TAG, "WebView IFrame player state: $state")
+                    when (state) {
+                        1 -> { // PLAYING
+                            loadingView.visibility = View.GONE
+                        }
+                        2 -> { // PAUSED
+                        }
+                        3 -> { // BUFFERING
+                            loadingView.visibility = View.VISIBLE
+                        }
+                        0 -> { // ENDED
+                            saveHistory(0)
+                            showUpNextPanel()
+                        }
+                    }
+                }
+            }
+
+            @android.webkit.JavascriptInterface
+            fun onPlayerError(errorCode: Int) {
+                Log.e(TAG, "WebView IFrame player error code: $errorCode")
+            }
+        }, "FireTubeBridge")
+    }
+
+    private fun loadIframeVideo(vId: String, startSec: Float) {
+        val html = """
+            <!DOCTYPE html>
+            <html>
+            <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+            <style>
+              * { margin: 0; padding: 0; box-sizing: border-box; background: #000; overflow: hidden; }
+              html, body, #player { width: 100vw; height: 100vh; }
+              iframe { width: 100vw; height: 100vh; border: none; }
+            </style>
+            </head>
+            <body>
+            <div id="player"></div>
+            <script>
+              var tag = document.createElement('script');
+              tag.src = "https://www.youtube.com/iframe_api";
+              var firstScriptTag = document.getElementsByTagName('script')[0];
+              firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+              var player = null;
+              var targetVideoId = '$vId';
+              var targetStartSec = $startSec;
+
+              function onYouTubeIframeAPIReady() {
+                console.log("YouTube IFrame API Ready. Creating player for: " + targetVideoId + " at " + targetStartSec + "s");
+                player = new YT.Player('player', {
+                  videoId: targetVideoId,
+                  playerVars: {
+                    'autoplay': 1,
+                    'controls': 0,
+                    'disablekb': 1,
+                    'fs': 0,
+                    'rel': 0,
+                    'modestbranding': 1,
+                    'iv_load_policy': 3,
+                    'start': Math.floor(targetStartSec),
+                    'playsinline': 1,
+                    'enablejsapi': 1,
+                    'origin': 'https://www.youtube-nocookie.com'
+                  },
+                  events: {
+                    'onReady': onPlayerReady,
+                    'onStateChange': onPlayerStateChange,
+                    'onError': onPlayerError
+                  }
+                });
+              }
+
+              function onPlayerReady(event) {
+                console.log("IFrame player event: ready");
+                event.target.playVideo();
+                if (window.FireTubeBridge) {
+                  window.FireTubeBridge.onPlayerReady();
+                }
+              }
+
+              function onPlayerStateChange(event) {
+                console.log("IFrame player event: state=" + event.data);
+                if (window.FireTubeBridge) {
+                  window.FireTubeBridge.onPlayerStateChange(event.data);
+                }
+              }
+
+              function onPlayerError(event) {
+                console.error("IFrame player event: error=" + event.data);
+                if (window.FireTubeBridge) {
+                  window.FireTubeBridge.onPlayerError(event.data);
+                }
+              }
+
+              function togglePlay() {
+                if (!player || !player.getPlayerState) return;
+                var s = player.getPlayerState();
+                if (s === 1) {
+                  player.pauseVideo();
+                } else {
+                  player.playVideo();
+                }
+              }
+
+              function seekRelative(sec) {
+                if (!player || !player.getCurrentTime) return;
+                var cur = player.getCurrentTime();
+                var dur = player.getDuration ? player.getDuration() : 999999;
+                var target = Math.max(0, Math.min(dur, cur + sec));
+                player.seekTo(target, true);
+              }
+            </script>
+            </body>
+            </html>
+        """.trimIndent()
+        webViewPlayer.loadDataWithBaseURL("https://www.youtube-nocookie.com", html, "text/html", "UTF-8", null)
+    }
+
+    private fun switchToIframeFallback(startMs: Long) {
+        if (isUsingWebViewFallback) return
+        isUsingWebViewFallback = true
+        Log.i(TAG, "Switching to WebView IFrame fallback at pos=${startMs}ms for video: $videoId")
+
+        runOnUiThread {
+            bufferingWatchdogJob?.cancel()
+            stallWatchdogJob?.cancel()
+
+            // 1. ExoPlayer 停止
+            player?.pause()
+            player?.stop()
+            playerView.visibility = View.GONE
+
+            // 2. WebView 表示 & 続きから再生
+            val startSec = (startMs / 1000f).coerceAtLeast(0f)
+            webViewPlayer.visibility = View.VISIBLE
+            loadIframeVideo(videoId, startSec)
+            showStatusNotification(getString(R.string.switching_to_compatible_mode))
+        }
+    }
+
     private fun setupUpNextGrid() {
         val bridgeAdapter = ItemBridgeAdapter(upNextAdapter)
         upNextGrid.adapter = bridgeAdapter
@@ -244,6 +437,39 @@ class PlaybackActivity : FragmentActivity() {
 
     private var currentMediaSourceFactory: DefaultMediaSourceFactory? = null
 
+    private fun startStallWatchdog() {
+        stallWatchdogJob?.cancel()
+        stallWatchdogJob = lifecycleScope.launch {
+            var lastPos = -1L
+            var stallCount = 0
+            while (isActive) {
+                delay(1000)
+                val p = player ?: break
+                if (isUsingWebViewFallback) break
+
+                // 再生指示が出ている状態で確認
+                if (p.playWhenReady && p.playbackState == Player.STATE_READY) {
+                    val curPos = p.currentPosition
+                    if (curPos > 0 && kotlin.math.abs(curPos - lastPos) < 200L) {
+                        stallCount++
+                        Log.d(TAG, "Stall watchdog: position unchanged at ${curPos}ms (count=$stallCount)")
+                        if (stallCount >= 3) {
+                            Log.w(TAG, "Playback stalled for 3s at pos=${curPos}ms! Seamlessly switching to WebView fallback.")
+                            switchToIframeFallback(curPos)
+                            break
+                        }
+                    } else {
+                        stallCount = 0
+                        lastPos = curPos
+                    }
+                } else {
+                    stallCount = 0
+                    lastPos = -1L
+                }
+            }
+        }
+    }
+
     private fun initPlayer() {
         val pref = AppPreferences.getInstance(this)
         val isHigh = com.firetube.tv.util.DeviceProfileManager.isHighPerformance(this)
@@ -258,6 +484,18 @@ class PlaybackActivity : FragmentActivity() {
                 paramsBuilder = paramsBuilder.setPreferredVideoMimeType(MimeTypes.VIDEO_H264)
             }
             parameters = paramsBuilder.build()
+        }
+
+        // YouTube CDN からの 403 Forbidden（1MB制限）を即時キャッチしてフォールバック
+        GoogleVideoDataSource.onStreamForbiddenListener = { _, pos ->
+            runOnUiThread {
+                if (!isUsingWebViewFallback && !isFinishing && !isDestroyed) {
+                    val currentPos = player?.currentPosition ?: 0L
+                    val resumePos = if (currentPos > 0) currentPos else pos
+                    Log.w(TAG, "GoogleVideoDataSource 403 Forbidden received! Seamlessly switching to WebView fallback at pos=${resumePos}ms.")
+                    switchToIframeFallback(resumePos)
+                }
+            }
         }
 
         val okHttpDataSourceFactory = OkHttpDataSource.Factory(NetworkClient.client)
@@ -283,13 +521,14 @@ class PlaybackActivity : FragmentActivity() {
                                 // 再生途中でバッファ枯渇に陥った場合の監視（YouTube PoToken 403 制限のフォールバック）
                                 val pos = player?.currentPosition ?: 0L
                                 val isHls = currentStreamInfo?.hlsUrl != null
-                                if (pos > 15_000L && !isHls && !isHandlingFallback) {
+                                if (pos > 10_000L && !isHls && !isUsingWebViewFallback) {
                                     bufferingWatchdogJob?.cancel()
                                     bufferingWatchdogJob = lifecycleScope.launch {
-                                        delay(4500)
-                                        if (isActive && player?.playbackState == Player.STATE_BUFFERING && !isHandlingFallback) {
-                                            Log.w(TAG, "Playback stalled mid-stream at pos=${player?.currentPosition}ms. YouTube PoToken restriction detected.")
-                                            triggerFallbackNextVideo(getString(R.string.preview_ended_switching))
+                                        delay(3000)
+                                        if (isActive && player?.playbackState == Player.STATE_BUFFERING && !isUsingWebViewFallback) {
+                                            val currentPos = player?.currentPosition ?: 0L
+                                            Log.w(TAG, "Playback stalled mid-stream at pos=${currentPos}ms. Seamlessly switching to WebView IFrame fallback.")
+                                            switchToIframeFallback(currentPos)
                                         }
                                     }
                                 }
@@ -299,14 +538,17 @@ class PlaybackActivity : FragmentActivity() {
                                 Log.i(TAG, "Playback ready! Hiding loadingView and showing HUD")
                                 loadingView.visibility = View.GONE
                                 showVideoInfoHud()
+                                startStallWatchdog()
                             }
                             Player.STATE_ENDED -> {
                                 bufferingWatchdogJob?.cancel()
+                                stallWatchdogJob?.cancel()
                                 saveHistory(currentPosition)
                                 showUpNextPanel()
                             }
                             Player.STATE_IDLE -> {
                                 bufferingWatchdogJob?.cancel()
+                                stallWatchdogJob?.cancel()
                             }
                         }
                     }
@@ -323,9 +565,9 @@ class PlaybackActivity : FragmentActivity() {
                                 error.cause?.message?.contains("403") == true
 
                         val pos = player?.currentPosition ?: 0L
-                        if ((isHttp403 || pos > 10_000L) && !isHandlingFallback) {
-                            Log.w(TAG, "Player error encountered mid-playback. Initiating seamless auto-recovery.")
-                            triggerFallbackNextVideo(getString(R.string.preview_ended_switching))
+                        if ((isHttp403 || pos > 5_000L) && !isUsingWebViewFallback) {
+                            Log.w(TAG, "Player error encountered mid-playback. Seamlessly switching to WebView IFrame fallback at pos=${pos}ms.")
+                            switchToIframeFallback(pos)
                             return
                         }
 
@@ -716,6 +958,59 @@ class PlaybackActivity : FragmentActivity() {
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        if (isUsingWebViewFallback && ::webViewPlayer.isInitialized && webViewPlayer.visibility == View.VISIBLE) {
+            if (upNextContainer.visibility == View.VISIBLE) {
+                when (keyCode) {
+                    KeyEvent.KEYCODE_BACK,
+                    KeyEvent.KEYCODE_DPAD_UP -> {
+                        hideUpNextPanel()
+                        return true
+                    }
+                }
+                return super.onKeyDown(keyCode, event)
+            }
+
+            when (keyCode) {
+                KeyEvent.KEYCODE_DPAD_LEFT,
+                KeyEvent.KEYCODE_MEDIA_REWIND -> {
+                    webViewPlayer.evaluateJavascript("seekRelative(-10);", null)
+                    showVideoInfoHud()
+                    return true
+                }
+                KeyEvent.KEYCODE_DPAD_RIGHT,
+                KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
+                    webViewPlayer.evaluateJavascript("seekRelative(10);", null)
+                    showVideoInfoHud()
+                    return true
+                }
+                KeyEvent.KEYCODE_DPAD_CENTER,
+                KeyEvent.KEYCODE_ENTER,
+                KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,
+                KeyEvent.KEYCODE_MEDIA_PLAY,
+                KeyEvent.KEYCODE_MEDIA_PAUSE -> {
+                    webViewPlayer.evaluateJavascript("togglePlay();", null)
+                    showVideoInfoHud()
+                    return true
+                }
+                KeyEvent.KEYCODE_DPAD_UP -> {
+                    showVideoInfoHud()
+                    return true
+                }
+                KeyEvent.KEYCODE_DPAD_DOWN -> {
+                    showUpNextPanel()
+                    return true
+                }
+                KeyEvent.KEYCODE_MENU -> {
+                    toggleChannelSubscription()
+                    return true
+                }
+                KeyEvent.KEYCODE_BACK -> {
+                    onBackPressed()
+                    return true
+                }
+            }
+        }
+
         val p = player ?: return super.onKeyDown(keyCode, event)
 
         // Up Next パネル表示中のキー処理
@@ -918,6 +1213,9 @@ class PlaybackActivity : FragmentActivity() {
 
     override fun onStop() {
         super.onStop()
+        if (isUsingWebViewFallback && ::webViewPlayer.isInitialized) {
+            webViewPlayer.evaluateJavascript("if (player && player.pauseVideo) { player.pauseVideo(); }", null)
+        }
         player?.let { p ->
             saveHistory(p.currentPosition)
         }
@@ -942,12 +1240,18 @@ class PlaybackActivity : FragmentActivity() {
         speedHudDismissJob?.cancel()
         hudDismissJob?.cancel()
         bufferingWatchdogJob?.cancel()
+        stallWatchdogJob?.cancel()
         notificationDismissJob?.cancel()
+        GoogleVideoDataSource.onStreamForbiddenListener = null
         loudnessEnhancer?.release()
         loudnessEnhancer = null
         playerView.player = null
         player?.release()
         player = null
+        if (::webViewPlayer.isInitialized) {
+            webViewPlayer.loadUrl("about:blank")
+            webViewPlayer.destroy()
+        }
         super.onDestroy()
     }
 }

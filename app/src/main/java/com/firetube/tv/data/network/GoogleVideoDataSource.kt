@@ -39,6 +39,13 @@ class GoogleVideoDataSource(
     companion object {
         private const val TAG = "GoogleVideoDataSource"
         private const val DEFAULT_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
+        /**
+         * YouTube CDN (googlevideo.com) から HTTP 403 Forbidden が返却された際に
+         * 上位のプレイヤー（PlaybackActivity）へ即座に通知するコールバック
+         */
+        @Volatile
+        var onStreamForbiddenListener: ((uri: Uri, pos: Long) -> Unit)? = null
     }
 
     private var currentDataSpec: DataSpec? = null
@@ -124,8 +131,20 @@ class GoogleVideoDataSource(
         if (!response.isSuccessful && response.code != 206) {
             val code = response.code
             val message = response.message
+            val errBody = try { response.body?.string() } catch (e: Exception) { null }
+            val headers = response.headers.toMultimap()
             response.close()
-            Log.e(TAG, "GoogleVideo chunk request failed: HTTP $code ($message) for range $rangeHeader")
+            Log.e(TAG, "GoogleVideo chunk request failed: HTTP $code ($message) for range $rangeHeader, url=${uri}. Headers: $headers, Body: $errBody")
+
+            if (code == 403) {
+                Log.w(TAG, "YouTube CDN 403 Forbidden detected at start=$start, url=$uri. Notifying player for immediate fallback.")
+                try {
+                    onStreamForbiddenListener?.invoke(uri ?: Uri.EMPTY, start)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error invoking onStreamForbiddenListener", e)
+                }
+            }
+
             throw HttpDataSource.InvalidResponseCodeException(
                 code,
                 message,
