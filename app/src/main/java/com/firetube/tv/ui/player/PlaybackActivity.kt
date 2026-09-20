@@ -95,6 +95,11 @@ class PlaybackActivity : FragmentActivity() {
     private lateinit var speedIndicator: TextView
     private lateinit var upNextContainer: LinearLayout
     private lateinit var upNextGrid: HorizontalGridView
+    private lateinit var autoplayContainer: LinearLayout
+    private lateinit var autoplayProgress: ProgressBar
+    private lateinit var autoplayText: TextView
+    private var autoplayJob: Job? = null
+    private var isPlaybackEnded: Boolean = false
 
     private lateinit var videoInfoHud: View
     private lateinit var videoHudTitle: TextView
@@ -145,6 +150,9 @@ class PlaybackActivity : FragmentActivity() {
         speedIndicator = findViewById(R.id.speed_indicator)
         upNextContainer = findViewById(R.id.up_next_container)
         upNextGrid = findViewById(R.id.up_next_grid)
+        autoplayContainer = findViewById(R.id.autoplay_container)
+        autoplayProgress = findViewById(R.id.autoplay_progress)
+        autoplayText = findViewById(R.id.autoplay_text)
 
         videoInfoHud = findViewById(R.id.video_info_hud)
         videoHudTitle = findViewById(R.id.video_hud_title)
@@ -203,11 +211,16 @@ class PlaybackActivity : FragmentActivity() {
         bufferingWatchdogJob?.cancel()
         stallWatchdogJob?.cancel()
         notificationDismissJob?.cancel()
+        cancelAutoplay()
+        isPlaybackEnded = false
 
         // 3. SponsorBlock セグメントおよび UI 状態を完全リセット（誤爆スキップ防止）
         sponsorSegments = emptyList()
         sponsorBanner.visibility = View.GONE
         upNextContainer.visibility = View.GONE
+        if (::autoplayContainer.isInitialized) {
+            autoplayContainer.visibility = View.GONE
+        }
         videoInfoHud.visibility = View.GONE
         notificationBanner.visibility = View.GONE
         isHandlingFallback = false
@@ -290,8 +303,7 @@ class PlaybackActivity : FragmentActivity() {
                             loadingView.visibility = View.VISIBLE
                         }
                         0 -> { // ENDED
-                            saveHistory(0)
-                            showUpNextPanel()
+                            handleVideoEnded()
                         }
                     }
                 }
@@ -441,9 +453,22 @@ class PlaybackActivity : FragmentActivity() {
                     if (pos != androidx.recyclerview.widget.RecyclerView.NO_POSITION && pos < upNextAdapter.size()) {
                         val item = upNextAdapter.get(pos) as? VideoItem
                         if (item != null) {
+                            cancelAutoplay()
                             switchVideo(item)
                         }
                     }
+                }
+            }
+        })
+        upNextGrid.setOnChildViewHolderSelectedListener(object : androidx.leanback.widget.OnChildViewHolderSelectedListener() {
+            override fun onChildViewHolderSelected(
+                parent: androidx.recyclerview.widget.RecyclerView,
+                child: androidx.recyclerview.widget.RecyclerView.ViewHolder?,
+                position: Int,
+                subposition: Int
+            ) {
+                if (position > 0) {
+                    cancelAutoplay()
                 }
             }
         })
@@ -555,10 +580,7 @@ class PlaybackActivity : FragmentActivity() {
                                 startStallWatchdog()
                             }
                             Player.STATE_ENDED -> {
-                                bufferingWatchdogJob?.cancel()
-                                stallWatchdogJob?.cancel()
-                                saveHistory(currentPosition)
-                                showUpNextPanel()
+                                handleVideoEnded()
                             }
                             Player.STATE_IDLE -> {
                                 bufferingWatchdogJob?.cancel()
@@ -838,6 +860,9 @@ class PlaybackActivity : FragmentActivity() {
             result.onSuccess { videos ->
                 upNextAdapter.clear()
                 upNextAdapter.addAll(0, videos)
+                if (isPlaybackEnded && upNextContainer.visibility != View.VISIBLE) {
+                    showUpNextPanel(isEnded = true)
+                }
             }
         }
     }
@@ -864,14 +889,66 @@ class PlaybackActivity : FragmentActivity() {
         }
     }
 
-
-    private fun showUpNextPanel() {
-        if (upNextAdapter.size() == 0) return
+    private fun showUpNextPanel(isEnded: Boolean = false) {
+        if (upNextAdapter.size() == 0) {
+            if (isEnded) isPlaybackEnded = true
+            return
+        }
         upNextContainer.visibility = View.VISIBLE
         upNextGrid.requestFocus()
+
+        val pref = AppPreferences.getInstance(this)
+        if (isEnded && pref.autoplayNext) {
+            startAutoplayCountdown()
+        } else {
+            cancelAutoplay()
+        }
+    }
+
+    private fun handleVideoEnded() {
+        bufferingWatchdogJob?.cancel()
+        stallWatchdogJob?.cancel()
+        isPlaybackEnded = true
+        val pos = player?.currentPosition ?: 0L
+        saveHistory(pos)
+        showUpNextPanel(isEnded = true)
+    }
+
+    private fun startAutoplayCountdown() {
+        cancelAutoplay()
+        if (upNextAdapter.size() == 0) return
+        val nextVideo = upNextAdapter.get(0) as? VideoItem ?: return
+
+        autoplayContainer.visibility = View.VISIBLE
+        autoplayProgress.max = 50
+        autoplayProgress.progress = 50
+
+        autoplayJob = lifecycleScope.launch {
+            for (tick in 50 downTo 0) {
+                if (!isActive) break
+                val secRemaining = (tick * 100 + 999) / 1000
+                autoplayProgress.progress = tick
+                autoplayText.text = "次の動画を自動再生 (${secRemaining}秒)"
+                delay(100)
+            }
+            if (isActive) {
+                cancelAutoplay()
+                Log.i(TAG, "Autoplay countdown finished. Autoplaying next video: ${nextVideo.id}")
+                switchVideo(nextVideo)
+            }
+        }
+    }
+
+    private fun cancelAutoplay() {
+        autoplayJob?.cancel()
+        autoplayJob = null
+        if (::autoplayContainer.isInitialized) {
+            autoplayContainer.visibility = View.GONE
+        }
     }
 
     private fun hideUpNextPanel() {
+        cancelAutoplay()
         upNextContainer.visibility = View.GONE
         if (isUsingWebViewFallback || playerView.visibility != View.VISIBLE) {
             playbackRoot.requestFocus()
@@ -929,18 +1006,34 @@ class PlaybackActivity : FragmentActivity() {
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        if (isUsingWebViewFallback && ::webViewPlayer.isInitialized && webViewPlayer.visibility == View.VISIBLE) {
-            if (upNextContainer.visibility == View.VISIBLE) {
-                when (keyCode) {
-                    KeyEvent.KEYCODE_BACK,
-                    KeyEvent.KEYCODE_DPAD_UP -> {
-                        hideUpNextPanel()
-                        return true
+        // Up Next パネル表示中のキー処理（ExoPlayer / WebView 共通）
+        if (upNextContainer.visibility == View.VISIBLE) {
+            when (keyCode) {
+                KeyEvent.KEYCODE_DPAD_CENTER,
+                KeyEvent.KEYCODE_ENTER -> {
+                    // 自動再生カウントダウン中なら即座に次の動画を即時再生
+                    if (autoplayJob?.isActive == true) {
+                        cancelAutoplay()
+                        val nextVideo = upNextAdapter.get(0) as? VideoItem
+                        if (nextVideo != null) {
+                            switchVideo(nextVideo)
+                            return true
+                        }
                     }
                 }
-                return super.onKeyDown(keyCode, event)
+                KeyEvent.KEYCODE_DPAD_UP -> {
+                    hideUpNextPanel()
+                    return true
+                }
+                KeyEvent.KEYCODE_BACK -> {
+                    onBackPressed()
+                    return true
+                }
             }
+            return super.onKeyDown(keyCode, event)
+        }
 
+        if (isUsingWebViewFallback && ::webViewPlayer.isInitialized && webViewPlayer.visibility == View.VISIBLE) {
             when (keyCode) {
                 KeyEvent.KEYCODE_DPAD_LEFT,
                 KeyEvent.KEYCODE_MEDIA_REWIND -> {
@@ -983,18 +1076,6 @@ class PlaybackActivity : FragmentActivity() {
         }
 
         val p = player ?: return super.onKeyDown(keyCode, event)
-
-        // Up Next パネル表示中のキー処理
-        if (upNextContainer.visibility == View.VISIBLE) {
-            when (keyCode) {
-                KeyEvent.KEYCODE_BACK,
-                KeyEvent.KEYCODE_DPAD_UP -> {
-                    hideUpNextPanel()
-                    return true
-                }
-            }
-            return super.onKeyDown(keyCode, event)
-        }
 
         // 早送り長押しで倍速切り替え
         if (keyCode == KeyEvent.KEYCODE_MEDIA_FAST_FORWARD && event?.isLongPress == true) {
@@ -1111,8 +1192,13 @@ class PlaybackActivity : FragmentActivity() {
     @Suppress("DEPRECATION")
     override fun onBackPressed() {
         if (upNextContainer.visibility == View.VISIBLE) {
-            hideUpNextPanel()
-            return
+            if (isPlaybackEnded) {
+                cancelAutoplay()
+                // 動画終了時のBACKは画面を閉じて戻る
+            } else {
+                hideUpNextPanel()
+                return
+            }
         }
         if (isTaskRoot) {
             startActivity(Intent(this, com.firetube.tv.ui.main.MainActivity::class.java))
@@ -1182,8 +1268,14 @@ class PlaybackActivity : FragmentActivity() {
         }
     }
 
+    override fun onPause() {
+        super.onPause()
+        cancelAutoplay()
+    }
+
     override fun onStop() {
         super.onStop()
+        cancelAutoplay()
         if (isUsingWebViewFallback && ::webViewPlayer.isInitialized) {
             webViewPlayer.evaluateJavascript("if (player && player.pauseVideo) { player.pauseVideo(); }", null)
         }
@@ -1203,6 +1295,7 @@ class PlaybackActivity : FragmentActivity() {
     }
 
     override fun onDestroy() {
+        cancelAutoplay()
         loadStreamJob?.cancel()
         upNextJob?.cancel()
         sponsorJob?.cancel()

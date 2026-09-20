@@ -33,6 +33,7 @@ class AppPreferences private constructor(context: Context) {
         const val KEY_SHOW_RYD = "pref_show_ryd"
         const val KEY_PREFER_AVC = "pref_prefer_avc"
         const val KEY_PERFORMANCE_PROFILE = "pref_performance_profile"
+        const val KEY_AUTOPLAY_NEXT = "pref_autoplay_next"
 
         const val PROFILE_AUTO = "AUTO"
         const val PROFILE_HIGH = "HIGH"
@@ -90,5 +91,9 @@ class AppPreferences private constructor(context: Context) {
     var performanceProfile: String
         get() = prefs.getString(KEY_PERFORMANCE_PROFILE, PROFILE_AUTO) ?: PROFILE_AUTO
         set(value) = prefs.edit().putString(KEY_PERFORMANCE_PROFILE, value).apply()
+
+    var autoplayNext: Boolean
+        get() = prefs.getBoolean(KEY_AUTOPLAY_NEXT, true)
+        set(value) = prefs.edit().putBoolean(KEY_AUTOPLAY_NEXT, value).apply()
 }
 

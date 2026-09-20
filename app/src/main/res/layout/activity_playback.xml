@@ -175,15 +175,61 @@
         android:paddingBottom="16dp"
         android:visibility="gone">
 
-        <TextView
-            android:id="@+id/text_up_next_title"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            android:text="@string/up_next"
-            android:textColor="@color/text_primary"
-            android:textSize="18sp"
-            android:textStyle="bold" />
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
+
+            <TextView
+                android:id="@+id/text_up_next_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/up_next"
+                android:textColor="@color/text_primary"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <!-- Autoplay Countdown HUD -->
+            <LinearLayout
+                android:id="@+id/autoplay_container"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="24dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <ProgressBar
+                    android:id="@+id/autoplay_progress"
+                    style="?android:attr/progressBarStyleHorizontal"
+                    android:layout_width="120dp"
+                    android:layout_height="8dp"
+                    android:max="50"
+                    android:progress="50"
+                    android:progressTint="@color/accent_focus"
+                    android:progressBackgroundTint="#44FFFFFF" />
+
+                <TextView
+                    android:id="@+id/autoplay_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:textColor="@color/accent_focus"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/autoplay_hint"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:textColor="#FFAAAAAA"
+                    android:textSize="12sp"
+                    android:text="[決定] 今すぐ再生  [戻る / ↑] キャンセル" />
+            </LinearLayout>
+        </LinearLayout>
 
         <androidx.leanback.widget.HorizontalGridView
             android:id="@+id/up_next_grid"

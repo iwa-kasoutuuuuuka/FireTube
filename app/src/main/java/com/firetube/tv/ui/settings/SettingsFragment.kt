@@ -27,6 +27,7 @@ class SettingsFragment : GuidedStepSupportFragment() {
         private const val ACTION_PREFER_AVC = 10L
         private const val ACTION_PERFORMANCE_PROFILE = 11L
         private const val ACTION_DEVICE_INFO = 12L
+        private const val ACTION_AUTOPLAY_NEXT = 13L
 
         private val QUALITY_OPTIONS = listOf("720p", "1080p", "4K (2160p)", "480p")
         private val SPEED_OPTIONS = listOf(1.0f, 1.25f, 1.5f, 2.0f)
@@ -172,7 +173,18 @@ class SettingsFragment : GuidedStepSupportFragment() {
                 .build()
         )
 
-        // 12. 端末スペック情報 (診断)
+        // 12. 次の動画を自動再生 (Autoplay Next)
+        actions.add(
+            GuidedAction.Builder(requireContext())
+                .id(ACTION_AUTOPLAY_NEXT)
+                .title(getString(R.string.pref_autoplay_next))
+                .description(if (pref.autoplayNext) "有効 (5秒後に自動再生)" else "無効 (手動選択)")
+                .checkSetId(GuidedAction.CHECKBOX_CHECK_SET_ID)
+                .checked(pref.autoplayNext)
+                .build()
+        )
+
+        // 13. 端末スペック情報 (診断)
         val deviceSummary = com.firetube.tv.util.DeviceProfileManager.getDeviceSummary(requireContext())
         actions.add(
             GuidedAction.Builder(requireContext())
@@ -292,6 +304,15 @@ class SettingsFragment : GuidedStepSupportFragment() {
                 }
 
                 Toast.makeText(requireContext(), "パフォーマンス: $newDesc", Toast.LENGTH_SHORT).show()
+            }
+
+            ACTION_AUTOPLAY_NEXT -> {
+                val newValue = !pref.autoplayNext
+                pref.autoplayNext = newValue
+                action.isChecked = newValue
+                action.description = if (newValue) "有効 (5秒後に自動再生)" else "無効 (手動選択)"
+                notifyActionChanged(findActionPositionById(ACTION_AUTOPLAY_NEXT))
+                Toast.makeText(requireContext(), if (newValue) "次の動画の自動再生を有効にしました" else "次の動画の自動再生を無効にしました", Toast.LENGTH_SHORT).show()
             }
         }
     }

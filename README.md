@@ -11,7 +11,7 @@
 [![License](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![GMS Free](https://img.shields.io/badge/Google%20Play%20Services-0%25%20%28Independent%29-green)](#)
 
-[📥 **最新の APK をダウンロード (FireTube-v1.4.6.apk)**](https://github.com/iwa-kasoutuuuuuka/FireTube/raw/main/FireTube-v1.4.6.apk) / [リポジトリ内ファイル](FireTube-v1.4.6.apk) / [GitHub Releases](https://github.com/iwa-kasoutuuuuuka/FireTube/releases)
+[📥 **最新の APK をダウンロード (FireTube-v1.4.7.apk)**](https://github.com/iwa-kasoutuuuuuka/FireTube/raw/main/FireTube-v1.4.7.apk) / [リポジトリ内ファイル](FireTube-v1.4.7.apk) / [GitHub Releases](https://github.com/iwa-kasoutuuuuuka/FireTube/releases)
 
 </div>
 
@@ -48,6 +48,7 @@ WebView（ブラウザベース）を1%も使用せず、**AndroidX Leanback** �
 
 | 機能 | 内容・技術仕様 |
 | :--- | :--- |
+| **自動次の動画再生 (Autoplay Next Engine)** | 動画再生終了時（ExoPlayer `STATE_ENDED` / WebView IFrame `state 0`）、Up Next カルーセル内に 5秒の滑らかなカウントダウン進行バーと残り秒数をリアルタイム表示。何もしなければ自動で次の動画（Up Next 1本目）へシームレス遷移。リモコン「決定」で即時再生、「戻る/上キー」でキャンセル、左右キーで手動選曲した瞬間にカウントダウンを自動キャンセル。設定画面からいつでも ON/OFF 切り替え可能！ |
 | **キッズ向け高速化＆専用行 (Kids Pre-warming Engine)** | ホーム画面直下に「👶 キッズ」専用行を新設。アンパンマン、しまじろう、Baby Shark等の定番人気動画を 0ms 即時表示。さらにアプリ起動後にバックグラウンドでストリーム情報を非同期先読み（Pre-warming）し、決定キー押下時の抽出待機時間 **0ms（完全即時再生）** を実現！ |
 | **公式アニメ・長編動画の完走保証＆自動復旧 (Zero-Stall Engine)** | アンパンマンやしまじろう等の公式アニメ長編で発生していた「約50秒でのバッファ枯渇フリーズ（YouTube CDN PoToken 403制限）」を完全解決。`IOS_KIDS` Apple HLS を最優先化して全編完走を保証すると共に、万が一の制限時も画面上部に案内バナーを表示して完走保証動画へシームレス自動切替！ |
 | **シームレス連続再生の完全最適化 (Continuous Engine)** | 1本目の再生後、ホーム画面・検索画面・関連動画（Up Next）等から2本目以降を連続再生する際の停止・スピナー固まりを完全根絶。`PlaybackActivity` ライフサイクル最適化、SponsorBlock 誤爆スキップ防止、ジョブ競合キャンセル、ExoPlayer クリーンリセットを徹底。 |
@@ -156,7 +157,7 @@ FireTube v1.4.0 では、**Fire TV Stick 4K Max** の高性能ハードウェア
 ### 1. APK の直接ダウンロード
 リポジトリ直下の APK またはリリース一覧ページより最新の APK ファイルをダウンロードしてください。
 
-- **[📥 FireTube-v1.4.5.apk (リポジトリ直下)](FireTube-v1.4.5.apk)**
+- **[📥 FireTube-v1.4.7.apk (リポジトリ直下)](FireTube-v1.4.7.apk)**
 - **[GitHub Releases ページ](https://github.com/iwa-kasoutuuuuuka/FireTube/releases)**
 
 ### 2. Fire TV Stick へのインストール手順
@@ -406,12 +407,16 @@ Fire TV 付属の Alexa 音声認識リモコン（物理キー）のみで全�
 [リモコンキー]          [FireTube内アクション]
 ----------------------------------------------------------------------
 D-Pad (上下左右)    :  動画カード・カテゴリ行のフォーカス移動（拡大・ネオンゴールド枠線）
+                       ※自動再生カウントダウン中に左右移動するとカウントダウンを自動キャンセル
 決定 (Center/OK)    :  動画選択・再生 / 再生中の一時停止トグル
-戻る (Back)         :  前の画面に戻る / 関連動画カルーセルを閉じる
+                       ※自動再生カウントダウン中は「今すぐ即時再生」
+戻る (Back)         :  前の画面に戻る / 関連動画カルーセルを閉じる / 自動再生カウントダウンのキャンセル
+上キー (DPAD_UP)    :  再生中に「動画情報 & 低評価(RYD)」HUD表示 / 関連動画カルーセルを閉じる
+下キー (DPAD_DOWN)  :  再生中に「関連動画（Up Next）」カルーセル表示
 再生 / 一時停止     :  再生・一時停止の即時切り替え
 早送り (FF)         :  短押し: +10秒シーク / 長押し: 再生速度切り替え (1.0x → 1.25x → 1.5x → 2.0x)
 巻き戻し (RW)       :  短押し: -10秒シーク / 長押し: 再生速度リセット (1.0x)
-下キー (DPAD_DOWN)  :  再生中に「関連動画（Up Next）」カルーセル表示
+メニュー (MENU)     :  再生中のチャンネル登録 / 解除のワンタッチ切り替え
 ```
 
 ---
@@ -436,6 +441,23 @@ PC 上の Android Studio エミュレーターで、Fire TV Stick 実機環境�
 ---
 
 ## 📝 更新履歴 (Changelog)
+
+### v1.4.7 (2026-09-20)
+- **自動次の動画再生カウントダウン (Autoplay Next Engine) の新規実装**:
+  - **動画終了時の自動カウントダウン**:
+    - ExoPlayer 通常再生（`STATE_ENDED`）および長編アニメ等の WebView フォールバック（IFrame API `state 0`）の動画終了を完全自動検知。
+    - 関連動画（Up Next）パネルが表示され、タイトル横の広大な空き領域に 120dp × 8dp のゴールド進行バーと「次の動画を自動再生 (5秒)」テキストが滑らかにカウントダウン開始（50分割・100ms周期の精密タイマー）。
+    - ユーザーが何もしなければ 5秒後に 1本目の次の動画へ完全自動＆シームレスに遷移。
+  - **スマートかつ直感的な TV リモコン操作**:
+    - **決定キー (CENTER / ENTER)**: カウントダウンを待たずに「今すぐ即時再生」。
+    - **戻るキー (BACK)**: 自動再生を直ちにキャンセルし、再生画面を閉じて前画面へ戻る。
+    - **D-Pad 左右キー (手動選曲)**: ユーザーが手動でカルーセル内の 2本目以降のカードにカーソルを移動した瞬間に、カウントダウンを即座に自動キャンセル。ユーザーの自由なブラウジングを一切邪魔しない安心設計。
+    - **再生中（途中）の手動表示**: 動画再生中に下キーを押して Up Next カルーセルを表示した場合はカウントダウンを行わず、静的な動画一覧として利用可能。
+  - **設定画面 (Leanback Settings) による完全制御**:
+    - 設定メニューに「**次の動画を自動再生**」スイッチ（デフォルト: ON）を追加。
+    - チェックボックスでいつでも自由に機能を無効化可能。設定変更時は画面右下にトーストで即時通知。
+  - **ライフサイクルセーフ & OOM ゼロ設計**:
+    - アクティビティの一時停止（`onPause`）、停止（`onStop`）、破棄（`onDestroy`）、および新動画セッション開始時に自動再生 Coroutine Job を確実に破棄し、バックグラウンドでの誤動作やメモリリークを完全防止。
 
 ### v1.4.6 (2026-09-20)
 - **キッズ向け高速化＆専用行実装 (Kids Fast-Launch & Pre-warming Engine)**:

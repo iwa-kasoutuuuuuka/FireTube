@@ -54,4 +54,6 @@
     <string name="no_subscriptions_desc">チャンネル詳細画面からお気に入りに登録できます</string>
     <string name="unsubscribe">登録解除</string>
     <string name="switching_to_compatible_mode">高画質完走モードに切り替えました</string>
+    <string name="pref_autoplay_next">次の動画を自動再生</string>
+    <string name="pref_autoplay_next_desc">動画終了時にカウントダウンして次の動画を自動再生</string>
 </resources>
