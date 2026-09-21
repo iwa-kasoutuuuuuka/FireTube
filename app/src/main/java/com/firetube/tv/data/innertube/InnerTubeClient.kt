@@ -259,7 +259,7 @@ object InnerTubeClient {
     }
 
     /**
-     * 再帰的に JSON 内の videoRenderer を探索して VideoItem にマッピング
+     * 再帰的に JSON 内の videoRenderer および lockupViewModel を探索して VideoItem にマッピング
      */
     private fun parseVideoRenderers(root: JsonObject): List<VideoItem> {
         val result = mutableListOf<VideoItem>()
@@ -268,13 +268,19 @@ object InnerTubeClient {
     }
 
     private fun findVideoRenderersRecursive(element: JsonObject, result: MutableList<VideoItem>, depth: Int = 0) {
-        if (depth > 15) return
+        if (depth > 32) return
         for (entry in element.entrySet()) {
             val key = entry.key
             val value = entry.value
             if ((key == "videoRenderer" || key == "compactVideoRenderer" || key == "gridVideoRenderer") && value.isJsonObject) {
                 parseSingleRenderer(value.asJsonObject)?.let { item ->
-                    if (result.none { it.id == item.id }) {
+                    if (item.isPlayableAndValid && result.none { it.id == item.id }) {
+                        result.add(item)
+                    }
+                }
+            } else if (key == "lockupViewModel" && value.isJsonObject) {
+                parseLockupViewModel(value.asJsonObject)?.let { item ->
+                    if (item.isPlayableAndValid && result.none { it.id == item.id }) {
                         result.add(item)
                     }
                 }
@@ -293,30 +299,64 @@ object InnerTubeClient {
     private fun parseSingleRenderer(obj: JsonObject): VideoItem? {
         try {
             val videoId = obj.get("videoId")?.asString ?: return null
+            if (videoId.length < 5) return null
+
+            // 再生不可・非公開フラグのチェック
+            if (obj.has("isPlayable") && !obj.get("isPlayable").asBoolean) return null
+            if (obj.has("unplayableText")) return null
+
             val titleObj = obj.getAsJsonObject("title")
-            val title = titleObj?.getAsJsonArray("runs")?.get(0)?.asJsonObject?.get("text")?.asString
+            val title = titleObj?.getAsJsonArray("runs")?.let { runsArray ->
+                val sb = StringBuilder()
+                for (r in runsArray) {
+                    if (r.isJsonObject) {
+                        sb.append(r.asJsonObject.get("text")?.asString ?: "")
+                    }
+                }
+                sb.toString().trim()
+            }?.ifEmpty { null }
                 ?: titleObj?.get("simpleText")?.asString
                 ?: "No title"
 
             val ownerObj = obj.getAsJsonObject("ownerText")
                 ?: obj.getAsJsonObject("shortBylineText")
                 ?: obj.getAsJsonObject("longBylineText")
-            val firstRun = ownerObj?.getAsJsonArray("runs")?.get(0)?.asJsonObject
-            val uploaderName = firstRun?.get("text")?.asString ?: "Channel"
+            val ownerRuns = ownerObj?.getAsJsonArray("runs")
+            val uploaderName = ownerRuns?.let { runsArray ->
+                val sb = StringBuilder()
+                for (r in runsArray) {
+                    if (r.isJsonObject) {
+                        sb.append(r.asJsonObject.get("text")?.asString ?: "")
+                    }
+                }
+                sb.toString().trim()
+            }?.ifEmpty { null }
+                ?: ownerObj?.get("simpleText")?.asString
+                ?: "Channel"
 
+            val firstRun = ownerRuns?.get(0)?.asJsonObject
             val browseEndpoint = firstRun?.getAsJsonObject("navigationEndpoint")?.getAsJsonObject("browseEndpoint")
             val uploaderUrl = browseEndpoint?.get("canonicalBaseUrl")?.asString
                 ?: browseEndpoint?.get("browseId")?.asString
 
             val thumbnails = obj.getAsJsonObject("thumbnail")?.getAsJsonArray("thumbnails")
-            val thumbUrl = thumbnails?.lastOrNull()?.asJsonObject?.get("url")?.asString ?: ""
+            val thumbUrl = thumbnails?.lastOrNull()?.asJsonObject?.get("url")?.asString
+                ?: "https://i.ytimg.com/vi/$videoId/hqdefault.jpg"
 
             val lengthObj = obj.getAsJsonObject("lengthText")
             val lengthText = lengthObj?.get("simpleText")?.asString
-                ?: lengthObj?.getAsJsonArray("runs")?.get(0)?.asJsonObject?.get("text")?.asString
+                ?: lengthObj?.getAsJsonArray("runs")?.let { runsArray ->
+                    val sb = StringBuilder()
+                    for (r in runsArray) {
+                        if (r.isJsonObject) {
+                            sb.append(r.asJsonObject.get("text")?.asString ?: "")
+                        }
+                    }
+                    sb.toString().trim()
+                }
             val durationSec = parseDurationToSeconds(lengthText)
 
-            return VideoItem(
+            val item = VideoItem(
                 id = videoId,
                 title = title,
                 uploaderName = uploaderName,
@@ -324,7 +364,99 @@ object InnerTubeClient {
                 thumbnailUrl = thumbUrl,
                 durationSeconds = durationSec
             )
+            return if (item.isPlayableAndValid) item else null
         } catch (e: Exception) {
+            return null
+        }
+    }
+
+    private fun parseLockupViewModel(obj: JsonObject): VideoItem? {
+        try {
+            val contentType = obj.get("contentType")?.asString
+            if (contentType != null && contentType != "LOCKUP_CONTENT_TYPE_VIDEO") {
+                return null
+            }
+
+            var videoId = obj.get("contentId")?.asString
+            if (videoId.isNullOrEmpty()) {
+                val onTap = obj.getAsJsonObject("rendererContext")
+                    ?.getAsJsonObject("commandContext")
+                    ?.getAsJsonObject("onTap")
+                videoId = onTap?.getAsJsonObject("innertubeCommand")
+                    ?.getAsJsonObject("watchEndpoint")
+                    ?.get("videoId")?.asString
+            }
+            if (videoId.isNullOrEmpty() || videoId.length < 5) return null
+
+            val metadata = obj.getAsJsonObject("metadata")?.getAsJsonObject("lockupMetadataViewModel")
+            val title = metadata?.getAsJsonObject("title")?.get("content")?.asString ?: "No title"
+
+            var uploader = "Channel"
+            var uploaderUrl: String? = null
+            try {
+                val rows = metadata?.getAsJsonObject("metadata")
+                    ?.getAsJsonObject("contentMetadataViewModel")
+                    ?.getAsJsonArray("metadataRows")
+                if (rows != null && rows.size() > 0) {
+                    val parts = rows.get(0).asJsonObject.getAsJsonArray("metadataParts")
+                    if (parts != null && parts.size() > 0) {
+                        val textObj = parts.get(0).asJsonObject.getAsJsonObject("text")
+                        uploader = textObj?.get("content")?.asString ?: "Channel"
+                        val commandRuns = textObj?.getAsJsonArray("commandRuns")
+                        if (commandRuns != null && commandRuns.size() > 0) {
+                            val bEndpoint = commandRuns.get(0).asJsonObject
+                                .getAsJsonObject("onTap")
+                                ?.getAsJsonObject("innertubeCommand")
+                                ?.getAsJsonObject("browseEndpoint")
+                            uploaderUrl = bEndpoint?.get("canonicalBaseUrl")?.asString
+                                ?: bEndpoint?.get("browseId")?.asString
+                        }
+                    }
+                }
+            } catch (_: Exception) {}
+
+            var thumbUrl = "https://i.ytimg.com/vi/$videoId/hqdefault.jpg"
+            try {
+                val sources = obj.getAsJsonObject("contentImage")
+                    ?.getAsJsonObject("thumbnailViewModel")
+                    ?.getAsJsonObject("image")
+                    ?.getAsJsonArray("sources")
+                if (sources != null && sources.size() > 0) {
+                    thumbUrl = sources.get(sources.size() - 1).asJsonObject.get("url")?.asString ?: thumbUrl
+                }
+            } catch (_: Exception) {}
+
+            var durationSec = 0L
+            try {
+                val overlays = obj.getAsJsonObject("contentImage")
+                    ?.getAsJsonObject("thumbnailViewModel")
+                    ?.getAsJsonArray("overlays")
+                if (overlays != null) {
+                    for (ov in overlays) {
+                        val badges = ov.asJsonObject.getAsJsonObject("thumbnailBottomOverlayViewModel")?.getAsJsonArray("badges")
+                        if (badges != null) {
+                            for (b in badges) {
+                                val t = b.asJsonObject.getAsJsonObject("thumbnailBadgeViewModel")?.get("text")?.asString
+                                if (t != null && t.contains(":")) {
+                                    durationSec = parseDurationToSeconds(t)
+                                    break
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (_: Exception) {}
+
+            val item = VideoItem(
+                id = videoId,
+                title = title,
+                uploaderName = uploader,
+                uploaderUrl = uploaderUrl,
+                thumbnailUrl = thumbUrl,
+                durationSeconds = durationSec
+            )
+            return if (item.isPlayableAndValid) item else null
+        } catch (_: Exception) {
             return null
         }
     }

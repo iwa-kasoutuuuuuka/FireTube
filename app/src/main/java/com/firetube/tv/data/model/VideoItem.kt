@@ -28,4 +28,31 @@ data class VideoItem(
                 String.format("%02d:%02d", minutes, seconds)
             }
         }
+
+    val isPlayableAndValid: Boolean
+        get() {
+            if (id.isBlank()) return false
+            // 特殊なUIカード（設定、キャスト、再試行、未登録など）は許可
+            if (id.startsWith("__")) return true
+            val trimmedTitle = title.trim()
+            if (trimmedTitle.isEmpty() || trimmedTitle.equals("No title", ignoreCase = true) || trimmedTitle.equals("Unknown Title", ignoreCase = true)) {
+                return false
+            }
+            val lower = trimmedTitle.lowercase()
+            val privatePatterns = listOf(
+                "非公開動画",
+                "非公開の動画",
+                "[private video]",
+                "private video",
+                "[deleted video]",
+                "deleted video",
+                "削除された動画"
+            )
+            for (pattern in privatePatterns) {
+                if (lower.contains(pattern)) return false
+            }
+            if (lower == "private" || lower == "非公開") return false
+            return true
+        }
 }
+
