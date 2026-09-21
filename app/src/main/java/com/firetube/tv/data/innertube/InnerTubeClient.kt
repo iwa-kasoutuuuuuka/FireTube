@@ -551,8 +551,27 @@ object InnerTubeClient {
         val playabilityStatus = json.getAsJsonObject("playabilityStatus")
         val status = playabilityStatus?.get("status")?.asString
         if (status != "OK") {
-            val reason = playabilityStatus?.get("reason")?.asString ?: "Status: $status"
-            return Result.failure(Exception("InnerTube unplayable: $status - $reason"))
+            val reason = playabilityStatus?.get("reason")?.asString
+            val subreason = playabilityStatus?.getAsJsonObject("errorScreen")
+                ?.getAsJsonObject("playerErrorMessageRenderer")
+                ?.getAsJsonObject("subreason")
+                ?.get("simpleText")?.asString
+            val errorRuns = playabilityStatus?.getAsJsonObject("errorScreen")
+                ?.getAsJsonObject("playerErrorMessageRenderer")
+                ?.getAsJsonObject("reason")
+                ?.getAsJsonArray("runs")
+                ?.mapNotNull { it.asJsonObject?.get("text")?.asString }
+                ?.joinToString("")
+
+            val detailedReason = when {
+                !subreason.isNullOrBlank() -> subreason
+                !errorRuns.isNullOrBlank() -> errorRuns
+                !reason.isNullOrBlank() -> reason
+                status == "LIVE_STREAM_OFFLINE" -> "プレミア公開またはライブ配信前です"
+                else -> "動画を再生できません (ステータス: $status)"
+            }
+            Log.w(TAG, "Video $videoId is unplayable: status=$status, reason=$detailedReason")
+            return Result.failure(Exception(detailedReason))
         }
 
         val streamingData = json.getAsJsonObject("streamingData")

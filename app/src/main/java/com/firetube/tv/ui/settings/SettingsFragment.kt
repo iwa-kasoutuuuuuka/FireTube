@@ -5,8 +5,13 @@ import android.widget.Toast
 import androidx.leanback.app.GuidedStepSupportFragment
 import androidx.leanback.widget.GuidanceStylist
 import androidx.leanback.widget.GuidedAction
+import androidx.lifecycle.lifecycleScope
+import com.firetube.tv.FireTubeApp
 import com.firetube.tv.R
 import com.firetube.tv.util.AppPreferences
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Fire TV 向け設定画面 (Leanback GuidedStepSupportFragment)
@@ -28,6 +33,7 @@ class SettingsFragment : GuidedStepSupportFragment() {
         private const val ACTION_PERFORMANCE_PROFILE = 11L
         private const val ACTION_DEVICE_INFO = 12L
         private const val ACTION_AUTOPLAY_NEXT = 13L
+        private const val ACTION_CLEAR_HISTORY = 14L
 
         private val QUALITY_OPTIONS = listOf("720p", "1080p", "4K (2160p)", "480p")
         private val SPEED_OPTIONS = listOf(1.0f, 1.25f, 1.5f, 2.0f)
@@ -184,7 +190,16 @@ class SettingsFragment : GuidedStepSupportFragment() {
                 .build()
         )
 
-        // 13. 端末スペック情報 (診断)
+        // 13. 視聴履歴の全消去
+        actions.add(
+            GuidedAction.Builder(requireContext())
+                .id(ACTION_CLEAR_HISTORY)
+                .title("視聴履歴を全消去")
+                .description("保存されているすべての再生履歴を削除します")
+                .build()
+        )
+
+        // 14. 端末スペック情報 (診断)
         val deviceSummary = com.firetube.tv.util.DeviceProfileManager.getDeviceSummary(requireContext())
         actions.add(
             GuidedAction.Builder(requireContext())
@@ -313,6 +328,16 @@ class SettingsFragment : GuidedStepSupportFragment() {
                 action.description = if (newValue) "有効 (5秒後に自動再生)" else "無効 (手動選択)"
                 notifyActionChanged(findActionPositionById(ACTION_AUTOPLAY_NEXT))
                 Toast.makeText(requireContext(), if (newValue) "次の動画の自動再生を有効にしました" else "次の動画の自動再生を無効にしました", Toast.LENGTH_SHORT).show()
+            }
+
+            ACTION_CLEAR_HISTORY -> {
+                val app = requireContext().applicationContext as FireTubeApp
+                lifecycleScope.launch(Dispatchers.IO) {
+                    app.database.videoDao().clearAllHistory()
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(requireContext(), "視聴履歴をすべて消去しました", Toast.LENGTH_SHORT).show()
+                    }
+                }
             }
         }
     }

@@ -698,15 +698,32 @@ class PlaybackActivity : FragmentActivity() {
                 startPlayback(streamInfo)
             }.onFailure { e ->
                 Log.e(TAG, "Stream extraction error for $currentTargetId: ${e.message}", e)
+                val errMsg = e.message ?: ""
+                val isUpcomingOrOffline = errMsg.contains("プレミア") ||
+                        errMsg.contains("ライブ配信") ||
+                        errMsg.contains("開始予定") ||
+                        errMsg.contains("OFFLINE") ||
+                        errMsg.contains("UNPLAYABLE")
+
+                if (isUpcomingOrOffline) {
+                    val noticeText = if (errMsg.contains("プレミア") || errMsg.contains("開始予定") || errMsg.contains("OFFLINE")) {
+                        errMsg
+                    } else {
+                        "この動画は現在プレミア公開前または配信準備中です"
+                    }
+                    showStatusNotification(noticeText)
+                    Toast.makeText(this@PlaybackActivity, noticeText, Toast.LENGTH_LONG).show()
+                }
+
                 if (!isUsingWebViewFallback && !isFinishing && !isDestroyed) {
                     Log.w(TAG, "Stream extraction failed for $currentTargetId. Auto-recovering via WebView IFrame fallback.")
                     switchToIframeFallback(0L)
                 } else {
                     loadingView.visibility = View.GONE
-                    val errorMsg = if (e.message?.contains("network", ignoreCase = true) == true) {
-                        getString(R.string.network_error_msg)
-                    } else {
-                        getString(R.string.error_loading)
+                    val errorMsg = when {
+                        isUpcomingOrOffline -> errMsg
+                        errMsg.contains("network", ignoreCase = true) -> getString(R.string.network_error_msg)
+                        else -> getString(R.string.error_loading)
                     }
                     Toast.makeText(this@PlaybackActivity, errorMsg, Toast.LENGTH_SHORT).show()
                 }
