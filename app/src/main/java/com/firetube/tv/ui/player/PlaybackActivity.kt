@@ -178,6 +178,7 @@ class PlaybackActivity : FragmentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         val newVideoId = intent?.getStringExtra(EXTRA_VIDEO_ID) ?: return
+        Log.i(TAG, "onNewIntent received: videoId=$newVideoId")
         if (newVideoId.isNotEmpty()) {
             val newTitle = intent.getStringExtra(EXTRA_VIDEO_TITLE) ?: ""
             val newUploader = intent.getStringExtra(EXTRA_UPLOADER_NAME) ?: ""
@@ -526,13 +527,12 @@ class PlaybackActivity : FragmentActivity() {
         }
 
         // YouTube CDN からの 403 Forbidden（1MB制限）を即時キャッチしてフォールバック
-        GoogleVideoDataSource.onStreamForbiddenListener = { _, pos ->
+        GoogleVideoDataSource.onStreamForbiddenListener = { _, _ ->
             runOnUiThread {
                 if (!isUsingWebViewFallback && !isFinishing && !isDestroyed) {
-                    val currentPos = player?.currentPosition ?: 0L
-                    val resumePos = if (currentPos > 0) currentPos else pos
-                    Log.w(TAG, "GoogleVideoDataSource 403 Forbidden received! Seamlessly switching to WebView fallback at pos=${resumePos}ms.")
-                    switchToIframeFallback(resumePos)
+                    val currentPos = (player?.currentPosition ?: 0L).coerceAtLeast(0L)
+                    Log.w(TAG, "GoogleVideoDataSource 403 Forbidden received! Seamlessly switching to WebView fallback at pos=${currentPos}ms.")
+                    switchToIframeFallback(currentPos)
                 }
             }
         }
@@ -698,13 +698,18 @@ class PlaybackActivity : FragmentActivity() {
                 startPlayback(streamInfo)
             }.onFailure { e ->
                 Log.e(TAG, "Stream extraction error for $currentTargetId: ${e.message}", e)
-                loadingView.visibility = View.GONE
-                val errorMsg = if (e.message?.contains("network", ignoreCase = true) == true) {
-                    getString(R.string.network_error_msg)
+                if (!isUsingWebViewFallback && !isFinishing && !isDestroyed) {
+                    Log.w(TAG, "Stream extraction failed for $currentTargetId. Auto-recovering via WebView IFrame fallback.")
+                    switchToIframeFallback(0L)
                 } else {
-                    getString(R.string.error_loading)
+                    loadingView.visibility = View.GONE
+                    val errorMsg = if (e.message?.contains("network", ignoreCase = true) == true) {
+                        getString(R.string.network_error_msg)
+                    } else {
+                        getString(R.string.error_loading)
+                    }
+                    Toast.makeText(this@PlaybackActivity, errorMsg, Toast.LENGTH_SHORT).show()
                 }
-                Toast.makeText(this@PlaybackActivity, errorMsg, Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -757,9 +762,13 @@ class PlaybackActivity : FragmentActivity() {
             val mediaItem = MediaItem.fromUri(bestVideo.url)
             executePlayback(mediaItem = mediaItem, durationMs = durationMs)
         } else {
-            Log.e(TAG, "No playable stream found for video: $videoId")
-            loadingView.visibility = View.GONE
-            Toast.makeText(this, R.string.error_loading, Toast.LENGTH_SHORT).show()
+            Log.e(TAG, "No playable stream found for video: $videoId. Auto-recovering via WebView IFrame fallback.")
+            if (!isUsingWebViewFallback && !isFinishing && !isDestroyed) {
+                switchToIframeFallback(0L)
+            } else {
+                loadingView.visibility = View.GONE
+                Toast.makeText(this, R.string.error_loading, Toast.LENGTH_SHORT).show()
+            }
         }
     }
 

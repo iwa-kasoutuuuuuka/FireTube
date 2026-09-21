@@ -32,6 +32,7 @@ object InnerTubeClient {
     private const val IOS_KIDS_USER_AGENT = "com.google.ios.youtubekids/9.01.0 (iPhone16,2; U; CPU iOS 18_7_2 like Mac OS X; ja_JP)"
     private const val ANDROID_KIDS_USER_AGENT = "com.google.android.apps.youtube.kids/9.01.0 (Linux; U; Android 11)"
     private const val VISIONOS_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 15_7_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15"
+    private const val MWEB_USER_AGENT = "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1"
 
     @Volatile
     private var cachedVisitorData: String? = null
@@ -101,6 +102,20 @@ object InnerTubeClient {
             addProperty("androidSdkVersion", 30)
             addProperty("osName", "Android")
             addProperty("osVersion", "11")
+            addProperty("platform", "MOBILE")
+            addProperty("utcOffsetMinutes", 540)
+        }
+        return JsonObject().apply {
+            add("client", clientObj)
+        }
+    }
+
+    private fun buildMwebContext(): JsonObject {
+        val clientObj = JsonObject().apply {
+            addProperty("hl", "ja")
+            addProperty("gl", "JP")
+            addProperty("clientName", "MWEB")
+            addProperty("clientVersion", "2.20231201.01.00")
             addProperty("platform", "MOBILE")
             addProperty("utcOffsetMinutes", 540)
         }
@@ -363,7 +378,17 @@ object InnerTubeClient {
             }
         }
 
-        // 4. ANDROID_KIDS (Muxed MP4)
+        // 4. MWEB (モバイルWebコンテキスト: 単一Muxed MP4 / アダプティブ)
+        val mwebResult = fetchPlayerStream(videoId, buildMwebContext(), MWEB_USER_AGENT)
+        if (mwebResult.isSuccess) {
+            val data = mwebResult.getOrNull()
+            if (data != null && (data.hlsUrl != null || data.videoStreams.isNotEmpty())) {
+                Log.i(TAG, "Successfully extracted stream via MWEB context for $videoId (${data.videoStreams.size} video, ${data.audioStreams.size} audio)")
+                return@withContext mwebResult
+            }
+        }
+
+        // 5. ANDROID_KIDS (Muxed MP4)
         val androidKidsResult = fetchPlayerStream(videoId, buildAndroidKidsContext(), ANDROID_KIDS_USER_AGENT)
         if (androidKidsResult.isSuccess) {
             val data = androidKidsResult.getOrNull()

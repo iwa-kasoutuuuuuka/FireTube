@@ -318,9 +318,27 @@ object VideoRepository {
                 viewCount = 3500000L
             ),
             VideoItem(
-                id = "iJmFyqH-W24",
-                title = "アニメ「ぼくらの ほしの ミラクル」【しまじろうチャンネル公式】",
+                id = "N402Kl7M1Qg",
+                title = "ぼくらの ほしの ミラクル ～ダンス・バージョン~【しまじろうチャンネル公式】",
                 uploaderName = "しまじろうチャンネル（公式）",
+                uploaderUrl = null,
+                thumbnailUrl = "https://i.ytimg.com/vi/N402Kl7M1Qg/hqdefault.jpg",
+                durationSeconds = 118L,
+                viewCount = 2800000L
+            ),
+            VideoItem(
+                id = "HIkrMVZ9H_Q",
+                title = "【16分アニメ】「はなちゃんバス しゅっぱつ！」ほか のりもの しまじろうのわお！アニメ【公式】",
+                uploaderName = "しまじろうチャンネル（公式）",
+                uploaderUrl = null,
+                thumbnailUrl = "https://i.ytimg.com/vi/HIkrMVZ9H_Q/hqdefault.jpg",
+                durationSeconds = 982L,
+                viewCount = 1500000L
+            ),
+            VideoItem(
+                id = "iJmFyqH-W24",
+                title = "それいけ！アンパンマン「季節のおはなし なつ・あき」【アニメ公式】",
+                uploaderName = "それいけ! アンパンマン【アニメ公式】",
                 uploaderUrl = null,
                 thumbnailUrl = "https://i.ytimg.com/vi/iJmFyqH-W24/hqdefault.jpg",
                 durationSeconds = 917L,

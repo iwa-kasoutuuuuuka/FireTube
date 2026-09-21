@@ -50,6 +50,7 @@
             android:name=".ui.player.PlaybackActivity"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenLayout|screenSize|smallestScreenSize"
             android:exported="false"
+            android:launchMode="singleTop"
             android:screenOrientation="landscape" />
 
         <!-- Search Activity (Supports Alexa Voice Search & Global Search Intents) -->
