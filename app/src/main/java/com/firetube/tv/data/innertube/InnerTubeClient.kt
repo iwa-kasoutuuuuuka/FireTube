@@ -10,6 +10,8 @@ import com.google.gson.Gson
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -142,9 +144,9 @@ object InnerTubeClient {
 
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) return@withContext Result.failure(Exception("HTTP ${response.code}"))
-                val body = response.body?.string() ?: return@withContext Result.failure(Exception("Empty body"))
-
-                val json = gson.fromJson(body, JsonObject::class.java)
+                // ③ charStream() で直接パース: body?.string() より1回の String アロケーションを省略
+                val body = response.body ?: return@withContext Result.failure(Exception("Empty body"))
+                val json = gson.fromJson(body.charStream(), JsonObject::class.java)
                 val items = parseVideoRenderers(json)
                 Log.i(TAG, "InnerTube fetched ${items.size} trending videos successfully.")
                 Result.success(items)
@@ -180,9 +182,8 @@ object InnerTubeClient {
 
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) return@withContext Result.failure(Exception("HTTP ${response.code}"))
-                val body = response.body?.string() ?: return@withContext Result.failure(Exception("Empty body"))
-
-                val json = gson.fromJson(body, JsonObject::class.java)
+                val body = response.body ?: return@withContext Result.failure(Exception("Empty body"))
+                val json = gson.fromJson(body.charStream(), JsonObject::class.java)
                 val items = parseVideoRenderers(json)
                 Log.i(TAG, "InnerTube fetched ${items.size} channel videos for $channelIdOrHandle.")
                 Result.success(items)
@@ -212,9 +213,8 @@ object InnerTubeClient {
 
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) return@withContext Result.failure(Exception("HTTP ${response.code}"))
-                val body = response.body?.string() ?: return@withContext Result.failure(Exception("Empty body"))
-
-                val json = gson.fromJson(body, JsonObject::class.java)
+                val body = response.body ?: return@withContext Result.failure(Exception("Empty body"))
+                val json = gson.fromJson(body.charStream(), JsonObject::class.java)
                 val items = parseVideoRenderers(json)
                 Log.i(TAG, "InnerTube search found ${items.size} videos for '$query'.")
                 Result.success(items)
@@ -244,9 +244,8 @@ object InnerTubeClient {
 
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) return@withContext Result.failure(Exception("HTTP ${response.code}"))
-                val body = response.body?.string() ?: return@withContext Result.failure(Exception("Empty body"))
-
-                val json = gson.fromJson(body, JsonObject::class.java)
+                val body = response.body ?: return@withContext Result.failure(Exception("Empty body"))
+                val json = gson.fromJson(body.charStream(), JsonObject::class.java)
                 val items = parseVideoRenderers(json)
                 Log.i(TAG, "InnerTube fetched ${items.size} Up Next videos for $videoId.")
                 Result.success(items)
@@ -260,36 +259,43 @@ object InnerTubeClient {
 
     /**
      * 再帰的に JSON 内の videoRenderer および lockupViewModel を探索して VideoItem にマッピング
+     * ④ seenIds HashSet で O(1) 重複チェック（旧 result.none{} は O(n²)）
      */
     private fun parseVideoRenderers(root: JsonObject): List<VideoItem> {
         val result = mutableListOf<VideoItem>()
-        findVideoRenderersRecursive(root, result)
+        val seenIds = HashSet<String>(64)
+        findVideoRenderersRecursive(root, result, seenIds)
         return result
     }
 
-    private fun findVideoRenderersRecursive(element: JsonObject, result: MutableList<VideoItem>, depth: Int = 0) {
+    private fun findVideoRenderersRecursive(
+        element: JsonObject,
+        result: MutableList<VideoItem>,
+        seenIds: HashSet<String>,
+        depth: Int = 0
+    ) {
         if (depth > 32) return
         for (entry in element.entrySet()) {
             val key = entry.key
             val value = entry.value
             if ((key == "videoRenderer" || key == "compactVideoRenderer" || key == "gridVideoRenderer") && value.isJsonObject) {
                 parseSingleRenderer(value.asJsonObject)?.let { item ->
-                    if (item.isPlayableAndValid && result.none { it.id == item.id }) {
+                    if (item.isPlayableAndValid && seenIds.add(item.id)) {
                         result.add(item)
                     }
                 }
             } else if (key == "lockupViewModel" && value.isJsonObject) {
                 parseLockupViewModel(value.asJsonObject)?.let { item ->
-                    if (item.isPlayableAndValid && result.none { it.id == item.id }) {
+                    if (item.isPlayableAndValid && seenIds.add(item.id)) {
                         result.add(item)
                     }
                 }
             } else if (value.isJsonObject) {
-                findVideoRenderersRecursive(value.asJsonObject, result, depth + 1)
+                findVideoRenderersRecursive(value.asJsonObject, result, seenIds, depth + 1)
             } else if (value.isJsonArray) {
                 for (subElem in value.asJsonArray) {
                     if (subElem.isJsonObject) {
-                        findVideoRenderersRecursive(subElem.asJsonObject, result, depth + 1)
+                        findVideoRenderersRecursive(subElem.asJsonObject, result, seenIds, depth + 1)
                     }
                 }
             }
@@ -473,72 +479,90 @@ object InnerTubeClient {
 
     /**
      * 動画再生ストリーム情報の取得
-     * 1. IOS_KIDS コンテキスト（Made for Kids 動画用 HLS アダプティブマニフェスト最優先）
-     * 2. VISIONOS コンテキスト（Made for Kids 対象外の一般動画用 HLS アダプティブマニフェスト最優先）
-     * 3. IOS_EMBEDDED コンテキスト（音楽PV・公式チャンネル等、VISIONOSでLOGIN_REQUIREDになる動画の救済フォールバック）
-     * 4. ANDROID_KIDS コンテキスト（単一 Muxed MP4 ストリーム取得）
-     * 5. IOS コンテキスト（PoToken不要の DASH フォールバック）
+     * ① 並列コンテキスト Racing: IOS_KIDS と VISIONOS を async で同時発火し最速で返す
+     * 残りの 3〜5 は順次フォールバック
      */
     suspend fun extractStreamInfo(videoId: String): Result<StreamInfoData> = withContext(Dispatchers.IO) {
-        // 1. IOS_KIDS (Made for Kids 動画の HLS 最優先)
-        val kidsResult = fetchPlayerStream(videoId, buildIosKidsContext(), IOS_KIDS_USER_AGENT)
-        if (kidsResult.isSuccess) {
-            val data = kidsResult.getOrNull()
-            if (data != null && (data.hlsUrl != null || data.videoStreams.isNotEmpty())) {
-                Log.i(TAG, "Successfully extracted stream via IOS_KIDS context for $videoId (hls=${data.hlsUrl != null})")
-                return@withContext kidsResult
+        // ① Level-1 Racing: IOS_KIDS（子ども向け HLS）と VISIONOS（一般動画 HLS）を並列実行
+        // 両者の待ち時間 = max(kids, vision) ではなく、先に成功した方を即時採用
+        val raceResult = coroutineScope {
+            val kidsDeferred = async { fetchPlayerStream(videoId, buildIosKidsContext(), IOS_KIDS_USER_AGENT) }
+            val visionDeferred = async { fetchVisionOsStream(videoId) }
+
+            // 両リクエストを同時待機（awaitAll）し、優先度順にチェック
+            val (kidsResult, visionResult) = listOf(kidsDeferred, visionDeferred).let {
+                listOf(it[0].await(), it[1].await())
+            }
+
+            val kidsData = kidsResult.getOrNull()
+            val visionData = visionResult.getOrNull()
+
+            when {
+                kidsResult.isSuccess && kidsData != null && (kidsData.hlsUrl != null || kidsData.videoStreams.isNotEmpty()) -> {
+                    Log.i(TAG, "Racing: IOS_KIDS won for $videoId (hls=${kidsData.hlsUrl != null})")
+                    kidsResult
+                }
+                visionResult.isSuccess && visionData != null && (visionData.hlsUrl != null || visionData.videoStreams.isNotEmpty()) -> {
+                    Log.i(TAG, "Racing: VISIONOS won for $videoId (hls=${visionData.hlsUrl != null})")
+                    visionResult
+                }
+                else -> null
             }
         }
 
-        // 2. VISIONOS (Made for Kids 対象外の一般動画用 HLS 最優先)
-        val visionOsResult = fetchVisionOsStream(videoId)
-        if (visionOsResult.isSuccess) {
-            val data = visionOsResult.getOrNull()
-            if (data != null && (data.hlsUrl != null || data.videoStreams.isNotEmpty())) {
-                Log.i(TAG, "Successfully extracted stream via VISIONOS context for $videoId (hls=${data.hlsUrl != null})")
-                return@withContext visionOsResult
-            }
-        }
+        if (raceResult != null) return@withContext raceResult
 
-        // 3. IOS_EMBEDDED (音楽PV・公式チャンネル等、VISIONOSでLOGIN_REQUIREDになる動画用埋め込みコンテキスト)
+        // Level-2 フォールバック: IOS_EMBEDDED (音楽PV / LOGIN_REQUIRED 救済)
         val iosEmbedResult = fetchPlayerStream(videoId, buildIosContext(), IOS_USER_AGENT, isEmbedded = true)
         if (iosEmbedResult.isSuccess) {
             val data = iosEmbedResult.getOrNull()
             if (data != null && (data.hlsUrl != null || data.videoStreams.isNotEmpty())) {
-                Log.i(TAG, "Successfully extracted stream via IOS_EMBEDDED context for $videoId (${data.videoStreams.size} video, ${data.audioStreams.size} audio)")
+                Log.i(TAG, "Fallback IOS_EMBEDDED succeeded for $videoId")
                 return@withContext iosEmbedResult
             }
         }
 
-        // 4. MWEB (モバイルWebコンテキスト: 単一Muxed MP4 / アダプティブ)
+        // Level-3 フォールバック: MWEB
         val mwebResult = fetchPlayerStream(videoId, buildMwebContext(), MWEB_USER_AGENT)
         if (mwebResult.isSuccess) {
             val data = mwebResult.getOrNull()
             if (data != null && (data.hlsUrl != null || data.videoStreams.isNotEmpty())) {
-                Log.i(TAG, "Successfully extracted stream via MWEB context for $videoId (${data.videoStreams.size} video, ${data.audioStreams.size} audio)")
+                Log.i(TAG, "Fallback MWEB succeeded for $videoId")
                 return@withContext mwebResult
             }
         }
 
-        // 5. ANDROID_KIDS (Muxed MP4)
+        // Level-4 フォールバック: ANDROID_KIDS
         val androidKidsResult = fetchPlayerStream(videoId, buildAndroidKidsContext(), ANDROID_KIDS_USER_AGENT)
         if (androidKidsResult.isSuccess) {
             val data = androidKidsResult.getOrNull()
             if (data != null && (data.hlsUrl != null || data.videoStreams.isNotEmpty())) {
-                Log.i(TAG, "Successfully extracted stream via ANDROID_KIDS context for $videoId")
+                Log.i(TAG, "Fallback ANDROID_KIDS succeeded for $videoId")
                 return@withContext androidKidsResult
             }
         }
 
-        // 5. IOS (標準フォールバック)
+        // Level-5 フォールバック: 標準 IOS
         val iosResult = fetchPlayerStream(videoId, buildIosContext(), IOS_USER_AGENT)
         if (iosResult.isSuccess) {
-            Log.i(TAG, "Extracted stream via standard IOS context for $videoId")
+            Log.i(TAG, "Fallback IOS standard succeeded for $videoId")
             return@withContext iosResult
         }
 
         Log.e(TAG, "All InnerTube player contexts failed for $videoId")
-        kidsResult
+        Result.failure(Exception("All InnerTube contexts failed for $videoId"))
+    }
+
+    /**
+     * ⑧ 起動時バックグラウンドで VisitorData を事前取得する
+     * MainFragment から一度だけ呼び出すことで、初回 VISIONOS ストリーム取得の
+     * 追加 HTTP ラウンドトリップ (150〜400ms) を 0ms に短縮する
+     */
+    suspend fun preFetchVisitorData() = withContext(Dispatchers.IO) {
+        if (cachedVisitorData != null) return@withContext
+        // 汎用的な人気動画 ID を使って VisitorData と signatureTimestamp を事前取得
+        fetchVisitorDataIfNeeded("dQw4w9WgXcQ")
+        Log.i(TAG, "preFetchVisitorData: visitorData=${if (cachedVisitorData != null) "OK" else "not available"}, sts=$cachedSignatureTimestamp")
     }
 
     private fun fetchVisitorDataIfNeeded(videoId: String) {

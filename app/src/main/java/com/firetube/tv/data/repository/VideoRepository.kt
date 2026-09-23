@@ -7,6 +7,7 @@ import com.firetube.tv.data.model.StreamInfoData
 import com.firetube.tv.data.model.VideoItem
 import com.firetube.tv.data.piped.PipedApiClient
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import org.schabi.newpipe.extractor.ServiceList
@@ -399,19 +400,31 @@ object VideoRepository {
     }
 
     /**
-     * キッズ動画・定番動画のストリーム情報を非同期バックグラウンドで先読みキャッシュ（Pre-warming）
-     * 決定キー押下時の抽出待機時間を 0ms に短縮
+     * キッズ動画・定番動画のストリーム情報を並列バックグラウンドで先読みキャッシュ（Pre-warming）
+     * ⑤ 旧: 直列 for ループ (全動画分の時間 = n × 抽出時間)
+     *    新: async/awaitAll 並列実行 (全動画の時間 = max(各抽出時間)) → 最大 7倍高速化
      */
     suspend fun prewarmStreamCache(videoIds: List<String>) = withContext(Dispatchers.IO) {
-        for (vId in videoIds) {
-            if (getCachedStreamInfo(vId) != null) continue
-            try {
-                Log.d(TAG, "Pre-warming stream cache for: $vId")
-                extractStreamInfo(vId)
-            } catch (e: Throwable) {
-                if (e is kotlinx.coroutines.CancellationException) throw e
-                Log.w(TAG, "Pre-warm failed for $vId: ${e.message}")
-            }
+        val toFetch = videoIds.filter { id ->
+            id.isNotEmpty() && !id.startsWith("__") && getCachedStreamInfo(id) == null
+        }
+        if (toFetch.isEmpty()) {
+            Log.d(TAG, "Pre-warm: all ${videoIds.size} entries already cached")
+            return@withContext
+        }
+        Log.d(TAG, "Pre-warm: fetching ${toFetch.size} streams in parallel")
+        kotlinx.coroutines.coroutineScope {
+            toFetch.map { vId ->
+                async {
+                    try {
+                        extractStreamInfo(vId)
+                        Log.d(TAG, "Pre-warm OK: $vId")
+                    } catch (e: Throwable) {
+                        if (e is kotlinx.coroutines.CancellationException) throw e
+                        Log.w(TAG, "Pre-warm failed for $vId: ${e.message}")
+                    }
+                }
+            }.forEach { it.await() }
         }
     }
 }

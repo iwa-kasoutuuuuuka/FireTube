@@ -876,10 +876,11 @@ class PlaybackActivity : FragmentActivity() {
     }
 
     private fun loadUpNextVideos() {
-        // 再生開始直後のWi-Fi帯域とCPUをストリーム取得に集中させるため、関連動画は2.5秒遅延取得
+        // ⑦ 旧: 2500ms 遅延 → 新: 800ms 遅延
+        // 初期ストリーム取得は ~500ms で完了するため、800ms でも帯域競合せず大幅に早く取得可能
         val currentTargetId = videoId
         upNextJob = lifecycleScope.launch {
-            delay(2500)
+            delay(800)
             if (!isActive || videoId != currentTargetId) return@launch
             val result = VideoRepository.getUpNextVideos(currentTargetId)
             if (!isActive || videoId != currentTargetId) return@launch

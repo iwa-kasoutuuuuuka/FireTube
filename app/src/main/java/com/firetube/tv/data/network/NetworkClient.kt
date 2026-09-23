@@ -1,6 +1,7 @@
 package com.firetube.tv.data.network
 
 import com.google.gson.Gson
+import com.firetube.tv.BuildConfig
 import okhttp3.ConnectionPool
 import okhttp3.Dispatcher
 import okhttp3.OkHttpClient
@@ -33,7 +34,8 @@ object NetworkClient {
                 original
             }
             val response = chain.proceed(request)
-            if (request.url.host.contains("googlevideo.com")) {
+            // ⑥ Release ビルド時は CDN ログを完全無効化（セグメント毎に発火するため高負荷）
+            if (BuildConfig.DEBUG && request.url.host.contains("googlevideo.com")) {
                 android.util.Log.d("NetworkClient", "GoogleVideo HTTP ${response.code} for: ${request.url.encodedPath}?${request.url.encodedQuery?.take(60)} | Range=${request.header("Range")} | UA=${request.header("User-Agent")?.take(30)}")
             }
             response

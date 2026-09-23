@@ -16,6 +16,7 @@ import com.bumptech.glide.Glide
 import com.firetube.tv.FireTubeApp
 import com.firetube.tv.R
 import com.firetube.tv.cast.CastActivity
+import com.firetube.tv.data.innertube.InnerTubeClient
 import com.firetube.tv.data.model.VideoItem
 import com.firetube.tv.data.repository.VideoRepository
 import com.firetube.tv.ui.channel.ChannelActivity
@@ -205,6 +206,9 @@ class MainFragment : BrowseSupportFragment() {
 
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             delay(1500) // ホーム画面の初期描画負荷を避けて低優先度で実行
+            // ⑧ VisitorData を先取り: 初回 VISIONOS 抽出時の追加 HTTP ラウンドトリップを 0ms 化
+            InnerTubeClient.preFetchVisitorData()
+            // ⑤ キッズ動画のストリーム並列先読み
             VideoRepository.prewarmStreamCache(kidsVideos.map { it.id })
         }
 
@@ -216,12 +220,13 @@ class MainFragment : BrowseSupportFragment() {
     }
 
     /**
-     * 初期表示領域にある上位カード (先頭6件) のサムネイルを事前デコード・キャッシュ (Smart Preload)
+     * 初期表示領域にある上位カード (先頭12件) のサムネイルを事前デコード・キャッシュ (Smart Preload)
+     * ② 旧: 6枚 → 新: 12枚 (スクロール初動でのチラつきをさらに削減)
      */
     private fun preloadThumbnails(videos: List<VideoItem>) {
         if (!isAdded || context == null) return
         val glide = Glide.with(this)
-        videos.take(6).forEach { video ->
+        videos.take(12).forEach { video ->
             val isStandardVideo = video.id.isNotEmpty() && !video.id.startsWith("__")
             val url = if (isStandardVideo) {
                 "https://i.ytimg.com/vi/${video.id}/hqdefault.jpg"
