@@ -702,26 +702,25 @@ class PlaybackActivity : FragmentActivity() {
                 val isUpcomingOrOffline = errMsg.contains("プレミア") ||
                         errMsg.contains("ライブ配信") ||
                         errMsg.contains("開始予定") ||
-                        errMsg.contains("OFFLINE") ||
-                        errMsg.contains("UNPLAYABLE")
+                        errMsg.contains("OFFLINE")
+                val isPrivateOrDeleted = errMsg.contains("非公開") ||
+                        errMsg.contains("削除") ||
+                        errMsg.contains("ご覧いただけません")
 
-                if (isUpcomingOrOffline) {
-                    val noticeText = if (errMsg.contains("プレミア") || errMsg.contains("開始予定") || errMsg.contains("OFFLINE")) {
-                        errMsg
-                    } else {
-                        "この動画は現在プレミア公開前または配信準備中です"
+                if (isPrivateOrDeleted || isUpcomingOrOffline) {
+                    val noticeText = when {
+                        isPrivateOrDeleted -> "この動画は非公開または削除されているため再生できません"
+                        else -> if (errMsg.contains("プレミア") || errMsg.contains("開始予定")) errMsg else "この動画は現在プレミア公開前または配信準備中です"
                     }
+                    loadingView.visibility = View.GONE
                     showStatusNotification(noticeText)
                     Toast.makeText(this@PlaybackActivity, noticeText, Toast.LENGTH_LONG).show()
-                }
-
-                if (!isUsingWebViewFallback && !isFinishing && !isDestroyed) {
+                } else if (!isUsingWebViewFallback && !isFinishing && !isDestroyed) {
                     Log.w(TAG, "Stream extraction failed for $currentTargetId. Auto-recovering via WebView IFrame fallback.")
                     switchToIframeFallback(0L)
                 } else {
                     loadingView.visibility = View.GONE
                     val errorMsg = when {
-                        isUpcomingOrOffline -> errMsg
                         errMsg.contains("network", ignoreCase = true) -> getString(R.string.network_error_msg)
                         else -> getString(R.string.error_loading)
                     }

@@ -259,6 +259,7 @@ object VideoRepository {
         }
 
         // 1. YouTube InnerTube API (公式iOSクライアント直結・爆速・子ども向け動画100%対応)
+        var innerTubeError: String? = null
         try {
             val innerResult = InnerTubeClient.extractStreamInfo(videoId)
             if (innerResult.isSuccess) {
@@ -268,10 +269,23 @@ object VideoRepository {
                     Log.i(TAG, "Stream info loaded via InnerTube API for $videoId (${data.videoStreams.size} video, ${data.audioStreams.size} audio)")
                     return@withContext innerResult
                 }
+            } else {
+                innerTubeError = innerResult.exceptionOrNull()?.message
             }
         } catch (t: Throwable) {
             if (t is kotlinx.coroutines.CancellationException) throw t
+            innerTubeError = t.message
             Log.w(TAG, "InnerTube stream extraction failed for $videoId: ${t.message}")
+        }
+
+        // 非公開・未配信プレミア・削除動画と明示判定された場合は他プロバイダでも再生不可のため即終了
+        val isDefinitelyUnplayable = innerTubeError?.let { err ->
+            err.contains("非公開") || err.contains("プレミア") || err.contains("配信前") || err.contains("削除") || err.contains("ご覧いただけません")
+        } ?: false
+
+        if (isDefinitelyUnplayable) {
+            Log.w(TAG, "Video $videoId is definitively unplayable ($innerTubeError), skipping NewPipe/Piped fallbacks.")
+            return@withContext Result.failure(Exception(innerTubeError))
         }
 
         coroutineContext.ensureActive()
@@ -304,7 +318,7 @@ object VideoRepository {
             return@withContext pipedResult
         }
 
-        Result.failure(Exception("All stream extraction providers failed for $videoId"))
+        Result.failure(Exception(innerTubeError ?: "All stream extraction providers failed for $videoId"))
     }
 
     /**
@@ -379,13 +393,13 @@ object VideoRepository {
                 viewCount = 500000L
             ),
             VideoItem(
-                id = "Fk9xJFjpRxI",
-                title = "コキンちゃんとロコモコシスターズ【アンパンマンアニメ公式】",
+                id = "3EAwWUwaar8",
+                title = "季節のおはなし あき【アンパンマンアニメ公式】",
                 uploaderName = "それいけ!アンパンマン【アニメ公式】",
                 uploaderUrl = null,
-                thumbnailUrl = "https://i.ytimg.com/vi/Fk9xJFjpRxI/hqdefault.jpg",
-                durationSeconds = 638L,
-                viewCount = 850000L
+                thumbnailUrl = "https://i.ytimg.com/vi/3EAwWUwaar8/hqdefault.jpg",
+                durationSeconds = 1046L,
+                viewCount = 1200000L
             ),
             VideoItem(
                 id = "XqZsoesa55w",

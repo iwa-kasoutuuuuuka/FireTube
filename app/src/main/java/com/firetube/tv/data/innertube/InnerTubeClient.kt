@@ -307,9 +307,18 @@ object InnerTubeClient {
             val videoId = obj.get("videoId")?.asString ?: return null
             if (videoId.length < 5) return null
 
-            // 再生不可・非公開フラグのチェック
+            // 再生不可・非公開・未配信プレミア動画のチェック
             if (obj.has("isPlayable") && !obj.get("isPlayable").asBoolean) return null
             if (obj.has("unplayableText")) return null
+            if (obj.has("upcomingEventData")) return null
+            obj.getAsJsonArray("badges")?.forEach { bElem ->
+                if (bElem.isJsonObject) {
+                    val label = bElem.asJsonObject.getAsJsonObject("metadataBadgeRenderer")?.get("label")?.asString
+                    if (label != null && (label.contains("プレミア") || label.contains("公開予定") || label.contains("UPCOMING", ignoreCase = true))) {
+                        return null
+                    }
+                }
+            }
 
             val titleObj = obj.getAsJsonObject("title")
             val title = titleObj?.getAsJsonArray("runs")?.let { runsArray ->
@@ -433,6 +442,7 @@ object InnerTubeClient {
             } catch (_: Exception) {}
 
             var durationSec = 0L
+            var isUpcoming = false
             try {
                 val overlays = obj.getAsJsonObject("contentImage")
                     ?.getAsJsonObject("thumbnailViewModel")
@@ -443,15 +453,21 @@ object InnerTubeClient {
                         if (badges != null) {
                             for (b in badges) {
                                 val t = b.asJsonObject.getAsJsonObject("thumbnailBadgeViewModel")?.get("text")?.asString
-                                if (t != null && t.contains(":")) {
-                                    durationSec = parseDurationToSeconds(t)
-                                    break
+                                if (t != null) {
+                                    if (t.contains("プレミア") || t.contains("公開予定") || t.contains("UPCOMING", ignoreCase = true)) {
+                                        isUpcoming = true
+                                    }
+                                    if (t.contains(":")) {
+                                        durationSec = parseDurationToSeconds(t)
+                                        break
+                                    }
                                 }
                             }
                         }
                     }
                 }
             } catch (_: Exception) {}
+            if (isUpcoming) return null
 
             val item = VideoItem(
                 id = videoId,
@@ -483,16 +499,19 @@ object InnerTubeClient {
      * 残りの 3〜5 は順次フォールバック
      */
     suspend fun extractStreamInfo(videoId: String): Result<StreamInfoData> = withContext(Dispatchers.IO) {
+        val failureReasons = mutableListOf<String>()
+
         // ① Level-1 Racing: IOS_KIDS（子ども向け HLS）と VISIONOS（一般動画 HLS）を並列実行
-        // 両者の待ち時間 = max(kids, vision) ではなく、先に成功した方を即時採用
         val raceResult = coroutineScope {
             val kidsDeferred = async { fetchPlayerStream(videoId, buildIosKidsContext(), IOS_KIDS_USER_AGENT) }
             val visionDeferred = async { fetchVisionOsStream(videoId) }
 
-            // 両リクエストを同時待機（awaitAll）し、優先度順にチェック
             val (kidsResult, visionResult) = listOf(kidsDeferred, visionDeferred).let {
                 listOf(it[0].await(), it[1].await())
             }
+
+            kidsResult.exceptionOrNull()?.message?.let { failureReasons.add(it) }
+            visionResult.exceptionOrNull()?.message?.let { failureReasons.add(it) }
 
             val kidsData = kidsResult.getOrNull()
             val visionData = visionResult.getOrNull()
@@ -520,6 +539,8 @@ object InnerTubeClient {
                 Log.i(TAG, "Fallback IOS_EMBEDDED succeeded for $videoId")
                 return@withContext iosEmbedResult
             }
+        } else {
+            iosEmbedResult.exceptionOrNull()?.message?.let { failureReasons.add(it) }
         }
 
         // Level-3 フォールバック: MWEB
@@ -530,6 +551,8 @@ object InnerTubeClient {
                 Log.i(TAG, "Fallback MWEB succeeded for $videoId")
                 return@withContext mwebResult
             }
+        } else {
+            mwebResult.exceptionOrNull()?.message?.let { failureReasons.add(it) }
         }
 
         // Level-4 フォールバック: ANDROID_KIDS
@@ -540,6 +563,8 @@ object InnerTubeClient {
                 Log.i(TAG, "Fallback ANDROID_KIDS succeeded for $videoId")
                 return@withContext androidKidsResult
             }
+        } else {
+            androidKidsResult.exceptionOrNull()?.message?.let { failureReasons.add(it) }
         }
 
         // Level-5 フォールバック: 標準 IOS
@@ -547,10 +572,23 @@ object InnerTubeClient {
         if (iosResult.isSuccess) {
             Log.i(TAG, "Fallback IOS standard succeeded for $videoId")
             return@withContext iosResult
+        } else {
+            iosResult.exceptionOrNull()?.message?.let { failureReasons.add(it) }
         }
 
-        Log.e(TAG, "All InnerTube player contexts failed for $videoId")
-        Result.failure(Exception("All InnerTube contexts failed for $videoId"))
+        // 最も具体的で意味のある失敗理由を抽出（非公開、プレミア公開前、ログイン要求など）
+        val bestReason = failureReasons.firstOrNull { reason ->
+            reason.contains("非公開") ||
+            reason.contains("プレミア") ||
+            reason.contains("配信前") ||
+            reason.contains("ご覧いただけません") ||
+            reason.contains("削除") ||
+            reason.contains("ログイン")
+        } ?: failureReasons.firstOrNull { !it.contains("HTTP") && !it.contains("failed") && !it.contains("No streamingData") }
+          ?: "この動画は再生できません"
+
+        Log.e(TAG, "All InnerTube player contexts failed for $videoId: $bestReason")
+        Result.failure(Exception(bestReason))
     }
 
     /**
