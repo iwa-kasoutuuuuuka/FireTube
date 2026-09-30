@@ -11,13 +11,17 @@ import androidx.leanback.widget.HeaderItem
 import androidx.leanback.widget.ListRow
 import androidx.leanback.widget.ListRowPresenter
 import androidx.leanback.widget.OnItemViewClickedListener
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.bumptech.glide.Glide
 import com.firetube.tv.FireTubeApp
 import com.firetube.tv.R
 import com.firetube.tv.cast.CastActivity
 import com.firetube.tv.data.innertube.InnerTubeClient
+import com.firetube.tv.data.local.WatchProgressStore
 import com.firetube.tv.data.model.VideoItem
+import com.firetube.tv.ui.common.VideoActionMenu
 import com.firetube.tv.data.repository.VideoRepository
 import com.firetube.tv.ui.channel.ChannelActivity
 import com.firetube.tv.ui.player.PlaybackActivity
@@ -26,7 +30,6 @@ import com.firetube.tv.ui.settings.SettingsActivity
 import com.firetube.tv.util.MemoryManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 
 /**
@@ -40,11 +43,30 @@ import kotlinx.coroutines.launch
 class MainFragment : BrowseSupportFragment() {
 
     private lateinit var rowsAdapter: ArrayObjectAdapter
-    private val trendingAdapter = ArrayObjectAdapter(VideoCardPresenter())
-    private val kidsAdapter = ArrayObjectAdapter(VideoCardPresenter())
-    private val subscriptionsAdapter = ArrayObjectAdapter(VideoCardPresenter())
-    private val historyAdapter = ArrayObjectAdapter(VideoCardPresenter())
-    private val toolsAdapter = ArrayObjectAdapter(VideoCardPresenter())
+    // 全行で 1 つの Presenter を共有 (RecycledViewPool は Presenter 単位のため、共有しないとプール拡張が効かない)
+    private val cardPresenter = VideoCardPresenter(onLongPress = { item ->
+        // 後で見る・履歴の変更は Room の Flow 経由で自動反映される
+        VideoActionMenu.show(requireContext(), viewLifecycleOwner.lifecycleScope, item)
+    })
+    private val trendingAdapter = ArrayObjectAdapter(cardPresenter)
+    private val kidsAdapter = ArrayObjectAdapter(cardPresenter)
+    private val subscriptionsAdapter = ArrayObjectAdapter(cardPresenter)
+    private val subscriptionFeedAdapter = ArrayObjectAdapter(cardPresenter)
+    private val watchLaterAdapter = ArrayObjectAdapter(cardPresenter)
+    private val liveAdapter = ArrayObjectAdapter(cardPresenter)
+    private val shortsAdapter = ArrayObjectAdapter(cardPresenter)
+    private val liveRow by lazy { ListRow(HeaderItem(7, getString(R.string.menu_live)), liveAdapter) }
+    private val shortsRow by lazy { ListRow(HeaderItem(8, getString(R.string.menu_shorts)), shortsAdapter) }
+    private val watchLaterRow by lazy {
+        ListRow(HeaderItem(6, getString(R.string.menu_watch_later)), watchLaterAdapter)
+    }
+    // 新着行は新着動画がある場合のみ表示する (空の行ヘッダーを出さないため動的に追加/削除)
+    private val subscriptionFeedRow by lazy {
+        ListRow(HeaderItem(5, getString(R.string.menu_subscription_feed)), subscriptionFeedAdapter)
+    }
+    private var subscriptionFeedJob: kotlinx.coroutines.Job? = null
+    private val historyAdapter = ArrayObjectAdapter(cardPresenter)
+    private val toolsAdapter = ArrayObjectAdapter(cardPresenter)
 
     companion object {
         const val ID_SETTINGS = "__settings__"
@@ -61,6 +83,7 @@ class MainFragment : BrowseSupportFragment() {
         setupEventListeners()
         setupToolsRow()
         loadData()
+        observeLocalData()
     }
 
     private fun setupUIElements() {
@@ -70,7 +93,6 @@ class MainFragment : BrowseSupportFragment() {
         brandColor = ContextCompat.getColor(requireContext(), R.color.primary_red)
         searchAffordanceColor = ContextCompat.getColor(requireContext(), R.color.primary_red)
 
-        val cardPresenter = VideoCardPresenter()
         // 行アダプター構築 (影計算バイパス & リサイクルプール拡張で60fpsスクロール)
         val listRowPresenter = ListRowPresenter().apply {
             shadowEnabled = false // 低スペックTV GPUの影計算負荷を根絶
@@ -149,13 +171,7 @@ class MainFragment : BrowseSupportFragment() {
                         startActivity(intent)
                     }
                     else -> {
-                        val intent = Intent(requireContext(), PlaybackActivity::class.java).apply {
-                            putExtra(PlaybackActivity.EXTRA_VIDEO_ID, item.id)
-                            putExtra(PlaybackActivity.EXTRA_VIDEO_TITLE, item.title)
-                            putExtra(PlaybackActivity.EXTRA_UPLOADER_NAME, item.uploaderName)
-                            putExtra(PlaybackActivity.EXTRA_THUMBNAIL_URL, item.thumbnailUrl)
-                        }
-                        startActivity(intent)
+                        startActivity(PlaybackActivity.createIntent(requireContext(), item))
                     }
                 }
             }
@@ -179,9 +195,12 @@ class MainFragment : BrowseSupportFragment() {
             progressBarManager.hide()
 
             result.onSuccess { videos ->
-                trendingAdapter.clear()
-                trendingAdapter.addAll(0, videos)
-                preloadThumbnails(videos)
+                // キャッシュ描画済みの内容と同一なら再描画・再プリロードしない
+                if (trendingAdapter.unmodifiableList<Any>() != videos) {
+                    trendingAdapter.clear()
+                    trendingAdapter.addAll(0, videos)
+                    preloadThumbnails(videos)
+                }
             }.onFailure {
                 if (trendingAdapter.size() == 0) {
                     trendingAdapter.clear()
@@ -212,11 +231,23 @@ class MainFragment : BrowseSupportFragment() {
             VideoRepository.prewarmStreamCache(kidsVideos.map { it.id })
         }
 
-        // 4. ローカル登録チャンネルの取得
-        loadSubscriptions()
+        // 4. ライブ配信中 / ショート (キッズ行の直前に、この順で表示)
+        viewLifecycleOwner.lifecycleScope.launch {
+            setOptionalRow(liveRow, VideoRepository.getLiveVideos(), beforeAdapter = kidsAdapter)
+            setOptionalRow(shortsRow, VideoRepository.getShortsVideos(), beforeAdapter = kidsAdapter)
+        }
 
-        // 5. ローカル履歴の取得 (Room DB)
-        loadHistory()
+        // 5. 登録チャンネル・後で見る・履歴 (Room DB) は observeLocalData で監視
+    }
+
+    /**
+     * 内容が変わっていない場合はアダプターを更新しない
+     * (clear→addAll は行全体の再バインド・サムネイル再読み込み・フォーカス位置のリセットを引き起こす)
+     */
+    private fun replaceIfChanged(adapter: ArrayObjectAdapter, items: List<VideoItem>) {
+        if (adapter.unmodifiableList<Any>() == items) return
+        adapter.clear()
+        adapter.addAll(0, items)
     }
 
     /**
@@ -243,57 +274,126 @@ class MainFragment : BrowseSupportFragment() {
         }
     }
 
-    private fun loadSubscriptions() {
-        viewLifecycleOwner.lifecycleScope.launch {
-            val db = (context?.applicationContext as? FireTubeApp)?.database ?: return@launch
-            val subs = db.videoDao().getAllSubscriptions().firstOrNull() ?: emptyList()
-            subscriptionsAdapter.clear()
-            if (subs.isEmpty()) {
-                subscriptionsAdapter.add(
-                    VideoItem(
-                        id = ID_NO_SUB,
-                        title = getString(R.string.no_subscriptions),
-                        uploaderName = getString(R.string.no_subscriptions_desc),
-                        thumbnailUrl = ""
-                    )
-                )
-            } else {
-                val subItems = subs.map { entity ->
-                    VideoItem(
-                        id = "$PREFIX_CHANNEL${entity.channelId}",
-                        title = entity.channelName,
-                        uploaderName = "登録チャンネル",
-                        thumbnailUrl = entity.channelAvatarUrl ?: ""
-                    )
+    /**
+     * 登録チャンネル / 後で見る / 視聴履歴 を Room の Flow で監視する (画面表示中のみ)
+     * 旧実装は onResume で一度だけ読み込んでいたが、再生画面の履歴保存は onStop (= ホームの onResume より後)
+     * に行われるため、戻った直後の履歴が常に 1 つ前の状態になっていた
+     */
+    private fun observeLocalData() {
+        val dao = (requireContext().applicationContext as FireTubeApp).database.videoDao()
+        val owner = viewLifecycleOwner
+        owner.lifecycleScope.launch {
+            owner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch { dao.getAllSubscriptions().collect { renderSubscriptions(it) } }
+                launch { dao.getWatchLater().collect { renderWatchLater(it) } }
+                launch {
+                    dao.getHistoryVideos().collect { history ->
+                        renderHistory(history)
+                        WatchProgressStore.reload(dao)
+                        refreshWatchProgressIfChanged()
+                    }
                 }
-                subscriptionsAdapter.addAll(0, subItems)
             }
         }
     }
 
-    private fun loadHistory() {
-        viewLifecycleOwner.lifecycleScope.launch {
-            val db = (context?.applicationContext as? FireTubeApp)?.database ?: return@launch
-            val historyList = db.videoDao().getHistoryVideos().firstOrNull() ?: emptyList()
-            val historyVideos = historyList.map { entity ->
+    private var renderedProgressVersion = -1
+
+    /** 視聴済み位置バーに変化があれば表示中のカードを再バインド */
+    private fun refreshWatchProgressIfChanged() {
+        val version = WatchProgressStore.version
+        if (version == renderedProgressVersion) return
+        renderedProgressVersion = version
+        for (i in 0 until rowsAdapter.size()) {
+            val rowAdapter = (rowsAdapter.get(i) as? ListRow)?.adapter as? ArrayObjectAdapter ?: continue
+            if (rowAdapter.size() > 0) rowAdapter.notifyArrayItemRangeChanged(0, rowAdapter.size())
+        }
+    }
+
+    private fun renderSubscriptions(subs: List<com.firetube.tv.data.local.SubscriptionEntity>) {
+        val subItems = if (subs.isEmpty()) {
+            listOf(
                 VideoItem(
-                    id = entity.id,
-                    title = entity.title,
-                    uploaderName = entity.uploaderName,
-                    thumbnailUrl = entity.thumbnailUrl,
-                    durationSeconds = entity.durationSeconds
+                    id = ID_NO_SUB,
+                    title = getString(R.string.no_subscriptions),
+                    uploaderName = getString(R.string.no_subscriptions_desc),
+                    thumbnailUrl = ""
+                )
+            )
+        } else {
+            subs.map { entity ->
+                VideoItem(
+                    id = "$PREFIX_CHANNEL${entity.channelId}",
+                    title = entity.channelName,
+                    uploaderName = "登録チャンネル",
+                    thumbnailUrl = entity.channelAvatarUrl ?: ""
                 )
             }
-            historyAdapter.clear()
-            historyAdapter.addAll(0, historyVideos)
         }
+        replaceIfChanged(subscriptionsAdapter, subItems)
+        loadSubscriptionFeed(subs.map { it.channelId })
+    }
+
+    private fun loadSubscriptionFeed(channelKeys: List<String>) {
+        subscriptionFeedJob?.cancel()
+        subscriptionFeedJob = viewLifecycleOwner.lifecycleScope.launch {
+            val feed = VideoRepository.getSubscriptionFeed(channelKeys)
+            // 登録チャンネル行の直前に表示
+            setOptionalRow(subscriptionFeedRow, feed, beforeAdapter = subscriptionsAdapter)
+        }
+    }
+
+    /**
+     * 内容がある場合のみ表示する行 (空の行ヘッダーを出さないため動的に追加/削除)
+     */
+    private fun setOptionalRow(row: ListRow, items: List<VideoItem>, beforeAdapter: ArrayObjectAdapter) {
+        val rowIndex = rowsAdapter.indexOf(row)
+        if (items.isEmpty()) {
+            if (rowIndex >= 0) rowsAdapter.removeItems(rowIndex, 1)
+            return
+        }
+        replaceIfChanged(row.adapter as ArrayObjectAdapter, items)
+        if (rowIndex < 0) {
+            val anchorIndex = (0 until rowsAdapter.size()).firstOrNull {
+                (rowsAdapter.get(it) as? ListRow)?.adapter === beforeAdapter
+            } ?: rowsAdapter.size()
+            rowsAdapter.add(anchorIndex, row)
+        }
+    }
+
+    private fun renderWatchLater(entities: List<com.firetube.tv.data.local.WatchLaterEntity>) {
+        val items = entities.map { e ->
+            VideoItem(
+                id = e.id,
+                title = e.title,
+                uploaderName = e.uploaderName,
+                uploaderUrl = e.uploaderUrl,
+                thumbnailUrl = e.thumbnailUrl,
+                durationSeconds = e.durationSeconds
+            )
+        }
+        // 視聴履歴行の直前に表示
+        setOptionalRow(watchLaterRow, items, beforeAdapter = historyAdapter)
+    }
+
+    private fun renderHistory(historyList: List<com.firetube.tv.data.local.VideoHistoryEntity>) {
+        val historyVideos = historyList.map { entity ->
+            VideoItem(
+                id = entity.id,
+                title = entity.title,
+                uploaderName = entity.uploaderName,
+                uploaderUrl = entity.uploaderUrl,
+                thumbnailUrl = entity.thumbnailUrl,
+                durationSeconds = entity.durationSeconds
+            )
+        }
+        replaceIfChanged(historyAdapter, historyVideos)
     }
 
     override fun onResume() {
         super.onResume()
-        // 設定や再生から戻った際に履歴と登録チャンネルを更新
-        loadSubscriptions()
-        loadHistory()
+        // 再生画面から戻った際、履歴 DB に変化が無くても (保存前でも) メモリ上の視聴位置の変化を反映
+        refreshWatchProgressIfChanged()
     }
 
     override fun onStop() {

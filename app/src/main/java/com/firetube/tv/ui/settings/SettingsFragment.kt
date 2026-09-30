@@ -34,6 +34,11 @@ class SettingsFragment : GuidedStepSupportFragment() {
         private const val ACTION_DEVICE_INFO = 12L
         private const val ACTION_AUTOPLAY_NEXT = 13L
         private const val ACTION_CLEAR_HISTORY = 14L
+        private const val ACTION_SB_OUTRO = 15L
+        private const val ACTION_SB_SELFPROMO = 16L
+        private const val ACTION_SB_INTERACTION = 17L
+        private const val ACTION_SUBTITLES = 18L
+        private const val ACTION_CLEAR_SEARCH_HISTORY = 19L
 
         private val QUALITY_OPTIONS = listOf("720p", "1080p", "4K (2160p)", "480p")
         private val SPEED_OPTIONS = listOf(1.0f, 1.25f, 1.5f, 2.0f)
@@ -52,6 +57,34 @@ class SettingsFragment : GuidedStepSupportFragment() {
             AppPreferences.PROFILE_HIGH to "4K Max ウルトラ (80MB / 瞬時再生)",
             AppPreferences.PROFILE_STANDARD to "標準 (32MB / 省メモリ)"
         )
+    }
+
+    /** ON/OFF 切替のみの設定項目 (id, タイトル, 取得, 保存) */
+    private class ToggleSetting(
+        val id: Long,
+        val title: String,
+        val get: (AppPreferences) -> Boolean,
+        val set: (AppPreferences, Boolean) -> Unit
+    )
+
+    private val simpleToggles by lazy {
+        listOf(
+            ToggleSetting(ACTION_SUBTITLES, "字幕を表示 (日本語優先)", { it.subtitlesEnabled }, { p, v -> p.subtitlesEnabled = v }),
+            ToggleSetting(ACTION_SB_OUTRO, "SponsorBlock: エンディングをスキップ", { it.skipOutro }, { p, v -> p.skipOutro = v }),
+            ToggleSetting(ACTION_SB_SELFPROMO, "SponsorBlock: 宣伝・告知をスキップ", { it.skipSelfPromo }, { p, v -> p.skipSelfPromo = v }),
+            ToggleSetting(ACTION_SB_INTERACTION, "SponsorBlock: 高評価・登録の呼びかけをスキップ", { it.skipInteraction }, { p, v -> p.skipInteraction = v })
+        )
+    }
+
+    private fun buildToggleAction(t: ToggleSetting, pref: AppPreferences): GuidedAction {
+        val value = t.get(pref)
+        return GuidedAction.Builder(requireContext())
+            .id(t.id)
+            .title(t.title)
+            .description(if (value) "有効 (ON)" else "無効 (OFF)")
+            .checkSetId(GuidedAction.CHECKBOX_CHECK_SET_ID)
+            .checked(value)
+            .build()
     }
 
     override fun onCreateGuidance(savedInstanceState: Bundle?): GuidanceStylist.Guidance {
@@ -84,6 +117,8 @@ class SettingsFragment : GuidedStepSupportFragment() {
                 .build()
         )
 
+        actions.add(buildToggleAction(simpleToggles.first { it.id == ACTION_SUBTITLES }, pref))
+
         // 3. SponsorBlock: 案件スキップ
         actions.add(
             GuidedAction.Builder(requireContext())
@@ -105,6 +140,8 @@ class SettingsFragment : GuidedStepSupportFragment() {
                 .checked(pref.skipIntro)
                 .build()
         )
+
+        simpleToggles.filter { it.id != ACTION_SUBTITLES }.forEach { actions.add(buildToggleAction(it, pref)) }
 
         // 5. SponsorBlock: スキップバッジ通知
         actions.add(
@@ -199,6 +236,14 @@ class SettingsFragment : GuidedStepSupportFragment() {
                 .build()
         )
 
+        actions.add(
+            GuidedAction.Builder(requireContext())
+                .id(ACTION_CLEAR_SEARCH_HISTORY)
+                .title("検索履歴を消去")
+                .description("検索画面に表示される過去の検索語を削除します")
+                .build()
+        )
+
         // 14. 端末スペック情報 (診断)
         val deviceSummary = com.firetube.tv.util.DeviceProfileManager.getDeviceSummary(requireContext())
         actions.add(
@@ -213,6 +258,15 @@ class SettingsFragment : GuidedStepSupportFragment() {
 
     override fun onGuidedActionClicked(action: GuidedAction) {
         val pref = AppPreferences.getInstance(requireContext())
+
+        simpleToggles.firstOrNull { it.id == action.id }?.let { t ->
+            val newValue = !t.get(pref)
+            t.set(pref, newValue)
+            action.isChecked = newValue
+            action.description = if (newValue) "有効 (ON)" else "無効 (OFF)"
+            notifyActionChanged(findActionPositionById(t.id))
+            return
+        }
 
         when (action.id) {
             ACTION_QUALITY -> {
@@ -330,10 +384,16 @@ class SettingsFragment : GuidedStepSupportFragment() {
                 Toast.makeText(requireContext(), if (newValue) "次の動画の自動再生を有効にしました" else "次の動画の自動再生を無効にしました", Toast.LENGTH_SHORT).show()
             }
 
+            ACTION_CLEAR_SEARCH_HISTORY -> {
+                pref.clearSearchHistory()
+                Toast.makeText(requireContext(), "検索履歴を消去しました", Toast.LENGTH_SHORT).show()
+            }
+
             ACTION_CLEAR_HISTORY -> {
                 val app = requireContext().applicationContext as FireTubeApp
                 lifecycleScope.launch(Dispatchers.IO) {
                     app.database.videoDao().clearAllHistory()
+                    com.firetube.tv.data.local.WatchProgressStore.clear()
                     withContext(Dispatchers.Main) {
                         Toast.makeText(requireContext(), "視聴履歴をすべて消去しました", Toast.LENGTH_SHORT).show()
                     }

@@ -31,15 +31,21 @@ class ChannelActivity : FragmentActivity() {
         channelName = intent.getStringExtra(EXTRA_CHANNEL_NAME) ?: ""
 
         btnSubscribe = findViewById(R.id.btn_subscribe)
+        val playlistId = intent.getStringExtra(EXTRA_PLAYLIST_ID)
 
         if (savedInstanceState == null) {
-            val fragment = ChannelFragment.newInstance(channelUrl, channelName)
+            val fragment = ChannelFragment.newInstance(channelUrl, channelName, playlistId)
             supportFragmentManager.beginTransaction()
                 .replace(R.id.channel_fragment_container, fragment)
                 .commit()
         }
 
-        setupSubscribeButton()
+        if (playlistId != null) {
+            // 再生リスト表示時はチャンネル登録ボタンを出さない
+            btnSubscribe.visibility = android.view.View.GONE
+        } else {
+            setupSubscribeButton()
+        }
     }
 
     private fun setupSubscribeButton() {
@@ -126,13 +132,12 @@ class ChannelActivity : FragmentActivity() {
     }
 
     private fun extractChannelId(url: String): String {
-        return url.substringAfterLast("/")
-            .substringAfterLast("channel/")
-            .ifEmpty { url }
+        return com.firetube.tv.data.model.ChannelKey.fromUploaderUrl(url) ?: url
     }
 
     companion object {
         const val EXTRA_CHANNEL_URL = "extra_channel_url"
         const val EXTRA_CHANNEL_NAME = "extra_channel_name"
+        const val EXTRA_PLAYLIST_ID = "extra_playlist_id"
     }
 }

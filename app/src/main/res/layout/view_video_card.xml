@@ -44,6 +44,18 @@
                 android:textColor="@android:color/white"
                 android:textSize="12sp"
                 android:textStyle="bold" />
+
+            <!-- 視聴済み位置バー (視聴履歴がある動画のみ表示) -->
+            <ProgressBar
+                android:id="@+id/watch_progress"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="4dp"
+                android:layout_gravity="bottom"
+                android:max="1000"
+                android:progressBackgroundTint="#66FFFFFF"
+                android:progressTint="@color/primary_red"
+                android:visibility="gone" />
         </FrameLayout>
 
         <!-- Meta Info (Title & Channel) -->

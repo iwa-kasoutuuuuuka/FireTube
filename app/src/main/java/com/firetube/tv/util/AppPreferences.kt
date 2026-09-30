@@ -34,6 +34,12 @@ class AppPreferences private constructor(context: Context) {
         const val KEY_PREFER_AVC = "pref_prefer_avc"
         const val KEY_PERFORMANCE_PROFILE = "pref_performance_profile"
         const val KEY_AUTOPLAY_NEXT = "pref_autoplay_next"
+        const val KEY_SB_OUTRO = "pref_sb_outro"
+        const val KEY_SB_SELFPROMO = "pref_sb_selfpromo"
+        const val KEY_SB_INTERACTION = "pref_sb_interaction"
+        const val KEY_SUBTITLES = "pref_subtitles"
+        const val KEY_SEARCH_HISTORY = "pref_search_history"
+        private const val MAX_SEARCH_HISTORY = 10
 
         const val PROFILE_AUTO = "AUTO"
         const val PROFILE_HIGH = "HIGH"
@@ -95,5 +101,39 @@ class AppPreferences private constructor(context: Context) {
     var autoplayNext: Boolean
         get() = prefs.getBoolean(KEY_AUTOPLAY_NEXT, true)
         set(value) = prefs.edit().putBoolean(KEY_AUTOPLAY_NEXT, value).apply()
-}
 
+    // SponsorBlock: エンディング / 宣伝 / 登録の呼びかけ (旧バージョンでは設定不可で常時スキップ → 既定 ON で挙動を維持)
+    var skipOutro: Boolean
+        get() = prefs.getBoolean(KEY_SB_OUTRO, true)
+        set(value) = prefs.edit().putBoolean(KEY_SB_OUTRO, value).apply()
+
+    var skipSelfPromo: Boolean
+        get() = prefs.getBoolean(KEY_SB_SELFPROMO, true)
+        set(value) = prefs.edit().putBoolean(KEY_SB_SELFPROMO, value).apply()
+
+    var skipInteraction: Boolean
+        get() = prefs.getBoolean(KEY_SB_INTERACTION, true)
+        set(value) = prefs.edit().putBoolean(KEY_SB_INTERACTION, value).apply()
+
+    var subtitlesEnabled: Boolean
+        get() = prefs.getBoolean(KEY_SUBTITLES, false)
+        set(value) = prefs.edit().putBoolean(KEY_SUBTITLES, value).apply()
+
+    /** 検索履歴 (新しい順・最大10件) */
+    val searchHistory: List<String>
+        get() = prefs.getString(KEY_SEARCH_HISTORY, null)
+            ?.split('\n')
+            ?.filter { it.isNotBlank() }
+            ?: emptyList()
+
+    fun addSearchHistory(query: String) {
+        val q = query.trim().replace('\n', ' ')
+        if (q.isEmpty()) return
+        val updated = (listOf(q) + searchHistory.filter { it != q }).take(MAX_SEARCH_HISTORY)
+        prefs.edit().putString(KEY_SEARCH_HISTORY, updated.joinToString("\n")).apply()
+    }
+
+    fun clearSearchHistory() {
+        prefs.edit().remove(KEY_SEARCH_HISTORY).apply()
+    }
+}

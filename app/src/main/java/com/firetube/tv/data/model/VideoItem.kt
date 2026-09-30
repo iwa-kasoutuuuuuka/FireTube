@@ -39,20 +39,22 @@ data class VideoItem(
                 return false
             }
             val lower = trimmedTitle.lowercase()
-            val privatePatterns = listOf(
-                "非公開動画",
-                "非公開の動画",
-                "[private video]",
-                "private video",
-                "[deleted video]",
-                "deleted video",
-                "削除された動画"
-            )
-            for (pattern in privatePatterns) {
+            for (pattern in PRIVATE_PATTERNS) {
                 if (lower.contains(pattern)) return false
             }
             if (lower == "private" || lower == "非公開") return false
             return true
         }
+
+    companion object {
+        // 一覧のフィルタリングで全アイテムに対して評価されるため、呼び出し毎のリスト生成を避けて共有
+        private val PRIVATE_PATTERNS = listOf(
+            "非公開動画",
+            "非公開の動画",
+            "private video",
+            "deleted video",
+            "削除された動画"
+        )
+    }
 }
 

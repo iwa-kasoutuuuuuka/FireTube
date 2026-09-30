@@ -12,8 +12,8 @@ android {
         applicationId = "com.firetube.tv"
         minSdk = 28 // Fire OS 7+ (Android 9+)
         targetSdk = 34
-        versionCode = 18
-        versionName = "1.4.10"
+        versionCode = 19
+        versionName = "1.5.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -46,6 +46,11 @@ android {
         buildConfig = true
     }
 
+    testOptions {
+        // JVM ユニットテストで android.util.Log 等の呼び出しを既定値で無視する
+        unitTests.isReturnDefaultValues = true
+    }
+
     lint {
         abortOnError = false
         checkReleaseBuilds = false
@@ -73,7 +78,6 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer-dash:$media3Version")
     implementation("androidx.media3:media3-datasource-okhttp:$media3Version")
     implementation("androidx.media3:media3-ui:$media3Version")
-    implementation("androidx.media3:media3-session:$media3Version")
 
     // Glide (Custom Ultra-low RAM configuration)
     val glideVersion = "4.16.0"
@@ -103,4 +107,6 @@ dependencies {
     implementation("org.mozilla:rhino:1.8.1")
     implementation("org.mozilla:rhino-engine:1.8.1")
     compileOnly("com.google.code.findbugs:jsr305:3.0.2")
+
+    testImplementation("junit:junit:4.13.2")
 }

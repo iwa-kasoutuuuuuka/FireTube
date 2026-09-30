@@ -43,6 +43,7 @@ import com.firetube.tv.data.extractor.SponsorBlockService
 import com.firetube.tv.data.local.SubscriptionEntity
 import com.firetube.tv.data.local.VideoHistoryEntity
 import com.firetube.tv.data.model.AudioStream
+import com.firetube.tv.data.model.ChannelKey
 import com.firetube.tv.data.model.SponsorSegment
 import com.firetube.tv.data.model.StreamInfoData
 import com.firetube.tv.data.model.VideoItem
@@ -81,7 +82,19 @@ class PlaybackActivity : FragmentActivity() {
         const val EXTRA_VIDEO_TITLE = "extra_video_title"
         const val EXTRA_UPLOADER_NAME = "extra_uploader_name"
         const val EXTRA_THUMBNAIL_URL = "extra_thumbnail_url"
+        const val EXTRA_UPLOADER_URL = "extra_uploader_url"
+        /** 再生リスト等の連続再生キュー (ArrayList<VideoItem>)。指定時は関連動画の代わりにこの順で再生 */
+        const val EXTRA_QUEUE = "extra_queue"
         private const val TAG = "PlaybackActivity"
+
+        fun createIntent(context: android.content.Context, item: VideoItem): Intent =
+            Intent(context, PlaybackActivity::class.java).apply {
+                putExtra(EXTRA_VIDEO_ID, item.id)
+                putExtra(EXTRA_VIDEO_TITLE, item.title)
+                putExtra(EXTRA_UPLOADER_NAME, item.uploaderName)
+                putExtra(EXTRA_THUMBNAIL_URL, item.thumbnailUrl)
+                putExtra(EXTRA_UPLOADER_URL, item.uploaderUrl)
+            }
     }
 
     private var player: ExoPlayer? = null
@@ -100,6 +113,8 @@ class PlaybackActivity : FragmentActivity() {
     private lateinit var autoplayText: TextView
     private var autoplayJob: Job? = null
     private var isPlaybackEnded: Boolean = false
+    // 現在の videoId のメディアを実際にプレイヤーへ投入済みか (未開始の動画の履歴を位置 0 で上書きしないためのガード)
+    private var hasPlaybackStarted: Boolean = false
 
     private lateinit var videoInfoHud: View
     private lateinit var videoHudTitle: TextView
@@ -121,6 +136,8 @@ class PlaybackActivity : FragmentActivity() {
     private var videoTitle: String = ""
     private var uploaderName: String = ""
     private var thumbnailUrl: String = ""
+    private var uploaderUrl: String? = null
+    private var playQueue: List<VideoItem> = emptyList()
 
     private var sponsorSegments: List<SponsorSegment> = emptyList()
     private var sponsorMonitorJob: Job? = null
@@ -129,6 +146,22 @@ class PlaybackActivity : FragmentActivity() {
     private var upNextJob: Job? = null
     private var sponsorJob: Job? = null
     private var rydJob: Job? = null
+
+    private lateinit var seekBarContainer: View
+    private lateinit var optionsPanel: View
+    private lateinit var optionsList: LinearLayout
+    private lateinit var seekProgress: ProgressBar
+    private lateinit var seekPositionText: TextView
+    private lateinit var seekDurationText: TextView
+    private var seekBarUpdateJob: Job? = null
+
+    private var trackSelector: DefaultTrackSelector? = null
+    private var currentDataSourceFactory: androidx.media3.datasource.DataSource.Factory? = null
+    // 再生中に画質メニューで選んだ画質 (null = 設定画面の既定画質)。動画を切り替えるとリセット
+    private var qualityOverride: String? = null
+    // 再生途中の失敗時、WebView へ切り替える前にストリーム URL を 1 回だけ取り直して再開する
+    private var hasRetriedStreamRecovery: Boolean = false
+    private var isRecoveringStream: Boolean = false
 
     private val speedList = listOf(1.0f, 1.25f, 1.5f, 2.0f)
     private var currentSpeedIndex = 0
@@ -141,6 +174,8 @@ class PlaybackActivity : FragmentActivity() {
         videoTitle = intent.getStringExtra(EXTRA_VIDEO_TITLE) ?: ""
         uploaderName = intent.getStringExtra(EXTRA_UPLOADER_NAME) ?: ""
         thumbnailUrl = intent.getStringExtra(EXTRA_THUMBNAIL_URL) ?: ""
+        uploaderUrl = intent.getStringExtra(EXTRA_UPLOADER_URL)
+        playQueue = readQueue(intent)
 
         playbackRoot = findViewById(R.id.playback_root)
         playerView = findViewById(R.id.player_view)
@@ -158,6 +193,12 @@ class PlaybackActivity : FragmentActivity() {
         videoHudTitle = findViewById(R.id.video_hud_title)
         videoHudChannel = findViewById(R.id.video_hud_channel)
         videoHudRyd = findViewById(R.id.video_hud_ryd)
+        seekBarContainer = findViewById(R.id.seek_bar_container)
+        optionsPanel = findViewById(R.id.options_panel)
+        optionsList = findViewById(R.id.options_list)
+        seekProgress = findViewById(R.id.seek_progress)
+        seekPositionText = findViewById(R.id.seek_position_text)
+        seekDurationText = findViewById(R.id.seek_duration_text)
 
         notificationBanner = findViewById(R.id.notification_banner)
         notificationText = findViewById(R.id.notification_text)
@@ -171,7 +212,7 @@ class PlaybackActivity : FragmentActivity() {
         setupWebViewPlayer()
         setupUpNextGrid()
         initPlayer()
-        startNewVideoSession(videoId, videoTitle, uploaderName, thumbnailUrl)
+        startNewVideoSession(videoId, videoTitle, uploaderName, thumbnailUrl, uploaderUrl)
     }
 
     override fun onNewIntent(intent: Intent?) {
@@ -183,7 +224,8 @@ class PlaybackActivity : FragmentActivity() {
             val newTitle = intent.getStringExtra(EXTRA_VIDEO_TITLE) ?: ""
             val newUploader = intent.getStringExtra(EXTRA_UPLOADER_NAME) ?: ""
             val newThumb = intent.getStringExtra(EXTRA_THUMBNAIL_URL) ?: ""
-            startNewVideoSession(newVideoId, newTitle, newUploader, newThumb)
+            playQueue = readQueue(intent)
+            startNewVideoSession(newVideoId, newTitle, newUploader, newThumb, intent.getStringExtra(EXTRA_UPLOADER_URL))
         }
     }
 
@@ -197,10 +239,14 @@ class PlaybackActivity : FragmentActivity() {
         targetId: String,
         title: String,
         uploader: String,
-        thumb: String
+        thumb: String,
+        channelUrl: String?
     ) {
         // 1. 前回の再生履歴を非同期保存
-        saveHistory(player?.currentPosition ?: 0)
+        // (初回起動時は videoId が既に新しい動画を指しており、ここで保存すると
+        //  レジューム位置が 0 で上書きされてしまうため、再生開始済みの場合のみ保存)
+        saveHistoryIfStarted()
+        hasPlaybackStarted = false
 
         // 2. 走行中の非同期ジョブを全て即座にキャンセル（Race Condition防止）
         loadStreamJob?.cancel()
@@ -226,6 +272,12 @@ class PlaybackActivity : FragmentActivity() {
         notificationBanner.visibility = View.GONE
         isHandlingFallback = false
         currentStreamInfo = null
+        qualityOverride = null
+        hasRetriedStreamRecovery = false
+        isRecoveringStream = false
+        applyHlsMaxHeight(null)
+        hideSeekBar()
+        hideOptionsPanel()
         upNextAdapter.clear()
 
         // 4. ExoPlayer を停止＆キュー・トラックを完全クリア
@@ -249,6 +301,7 @@ class PlaybackActivity : FragmentActivity() {
         videoTitle = title
         uploaderName = uploader
         thumbnailUrl = thumb
+        uploaderUrl = channelUrl
 
         loadingView.visibility = View.VISIBLE
 
@@ -261,7 +314,8 @@ class PlaybackActivity : FragmentActivity() {
 
     @SuppressLint("SetJavaScriptEnabled")
     private fun setupWebViewPlayer() {
-        WebView.setWebContentsDebuggingEnabled(true)
+        // リリースビルドでは chrome://inspect からのリモートデバッグ接続を許可しない
+        WebView.setWebContentsDebuggingEnabled(com.firetube.tv.BuildConfig.DEBUG)
         webViewPlayer.setLayerType(View.LAYER_TYPE_HARDWARE, null)
         webViewPlayer.settings.apply {
             javaScriptEnabled = true
@@ -318,6 +372,13 @@ class PlaybackActivity : FragmentActivity() {
     }
 
     private fun loadIframeVideo(vId: String, startSec: Float) {
+        // vId は下記 JavaScript に直接埋め込まれるため、YouTube の ID 文字種以外は拒否する
+        if (!vId.matches(Regex("^[A-Za-z0-9_-]{11}$"))) {
+            Log.e(TAG, "Refusing to load IFrame player for invalid videoId: $vId")
+            loadingView.visibility = View.GONE
+            Toast.makeText(this, R.string.error_loading, Toast.LENGTH_SHORT).show()
+            return
+        }
         val html = """
             <!DOCTYPE html>
             <html>
@@ -423,6 +484,7 @@ class PlaybackActivity : FragmentActivity() {
     private fun switchToIframeFallback(startMs: Long) {
         if (isUsingWebViewFallback) return
         isUsingWebViewFallback = true
+        hasPlaybackStarted = true
         Log.i(TAG, "Switching to WebView IFrame fallback at pos=${startMs}ms for video: $videoId")
 
         runOnUiThread {
@@ -494,8 +556,8 @@ class PlaybackActivity : FragmentActivity() {
                         stallCount++
                         Log.d(TAG, "Stall watchdog: position unchanged at ${curPos}ms (count=$stallCount)")
                         if (stallCount >= 3) {
-                            Log.w(TAG, "Playback stalled for 3s at pos=${curPos}ms! Seamlessly switching to WebView fallback.")
-                            switchToIframeFallback(curPos)
+                            Log.w(TAG, "Playback stalled for 3s at pos=${curPos}ms!")
+                            recoverOrFallback(curPos)
                             break
                         }
                     } else {
@@ -523,16 +585,19 @@ class PlaybackActivity : FragmentActivity() {
             if (pref.preferAvcCodec && !isHigh) {
                 paramsBuilder = paramsBuilder.setPreferredVideoMimeType(MimeTypes.VIDEO_H264)
             }
+            // 字幕トラックは常に読み込み、表示/非表示はテキストレンダラーの有効化で即時切替
+            paramsBuilder = paramsBuilder.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, !pref.subtitlesEnabled)
             parameters = paramsBuilder.build()
         }
+        this.trackSelector = trackSelector
 
         // YouTube CDN からの 403 Forbidden（1MB制限）を即時キャッチしてフォールバック
         GoogleVideoDataSource.onStreamForbiddenListener = { _, _ ->
             runOnUiThread {
                 if (!isUsingWebViewFallback && !isFinishing && !isDestroyed) {
                     val currentPos = (player?.currentPosition ?: 0L).coerceAtLeast(0L)
-                    Log.w(TAG, "GoogleVideoDataSource 403 Forbidden received! Seamlessly switching to WebView fallback at pos=${currentPos}ms.")
-                    switchToIframeFallback(currentPos)
+                    Log.w(TAG, "GoogleVideoDataSource 403 Forbidden received at pos=${currentPos}ms.")
+                    recoverOrFallback(currentPos)
                 }
             }
         }
@@ -541,6 +606,7 @@ class PlaybackActivity : FragmentActivity() {
         val googleVideoDataSourceFactory = GoogleVideoDataSource.Factory(NetworkClient.client, okHttpDataSourceFactory)
         val cachedDataSourceFactory = ExoPlayerCacheManager.createCacheDataSourceFactory(this, googleVideoDataSourceFactory)
 
+        currentDataSourceFactory = cachedDataSourceFactory
         val mediaSourceFactory = DefaultMediaSourceFactory(cachedDataSourceFactory)
         currentMediaSourceFactory = mediaSourceFactory
 
@@ -566,8 +632,8 @@ class PlaybackActivity : FragmentActivity() {
                                         delay(3000)
                                         if (isActive && player?.playbackState == Player.STATE_BUFFERING && !isUsingWebViewFallback) {
                                             val currentPos = player?.currentPosition ?: 0L
-                                            Log.w(TAG, "Playback stalled mid-stream at pos=${currentPos}ms. Seamlessly switching to WebView IFrame fallback.")
-                                            switchToIframeFallback(currentPos)
+                                            Log.w(TAG, "Playback stalled mid-stream at pos=${currentPos}ms.")
+                                            recoverOrFallback(currentPos)
                                         }
                                     }
                                 }
@@ -602,8 +668,8 @@ class PlaybackActivity : FragmentActivity() {
 
                         val pos = player?.currentPosition ?: 0L
                         if ((isHttp403 || pos > 5_000L) && !isUsingWebViewFallback) {
-                            Log.w(TAG, "Player error encountered mid-playback. Seamlessly switching to WebView IFrame fallback at pos=${pos}ms.")
-                            switchToIframeFallback(pos)
+                            Log.w(TAG, "Player error encountered mid-playback at pos=${pos}ms.")
+                            recoverOrFallback(pos)
                             return
                         }
 
@@ -626,7 +692,8 @@ class PlaybackActivity : FragmentActivity() {
             }
         playerView.player = player
 
-        // 設定されたデフォルト速度を適用
+        // 設定されたデフォルト速度を適用 (長押しでの速度サイクルが既定速度の次から始まるようインデックスも同期)
+        currentSpeedIndex = speedList.indexOf(pref.defaultSpeed).coerceAtLeast(0)
         applyPlaybackSpeed(pref.defaultSpeed)
     }
 
@@ -675,6 +742,8 @@ class PlaybackActivity : FragmentActivity() {
         videoInfoHud.visibility = View.VISIBLE
         videoInfoHud.alpha = 1.0f
 
+        showSeekBar()
+
         hudDismissJob?.cancel()
         hudDismissJob = lifecycleScope.launch {
             delay(4000)
@@ -683,6 +752,7 @@ class PlaybackActivity : FragmentActivity() {
                 .setDuration(400)
                 .withEndAction {
                     videoInfoHud.visibility = View.GONE
+                    hideSeekBar()
                 }
                 .start()
         }
@@ -730,10 +800,13 @@ class PlaybackActivity : FragmentActivity() {
         }
     }
 
-    private fun startPlayback(streamInfo: StreamInfoData) {
+    /**
+     * @param resumePositionMs 指定時は保存済みレジューム位置ではなくこの位置から再生 (画質変更・ストリーム再取得時)
+     */
+    private fun startPlayback(streamInfo: StreamInfoData, resumePositionMs: Long? = null) {
         currentStreamInfo = streamInfo
         val pref = AppPreferences.getInstance(this)
-        val targetQuality = pref.defaultQuality
+        val targetQuality = qualityOverride ?: pref.defaultQuality
 
         Log.i(TAG, "startPlayback: videoStreams=${streamInfo.videoStreams.size}, audioStreams=${streamInfo.audioStreams.size}, hlsUrl=${streamInfo.hlsUrl != null}")
         streamInfo.videoStreams.forEachIndexed { i, s ->
@@ -749,7 +822,7 @@ class PlaybackActivity : FragmentActivity() {
                 .setUri(streamInfo.hlsUrl)
                 .setMimeType(MimeTypes.APPLICATION_M3U8)
                 .build()
-            executePlayback(mediaItem = mediaItem, durationMs = durationMs)
+            executePlayback(mediaItem = mediaItem, durationMs = durationMs, resumePositionMs = resumePositionMs)
             return
         }
 
@@ -768,15 +841,15 @@ class PlaybackActivity : FragmentActivity() {
             val videoSource = factory.createMediaSource(MediaItem.fromUri(bestVideo.url))
             val audioSource = factory.createMediaSource(MediaItem.fromUri(bestAudio.url))
             val mergedSource = MergingMediaSource(videoSource, audioSource)
-            executePlayback(mediaSource = mergedSource, durationMs = durationMs)
+            executePlayback(mediaSource = mergedSource, durationMs = durationMs, resumePositionMs = resumePositionMs)
         } else if (bestMuxed != null) {
             Log.i(TAG, "Playing via Muxed stream: ${bestMuxed.resolution} (${bestMuxed.format})")
             val mediaItem = MediaItem.fromUri(bestMuxed.url)
-            executePlayback(mediaItem = mediaItem, durationMs = durationMs)
+            executePlayback(mediaItem = mediaItem, durationMs = durationMs, resumePositionMs = resumePositionMs)
         } else if (bestVideo != null) {
             Log.w(TAG, "Playing video-only stream (audio stream missing): ${bestVideo.resolution}")
             val mediaItem = MediaItem.fromUri(bestVideo.url)
-            executePlayback(mediaItem = mediaItem, durationMs = durationMs)
+            executePlayback(mediaItem = mediaItem, durationMs = durationMs, resumePositionMs = resumePositionMs)
         } else {
             Log.e(TAG, "No playable stream found for video: $videoId. Auto-recovering via WebView IFrame fallback.")
             if (!isUsingWebViewFallback && !isFinishing && !isDestroyed) {
@@ -830,25 +903,43 @@ class PlaybackActivity : FragmentActivity() {
         return streams.maxByOrNull { it.bitrate } ?: streams.firstOrNull()
     }
 
-    private fun executePlayback(mediaItem: MediaItem? = null, mediaSource: MediaSource? = null, durationMs: Long) {
+    private fun executePlayback(
+        mediaItem: MediaItem? = null,
+        mediaSource: MediaSource? = null,
+        durationMs: Long,
+        resumePositionMs: Long? = null
+    ) {
         val currentTargetId = videoId
+        val subtitleSource = buildSubtitleSource(currentStreamInfo)
         lifecycleScope.launch {
-            val db = (application as FireTubeApp).database
-            val lastPos = db.videoDao().getLastPosition(currentTargetId)
+            val lastPos = resumePositionMs ?: (application as FireTubeApp).database.videoDao().getLastPosition(currentTargetId)
             Log.i(TAG, "Restoring position for $currentTargetId: lastPos=$lastPos, durationMs=$durationMs")
             if (!isActive || videoId != currentTargetId) return@launch
+
+            // 字幕トラックがあれば本体ストリームと合成 (字幕の読み込み失敗で再生全体が止まらないよう EOS 扱い)
+            val baseSource = mediaSource ?: mediaItem?.let { currentMediaSourceFactory?.createMediaSource(it) }
+            val finalSource = if (subtitleSource != null && baseSource != null) {
+                MergingMediaSource(baseSource, subtitleSource)
+            } else {
+                baseSource
+            }
 
             player?.let { p ->
                 if (playerView.player == null) {
                     playerView.player = p
                 }
+                hasPlaybackStarted = true
                 p.clearMediaItems()
-                if (mediaSource != null) {
-                    p.setMediaSource(mediaSource, /* resetPosition = */ true)
+                if (finalSource != null) {
+                    p.setMediaSource(finalSource, /* resetPosition = */ true)
                 } else if (mediaItem != null) {
                     p.setMediaItem(mediaItem, /* resetPosition = */ true)
                 }
-                val shouldSeek = lastPos != null && lastPos > 5000 && (durationMs <= 0 || lastPos < durationMs - 10000)
+                val shouldSeek = if (resumePositionMs != null) {
+                    resumePositionMs > 0
+                } else {
+                    lastPos != null && lastPos > 5000 && (durationMs <= 0 || lastPos < durationMs - 10000)
+                }
                 if (shouldSeek) {
                     Log.i(TAG, "Seeking to saved position: $lastPos ms")
                     p.seekTo(lastPos!!)
@@ -863,6 +954,218 @@ class PlaybackActivity : FragmentActivity() {
         }
     }
 
+    /**
+     * 字幕トラックを選択して SingleSampleMediaSource を生成
+     * 優先順: 日本語 (手動) → 日本語 (自動生成) → 英語 (手動) → 英語 (自動生成)
+     */
+    private fun buildSubtitleSource(streamInfo: StreamInfoData?): MediaSource? {
+        val tracks = streamInfo?.subtitles ?: return null
+        val dataSourceFactory = currentDataSourceFactory ?: return null
+        val track = listOf("ja", "en").firstNotNullOfOrNull { lang ->
+            val langTracks = tracks.filter { it.languageCode.equals(lang, true) || it.languageCode.startsWith("$lang-", true) }
+            langTracks.firstOrNull { !it.isAutoGenerated } ?: langTracks.firstOrNull()
+        } ?: return null
+
+        // timedtext は既定で XML 形式のため WebVTT を明示指定 (既存の fmt パラメータは除去)
+        val baseUrl = track.url.replace(Regex("[?&]fmt=[^&]*"), "")
+        val vttUrl = baseUrl + (if (baseUrl.contains('?')) "&" else "?") + "fmt=vtt"
+        val subtitleConfig = MediaItem.SubtitleConfiguration.Builder(android.net.Uri.parse(vttUrl))
+            .setMimeType(MimeTypes.TEXT_VTT)
+            .setLanguage(track.languageCode)
+            .setLabel(track.languageName)
+            .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
+            .build()
+        Log.i(TAG, "Subtitle track attached: ${track.languageCode} (auto=${track.isAutoGenerated})")
+        return androidx.media3.exoplayer.source.SingleSampleMediaSource.Factory(dataSourceFactory)
+            .setTreatLoadErrorsAsEndOfStream(true)
+            .createMediaSource(subtitleConfig, C.TIME_UNSET)
+    }
+
+    /**
+     * 再生途中の失敗 (403 / 停止 / バッファ枯渇 / プレイヤーエラー) からの復旧
+     * YouTube のストリーム URL は失効するため、まず 1 回だけ新しい URL を取り直して同じ位置から再開し、
+     * それでも失敗した場合に WebView IFrame 再生へ切り替える
+     * (旧実装は一時的な回線の遅延でも即座に低機能な WebView 再生へ切り替わっていた)
+     */
+    private fun recoverOrFallback(positionMs: Long) {
+        if (isUsingWebViewFallback || isFinishing || isDestroyed || isRecoveringStream) return
+        if (hasRetriedStreamRecovery) {
+            Log.w(TAG, "Stream recovery already attempted. Switching to WebView IFrame fallback at pos=${positionMs}ms.")
+            switchToIframeFallback(positionMs)
+            return
+        }
+        hasRetriedStreamRecovery = true
+        isRecoveringStream = true
+        bufferingWatchdogJob?.cancel()
+        stallWatchdogJob?.cancel()
+        loadingView.visibility = View.VISIBLE
+        Log.w(TAG, "Re-extracting stream URLs for $videoId and resuming at ${positionMs}ms.")
+
+        val targetId = videoId
+        VideoRepository.invalidateStreamCache(targetId)
+        loadStreamJob?.cancel()
+        loadStreamJob = lifecycleScope.launch {
+            val result = VideoRepository.extractStreamInfo(targetId)
+            if (!isActive || videoId != targetId) return@launch
+            isRecoveringStream = false
+            result.onSuccess { info ->
+                startPlayback(info, resumePositionMs = positionMs)
+            }.onFailure {
+                switchToIframeFallback(positionMs)
+            }
+        }
+    }
+
+    /** HLS の最大画質を制限 (null = 制限なし)。HLS は再生を止めずに ABR が切り替える */
+    private fun applyHlsMaxHeight(quality: String?) {
+        val selector = trackSelector ?: return
+        val height = quality?.let { q -> Regex("\\d{3,4}").find(q)?.value?.toIntOrNull() }
+        selector.parameters = selector.buildUponParameters()
+            .setMaxVideoSize(Int.MAX_VALUE, height ?: Int.MAX_VALUE)
+            .build()
+    }
+
+    /**
+     * 再生中メニュー (HUD 表示中に ↑ キー): 画質の切替と字幕の表示切替
+     */
+    private fun showPlayerOptionsMenu() {
+        val info = currentStreamInfo ?: return
+        val pref = AppPreferences.getInstance(this)
+        val isHls = info.hlsUrl != null
+        val qualityLabels = listOf("2160p", "1440p", "1080p", "720p", "480p", "360p").filter { q ->
+            // HLS はマニフェスト内の画質が事前に分からないため全候補を表示
+            isHls || info.videoStreams.any { it.resolution.contains(q.removeSuffix("p")) }
+        }
+        val hasSubtitles = info.subtitles.isNotEmpty()
+        val currentQuality = qualityOverride ?: if (isHls) null else pref.defaultQuality
+
+        val items = mutableListOf<Pair<String, () -> Unit>>()
+        items.add((if (currentQuality == null) "● 画質: 自動" else "画質: 自動") to { applyQuality(null) })
+        qualityLabels.forEach { q ->
+            val label = if (currentQuality?.contains(q.removeSuffix("p")) == true) "● 画質: $q" else "画質: $q"
+            items.add(label to { applyQuality(q) })
+        }
+        if (hasSubtitles) {
+            items.add((if (pref.subtitlesEnabled) "字幕: ON → OFF にする" else "字幕: OFF → ON にする") to { toggleSubtitles() })
+        }
+
+        optionsList.removeAllViews()
+        val density = resources.displayMetrics.density
+        items.forEach { (label, action) ->
+            val itemView = TextView(this).apply {
+                text = label
+                textSize = 18f
+                setTextColor(androidx.core.content.ContextCompat.getColorStateList(this@PlaybackActivity, R.color.options_item_text))
+                setBackgroundResource(R.drawable.btn_selector)
+                val padH = (16 * density).toInt()
+                val padV = (12 * density).toInt()
+                setPadding(padH, padV, padH, padV)
+                isFocusable = true
+                isClickable = true
+                setOnClickListener {
+                    hideOptionsPanel()
+                    action()
+                }
+            }
+            optionsList.addView(itemView, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = (8 * density).toInt() })
+        }
+        // 先頭/末尾で上下キーを押してもパネル外 (動画面) へフォーカスが抜けないよう固定
+        for (i in 0 until optionsList.childCount) {
+            optionsList.getChildAt(i).id = View.generateViewId()
+        }
+        optionsList.getChildAt(0)?.let { it.nextFocusUpId = it.id }
+        optionsList.getChildAt(optionsList.childCount - 1)?.let { it.nextFocusDownId = it.id }
+        optionsPanel.visibility = View.VISIBLE
+        (items.indexOfFirst { it.first.startsWith("●") }.takeIf { it >= 0 } ?: 0).let { index ->
+            optionsList.getChildAt(index)?.requestFocus()
+        }
+    }
+
+    private fun hideOptionsPanel() {
+        if (optionsPanel.visibility != View.VISIBLE) return
+        optionsPanel.visibility = View.GONE
+        if (isUsingWebViewFallback || playerView.visibility != View.VISIBLE) {
+            playbackRoot.requestFocus()
+        } else {
+            playerView.requestFocus()
+        }
+    }
+
+    private fun applyQuality(quality: String?) {
+        val info = currentStreamInfo ?: return
+        val p = player ?: return
+        qualityOverride = quality
+        if (info.hlsUrl != null) {
+            applyHlsMaxHeight(quality)
+        } else {
+            // DASH / Muxed はストリーム URL 自体が画質ごとに異なるため、現在位置から再構築
+            startPlayback(info, resumePositionMs = p.currentPosition)
+        }
+        showStatusNotification("画質: ${quality ?: "自動"}")
+    }
+
+    private fun toggleSubtitles() {
+        val pref = AppPreferences.getInstance(this)
+        val enabled = !pref.subtitlesEnabled
+        pref.subtitlesEnabled = enabled
+        trackSelector?.let { selector ->
+            selector.parameters = selector.buildUponParameters()
+                .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, !enabled)
+                .build()
+        }
+        showStatusNotification(if (enabled) "字幕を表示します" else "字幕を非表示にしました")
+    }
+
+    private fun showSeekBar() {
+        val p = player ?: return
+        if (isUsingWebViewFallback || p.currentMediaItem == null || p.isCurrentMediaItemLive) {
+            hideSeekBar()
+            return
+        }
+        seekBarContainer.visibility = View.VISIBLE
+        seekBarContainer.alpha = 1.0f
+        seekBarUpdateJob?.cancel()
+        seekBarUpdateJob = lifecycleScope.launch {
+            while (isActive) {
+                updateSeekBar()
+                delay(500)
+            }
+        }
+    }
+
+    private fun hideSeekBar() {
+        seekBarUpdateJob?.cancel()
+        seekBarUpdateJob = null
+        seekBarContainer.visibility = View.GONE
+    }
+
+    private fun updateSeekBar() {
+        val p = player ?: return
+        val duration = p.duration
+        val position = p.currentPosition.coerceAtLeast(0L)
+        seekPositionText.text = formatTime(position)
+        if (duration != C.TIME_UNSET && duration > 0) {
+            seekDurationText.text = formatTime(duration)
+            seekProgress.progress = (position * 1000 / duration).toInt()
+            seekProgress.secondaryProgress = (p.bufferedPosition * 1000 / duration).toInt()
+        } else {
+            seekDurationText.text = "--:--"
+            seekProgress.progress = 0
+            seekProgress.secondaryProgress = 0
+        }
+    }
+
+    private fun formatTime(ms: Long): String {
+        val totalSec = ms / 1000
+        val h = totalSec / 3600
+        val m = (totalSec % 3600) / 60
+        val sec = totalSec % 60
+        return if (h > 0) String.format("%d:%02d:%02d", h, m, sec) else String.format("%02d:%02d", m, sec)
+    }
+
     private fun loadSponsorBlock() {
         val currentTargetId = videoId
         sponsorJob = lifecycleScope.launch {
@@ -875,6 +1178,15 @@ class PlaybackActivity : FragmentActivity() {
     }
 
     private fun loadUpNextVideos() {
+        val upNextTitle = findViewById<TextView>(R.id.text_up_next_title)
+        if (playQueue.isNotEmpty()) {
+            // 再生リストの続きを Up Next として即時表示 (自動再生もこの順に進む)
+            upNextTitle.text = getString(R.string.up_next_queue)
+            upNextAdapter.clear()
+            upNextAdapter.addAll(0, playQueue)
+            return
+        }
+        upNextTitle.text = getString(R.string.up_next)
         // ⑦ 旧: 2500ms 遅延 → 新: 800ms 遅延
         // 初期ストリーム取得は ~500ms で完了するため、800ms でも帯域競合せず大幅に早く取得可能
         val currentTargetId = videoId
@@ -893,8 +1205,15 @@ class PlaybackActivity : FragmentActivity() {
         }
     }
 
+    @Suppress("DEPRECATION", "UNCHECKED_CAST")
+    private fun readQueue(intent: Intent?): List<VideoItem> =
+        (intent?.getSerializableExtra(EXTRA_QUEUE) as? ArrayList<VideoItem>) ?: emptyList()
+
     private fun switchVideo(item: VideoItem) {
-        startNewVideoSession(item.id, item.title, item.uploaderName, item.thumbnailUrl)
+        // キュー内の動画へ進んだ場合は残りをキューとして維持、それ以外 (関連動画) はキュー再生を終了
+        val queueIndex = playQueue.indexOfFirst { it.id == item.id }
+        playQueue = if (queueIndex >= 0) playQueue.drop(queueIndex + 1) else emptyList()
+        startNewVideoSession(item.id, item.title, item.uploaderName, item.thumbnailUrl, item.uploaderUrl)
     }
 
     private fun showStatusNotification(message: String) {
@@ -1000,7 +1319,10 @@ class PlaybackActivity : FragmentActivity() {
                             val shouldSkip = when (segmentToSkip.category) {
                                 "sponsor" -> pref.skipSponsor
                                 "intro" -> pref.skipIntro
-                                else -> true
+                                "outro" -> pref.skipOutro
+                                "selfpromo" -> pref.skipSelfPromo
+                                "interaction" -> pref.skipInteraction
+                                else -> false
                             }
                             if (shouldSkip) {
                                 Log.i(TAG, "SponsorBlock match: Skipping to ${segmentToSkip.endMs}ms (${segmentToSkip.category})")
@@ -1032,6 +1354,15 @@ class PlaybackActivity : FragmentActivity() {
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        // 再生オプションパネル表示中: 上下キーのフォーカス移動・決定は各項目に任せ、戻る/左で閉じる
+        if (optionsPanel.visibility == View.VISIBLE) {
+            if (keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+                hideOptionsPanel()
+                return true
+            }
+            return super.onKeyDown(keyCode, event)
+        }
+
         // Up Next パネル表示中のキー処理（ExoPlayer / WebView 共通）
         if (upNextContainer.visibility == View.VISIBLE) {
             when (keyCode) {
@@ -1128,9 +1459,13 @@ class PlaybackActivity : FragmentActivity() {
                 return true
             }
 
-            // D-Pad 上キーで動画情報 & RYD HUD 表示
+            // D-Pad 上キーで動画情報 & RYD HUD 表示 (表示中にもう一度押すと画質・字幕メニュー)
             KeyEvent.KEYCODE_DPAD_UP -> {
-                showVideoInfoHud()
+                if (videoInfoHud.visibility == View.VISIBLE && videoInfoHud.alpha > 0.5f && currentStreamInfo != null) {
+                    showPlayerOptionsMenu()
+                } else {
+                    showVideoInfoHud()
+                }
                 return true
             }
 
@@ -1166,7 +1501,10 @@ class PlaybackActivity : FragmentActivity() {
                     p.seekToDefaultPosition()
                     showVideoInfoHud()
                 } else {
-                    val newPos = (p.currentPosition + 10_000).coerceAtMost(p.duration)
+                    // duration 未確定 (C.TIME_UNSET = 負値) の状態で coerceAtMost すると先頭へ飛んでしまうため除外
+                    val duration = p.duration
+                    val target = p.currentPosition + 10_000
+                    val newPos = if (duration != C.TIME_UNSET && duration > 0) target.coerceAtMost(duration) else target
                     p.seekTo(newPos)
                     showVideoInfoHud()
                 }
@@ -1195,22 +1533,26 @@ class PlaybackActivity : FragmentActivity() {
 
     private fun toggleChannelSubscription() {
         if (uploaderName.isBlank()) return
+        val channelName = uploaderName
+        // チャンネル ID / @handle が判明していればそれをキーにする (旧バージョンはチャンネル名をキーにしていた)
+        val legacyKey = channelName
+        val channelId = ChannelKey.fromUploaderUrl(uploaderUrl) ?: legacyKey
         lifecycleScope.launch {
-            val db = (application as FireTubeApp).database
-            val channelId = uploaderName
-            val isSub = db.videoDao().isSubscribed(channelId)
+            val dao = (application as FireTubeApp).database.videoDao()
+            val isSub = dao.isSubscribed(channelId) || dao.isSubscribed(legacyKey)
             if (isSub) {
-                db.videoDao().deleteSubscription(channelId)
-                Toast.makeText(this@PlaybackActivity, "「$uploaderName」の登録を解除しました", Toast.LENGTH_SHORT).show()
+                dao.deleteSubscription(channelId)
+                dao.deleteSubscription(legacyKey)
+                Toast.makeText(this@PlaybackActivity, "「$channelName」の登録を解除しました", Toast.LENGTH_SHORT).show()
             } else {
-                db.videoDao().insertSubscription(
+                dao.insertSubscription(
                     SubscriptionEntity(
                         channelId = channelId,
-                        channelName = uploaderName,
+                        channelName = channelName,
                         channelAvatarUrl = null
                     )
                 )
-                Toast.makeText(this@PlaybackActivity, "「$uploaderName」をチャンネル登録しました", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@PlaybackActivity, "「$channelName」をチャンネル登録しました", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -1267,6 +1609,11 @@ class PlaybackActivity : FragmentActivity() {
         }
     }
 
+    private fun saveHistoryIfStarted() {
+        if (!hasPlaybackStarted) return
+        saveHistory(player?.currentPosition ?: 0L)
+    }
+
     private fun saveHistory(positionMs: Long) {
         if (videoId.isEmpty()) return
         val app = application as FireTubeApp
@@ -1274,8 +1621,10 @@ class PlaybackActivity : FragmentActivity() {
         val targetTitle = videoTitle
         val targetUploader = uploaderName
         val targetThumb = thumbnailUrl
+        val targetUploaderUrl = uploaderUrl
         val dur = player?.duration ?: 0L
         val safeDurationSeconds = if (dur > 0L) dur / 1000L else 0L
+        com.firetube.tv.data.local.WatchProgressStore.update(targetId, positionMs, safeDurationSeconds * 1000L)
 
         // Activity破棄後でも確実に保存を完了させるため NonCancellable で実行
         CoroutineScope(Dispatchers.IO).launch {
@@ -1287,9 +1636,11 @@ class PlaybackActivity : FragmentActivity() {
                     uploaderName = targetUploader,
                     thumbnailUrl = targetThumb,
                     durationSeconds = safeDurationSeconds,
-                    lastPlayedPositionMs = positionMs
+                    lastPlayedPositionMs = positionMs,
+                    uploaderUrl = targetUploaderUrl
                 )
                 db.videoDao().insertOrUpdateHistory(entity)
+                db.videoDao().trimHistory()
             }
         }
     }
@@ -1305,9 +1656,7 @@ class PlaybackActivity : FragmentActivity() {
         if (isUsingWebViewFallback && ::webViewPlayer.isInitialized) {
             webViewPlayer.evaluateJavascript("if (player && player.pauseVideo) { player.pauseVideo(); }", null)
         }
-        player?.let { p ->
-            saveHistory(p.currentPosition)
-        }
+        saveHistoryIfStarted()
         if (!isChangingConfigurations) {
             player?.pause()
         }
@@ -1332,6 +1681,7 @@ class PlaybackActivity : FragmentActivity() {
         bufferingWatchdogJob?.cancel()
         stallWatchdogJob?.cancel()
         notificationDismissJob?.cancel()
+        seekBarUpdateJob?.cancel()
         GoogleVideoDataSource.onStreamForbiddenListener = null
         loudnessEnhancer?.release()
         loudnessEnhancer = null

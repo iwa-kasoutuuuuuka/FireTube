@@ -33,7 +33,10 @@ import kotlinx.coroutines.Job
  * - Glide によるメモリ極小サムネイル読み込み
  * - YouTube 公式 CDN 直結 & 二重フォールバックによる 100% 途切れないサムネイル表示
  */
-class VideoCardPresenter : Presenter() {
+class VideoCardPresenter(
+    // 決定キー長押し時の操作 (null の場合は長押しメニューなし)
+    private val onLongPress: ((VideoItem) -> Unit)? = null
+) : Presenter() {
 
     companion object {
         private const val TAG = "VideoCardPresenter"
@@ -64,6 +67,24 @@ class VideoCardPresenter : Presenter() {
         holder.uploaderText.text = video.uploaderName
         holder.durationText.text = video.formattedDuration
         holder.durationText.visibility = if (video.formattedDuration.isNotEmpty()) View.VISIBLE else View.GONE
+
+        val progress = com.firetube.tv.data.local.WatchProgressStore.get(video.id)
+        if (progress != null) {
+            holder.watchProgress.progress = (progress * 1000).toInt()
+            holder.watchProgress.visibility = View.VISIBLE
+        } else {
+            holder.watchProgress.visibility = View.GONE
+        }
+
+        if (onLongPress != null && !video.id.startsWith("__")) {
+            holder.cardRoot.setOnLongClickListener {
+                onLongPress.invoke(video)
+                true
+            }
+        } else {
+            holder.cardRoot.setOnLongClickListener(null)
+            holder.cardRoot.isLongClickable = false
+        }
 
         val isStandardVideo = video.id.isNotEmpty() && !video.id.startsWith("__")
         val ytHqUrl = if (isStandardVideo) "https://i.ytimg.com/vi/${video.id}/hqdefault.jpg" else ""
@@ -170,6 +191,7 @@ class VideoCardPresenter : Presenter() {
         val durationText: TextView = view.findViewById(R.id.duration_badge)
         val titleText: TextView = view.findViewById(R.id.video_title)
         val uploaderText: TextView = view.findViewById(R.id.uploader_name)
+        val watchProgress: android.widget.ProgressBar = view.findViewById(R.id.watch_progress)
 
         var boundVideoId: String? = null
         private var prefetchRunnable: Runnable? = null

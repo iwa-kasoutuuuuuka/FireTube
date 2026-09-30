@@ -2,6 +2,7 @@ package com.firetube.tv.data.innertube
 
 import android.util.Log
 import com.firetube.tv.data.model.AudioStream
+import com.firetube.tv.data.model.ChannelKey
 import com.firetube.tv.data.model.StreamInfoData
 import com.firetube.tv.data.model.SubtitleTrack
 import com.firetube.tv.data.model.VideoItem
@@ -12,7 +13,10 @@ import com.google.gson.JsonObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import com.firetube.tv.data.network.await
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -27,6 +31,13 @@ import java.util.concurrent.TimeUnit
 object InnerTubeClient {
 
     private const val TAG = "InnerTubeClient"
+
+    // InnerTube 検索フィルタ (実際の API 応答で確認済み)
+    const val SEARCH_FILTER_LIVE = "EgJAAQ=="     // ライブ配信中のみ
+    const val SEARCH_FILTER_SHORTS = "EgIQCQ=="   // ショート動画のみ
+
+    /** 検索結果中の再生リストカードの id 接頭辞 */
+    const val PLAYLIST_ID_PREFIX = "__pl__:"
     private const val BASE_URL = "https://www.youtube.com/youtubei/v1"
     private val JSON_MEDIA = "application/json; charset=utf-8".toMediaType()
 
@@ -40,6 +51,10 @@ object InnerTubeClient {
     private var cachedVisitorData: String? = null
     @Volatile
     private var cachedSignatureTimestamp: Int = 20711
+    @Volatile
+    private var lastVisitorFetchFailureMs: Long = 0L
+    private const val VISITOR_RETRY_BACKOFF_MS = 5 * 60 * 1000L
+    private val visitorMutex = Mutex()
 
     private val client = com.firetube.tv.data.network.NetworkClient.client
     private val gson = com.firetube.tv.data.network.NetworkClient.gson
@@ -142,7 +157,7 @@ object InnerTubeClient {
                 .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
                 .build()
 
-            client.newCall(request).execute().use { response ->
+            client.newCall(request).await().use { response ->
                 if (!response.isSuccessful) return@withContext Result.failure(Exception("HTTP ${response.code}"))
                 // ③ charStream() で直接パース: body?.string() より1回の String アロケーションを省略
                 val body = response.body ?: return@withContext Result.failure(Exception("Empty body"))
@@ -163,11 +178,14 @@ object InnerTubeClient {
      */
     suspend fun getChannelVideos(channelIdOrHandle: String): Result<List<VideoItem>> = withContext(Dispatchers.IO) {
         try {
-            val browseId = if (channelIdOrHandle.startsWith("UC")) {
-                channelIdOrHandle
-            } else {
-                channelIdOrHandle.substringAfterLast("/").substringAfterLast("@")
+            // 旧実装は "@handle" の "@" を外した文字列をそのまま browseId にしており、
+            // UC から始まるチャンネル ID 以外では常に取得に失敗していた
+            val key = ChannelKey.fromUploaderUrl(channelIdOrHandle) ?: channelIdOrHandle
+            if (!ChannelKey.isResolvable(key)) {
+                return@withContext Result.failure(Exception("Not a channel id or handle: $channelIdOrHandle"))
             }
+            val browseId = resolveChannelBrowseId(key)
+                ?: return@withContext Result.failure(Exception("Failed to resolve channel: $key"))
 
             val payload = JsonObject().apply {
                 add("context", buildContext())
@@ -180,7 +198,7 @@ object InnerTubeClient {
                 .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
                 .build()
 
-            client.newCall(request).execute().use { response ->
+            client.newCall(request).await().use { response ->
                 if (!response.isSuccessful) return@withContext Result.failure(Exception("HTTP ${response.code}"))
                 val body = response.body ?: return@withContext Result.failure(Exception("Empty body"))
                 val json = gson.fromJson(body.charStream(), JsonObject::class.java)
@@ -195,14 +213,52 @@ object InnerTubeClient {
         }
     }
 
+    private val resolvedChannelIds = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+    /**
+     * "@handle" を navigation/resolve_url で "UC..." のチャンネル ID に解決する (結果はメモリキャッシュ)
+     */
+    private suspend fun resolveChannelBrowseId(key: String): String? {
+        if (ChannelKey.isChannelId(key)) return key
+        resolvedChannelIds[key]?.let { return it }
+
+        val payload = JsonObject().apply {
+            add("context", buildContext())
+            addProperty("url", "https://www.youtube.com/$key")
+        }
+        val request = Request.Builder()
+            .url("$BASE_URL/navigation/resolve_url?prettyPrint=false")
+            .post(payload.toString().toRequestBody(JSON_MEDIA))
+            .build()
+        return try {
+            client.newCall(request).await().use { response ->
+                if (!response.isSuccessful) return null
+                val body = response.body ?: return null
+                val json = gson.fromJson(body.charStream(), JsonObject::class.java)
+                val browseId = json.getAsJsonObject("endpoint")
+                    ?.getAsJsonObject("browseEndpoint")
+                    ?.get("browseId")?.asString
+                browseId?.takeIf { ChannelKey.isChannelId(it) }?.also { resolvedChannelIds[key] = it }
+            }
+        } catch (e: Throwable) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            Log.w(TAG, "resolveChannelBrowseId failed for $key: ${e.message}")
+            null
+        }
+    }
+
     /**
      * 動画検索
      */
-    suspend fun searchVideos(query: String): Result<List<VideoItem>> = withContext(Dispatchers.IO) {
+    /**
+     * @param filterParams 検索フィルタ (SEARCH_FILTER_LIVE / SEARCH_FILTER_SHORTS)。null で通常検索
+     */
+    suspend fun searchVideos(query: String, filterParams: String? = null): Result<List<VideoItem>> = withContext(Dispatchers.IO) {
         try {
             val payload = JsonObject().apply {
                 add("context", buildContext())
                 addProperty("query", query)
+                if (filterParams != null) addProperty("params", filterParams)
             }
 
             val request = Request.Builder()
@@ -211,11 +267,15 @@ object InnerTubeClient {
                 .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
                 .build()
 
-            client.newCall(request).execute().use { response ->
+            client.newCall(request).await().use { response ->
                 if (!response.isSuccessful) return@withContext Result.failure(Exception("HTTP ${response.code}"))
                 val body = response.body ?: return@withContext Result.failure(Exception("Empty body"))
                 val json = gson.fromJson(body.charStream(), JsonObject::class.java)
-                val items = parseVideoRenderers(json)
+                val items = parseVideoRenderers(
+                    json,
+                    includeShorts = filterParams == SEARCH_FILTER_SHORTS,
+                    includePlaylists = filterParams == null
+                )
                 Log.i(TAG, "InnerTube search found ${items.size} videos for '$query'.")
                 Result.success(items)
             }
@@ -242,7 +302,7 @@ object InnerTubeClient {
                 .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
                 .build()
 
-            client.newCall(request).execute().use { response ->
+            client.newCall(request).await().use { response ->
                 if (!response.isSuccessful) return@withContext Result.failure(Exception("HTTP ${response.code}"))
                 val body = response.body ?: return@withContext Result.failure(Exception("Empty body"))
                 val json = gson.fromJson(body.charStream(), JsonObject::class.java)
@@ -261,10 +321,15 @@ object InnerTubeClient {
      * 再帰的に JSON 内の videoRenderer および lockupViewModel を探索して VideoItem にマッピング
      * ④ seenIds HashSet で O(1) 重複チェック（旧 result.none{} は O(n²)）
      */
-    private fun parseVideoRenderers(root: JsonObject): List<VideoItem> {
+    @androidx.annotation.VisibleForTesting
+    internal fun parseVideoRenderers(
+        root: JsonObject,
+        includeShorts: Boolean = false,
+        includePlaylists: Boolean = false
+    ): List<VideoItem> {
         val result = mutableListOf<VideoItem>()
         val seenIds = HashSet<String>(64)
-        findVideoRenderersRecursive(root, result, seenIds)
+        findVideoRenderersRecursive(root, result, seenIds, includeShorts, includePlaylists)
         return result
     }
 
@@ -272,6 +337,8 @@ object InnerTubeClient {
         element: JsonObject,
         result: MutableList<VideoItem>,
         seenIds: HashSet<String>,
+        includeShorts: Boolean,
+        includePlaylists: Boolean,
         depth: Int = 0
     ) {
         if (depth > 32) return
@@ -285,17 +352,29 @@ object InnerTubeClient {
                     }
                 }
             } else if (key == "lockupViewModel" && value.isJsonObject) {
-                parseLockupViewModel(value.asJsonObject)?.let { item ->
+                val lockup = value.asJsonObject
+                val parsed = if (lockup.get("contentType")?.asString == "LOCKUP_CONTENT_TYPE_PLAYLIST") {
+                    if (includePlaylists) parsePlaylistLockup(lockup) else null
+                } else {
+                    parseLockupViewModel(lockup)
+                }
+                parsed?.let { item ->
+                    if (item.isPlayableAndValid && seenIds.add(item.id)) {
+                        result.add(item)
+                    }
+                }
+            } else if (includeShorts && key == "shortsLockupViewModel" && value.isJsonObject) {
+                parseShortsLockup(value.asJsonObject)?.let { item ->
                     if (item.isPlayableAndValid && seenIds.add(item.id)) {
                         result.add(item)
                     }
                 }
             } else if (value.isJsonObject) {
-                findVideoRenderersRecursive(value.asJsonObject, result, seenIds, depth + 1)
+                findVideoRenderersRecursive(value.asJsonObject, result, seenIds, includeShorts, includePlaylists, depth + 1)
             } else if (value.isJsonArray) {
                 for (subElem in value.asJsonArray) {
                     if (subElem.isJsonObject) {
-                        findVideoRenderersRecursive(subElem.asJsonObject, result, seenIds, depth + 1)
+                        findVideoRenderersRecursive(subElem.asJsonObject, result, seenIds, includeShorts, includePlaylists, depth + 1)
                     }
                 }
             }
@@ -483,6 +562,95 @@ object InnerTubeClient {
         }
     }
 
+    /**
+     * 再生リスト (contentType = LOCKUP_CONTENT_TYPE_PLAYLIST) の解析
+     * 動画と区別するため id は PLAYLIST_ID_PREFIX + 再生リストID
+     */
+    private fun parsePlaylistLockup(obj: JsonObject): VideoItem? {
+        return try {
+            val playlistId = obj.get("contentId")?.asString
+            if (playlistId.isNullOrEmpty()) return null
+            val metadata = obj.getAsJsonObject("metadata")?.getAsJsonObject("lockupMetadataViewModel")
+            val title = metadata?.getAsJsonObject("title")?.get("content")?.asString ?: return null
+            val owner = try {
+                metadata.getAsJsonObject("metadata")
+                    ?.getAsJsonObject("contentMetadataViewModel")
+                    ?.getAsJsonArray("metadataRows")?.get(0)?.asJsonObject
+                    ?.getAsJsonArray("metadataParts")?.get(0)?.asJsonObject
+                    ?.getAsJsonObject("text")?.get("content")?.asString
+            } catch (_: Exception) {
+                null
+            }
+            val thumb = try {
+                obj.getAsJsonObject("contentImage")
+                    ?.getAsJsonObject("collectionThumbnailViewModel")
+                    ?.getAsJsonObject("primaryThumbnail")
+                    ?.getAsJsonObject("thumbnailViewModel")
+                    ?.getAsJsonObject("image")
+                    ?.getAsJsonArray("sources")
+                    ?.let { if (it.size() > 0) it.get(0).asJsonObject.get("url")?.asString else null }
+            } catch (_: Exception) {
+                null
+            }
+            VideoItem(
+                id = PLAYLIST_ID_PREFIX + playlistId,
+                title = title,
+                uploaderName = if (owner.isNullOrBlank()) "再生リスト" else "再生リスト · $owner",
+                thumbnailUrl = thumb ?: ""
+            )
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /** 再生リスト内の動画一覧 (browseId = "VL" + 再生リストID) */
+    suspend fun getPlaylistVideos(playlistId: String): Result<List<VideoItem>> = withContext(Dispatchers.IO) {
+        try {
+            val payload = JsonObject().apply {
+                add("context", buildContext())
+                addProperty("browseId", "VL$playlistId")
+            }
+            val request = Request.Builder()
+                .url("$BASE_URL/browse?prettyPrint=false")
+                .post(payload.toString().toRequestBody(JSON_MEDIA))
+                .build()
+            client.newCall(request).await().use { response ->
+                if (!response.isSuccessful) return@withContext Result.failure(Exception("HTTP ${response.code}"))
+                val body = response.body ?: return@withContext Result.failure(Exception("Empty body"))
+                val json = gson.fromJson(body.charStream(), JsonObject::class.java)
+                val items = parseVideoRenderers(json)
+                Log.i(TAG, "InnerTube fetched ${items.size} playlist videos for $playlistId.")
+                Result.success(items)
+            }
+        } catch (e: Throwable) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            Log.e(TAG, "InnerTube getPlaylistVideos failed", e)
+            Result.failure(e)
+        }
+    }
+
+    /** ショート動画 (shortsLockupViewModel) の解析。投稿者名は含まれないため固定表記 */
+    private fun parseShortsLockup(obj: JsonObject): VideoItem? {
+        return try {
+            val videoId = obj.getAsJsonObject("onTap")
+                ?.getAsJsonObject("innertubeCommand")
+                ?.getAsJsonObject("reelWatchEndpoint")
+                ?.get("videoId")?.asString
+            if (videoId.isNullOrEmpty() || videoId.length < 5) return null
+            val title = obj.getAsJsonObject("overlayMetadata")
+                ?.getAsJsonObject("primaryText")
+                ?.get("content")?.asString ?: return null
+            VideoItem(
+                id = videoId,
+                title = title,
+                uploaderName = "ショート",
+                thumbnailUrl = "https://i.ytimg.com/vi/$videoId/hqdefault.jpg"
+            )
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     private fun parseDurationToSeconds(text: String?): Long {
         if (text == null) return 0L
         val parts = text.split(":")
@@ -502,31 +670,29 @@ object InnerTubeClient {
         val failureReasons = mutableListOf<String>()
 
         // ① Level-1 Racing: IOS_KIDS（子ども向け HLS）と VISIONOS（一般動画 HLS）を並列実行
+        // IOS_KIDS が有効なストリームを返した時点で VISIONOS を即キャンセルして返却
+        // (旧実装は両方の完了を待っていたため、常に遅い方のレイテンシになっていた)
         val raceResult = coroutineScope {
             val kidsDeferred = async { fetchPlayerStream(videoId, buildIosKidsContext(), IOS_KIDS_USER_AGENT) }
             val visionDeferred = async { fetchVisionOsStream(videoId) }
 
-            val (kidsResult, visionResult) = listOf(kidsDeferred, visionDeferred).let {
-                listOf(it[0].await(), it[1].await())
-            }
-
-            kidsResult.exceptionOrNull()?.message?.let { failureReasons.add(it) }
-            visionResult.exceptionOrNull()?.message?.let { failureReasons.add(it) }
-
+            val kidsResult = kidsDeferred.await()
             val kidsData = kidsResult.getOrNull()
-            val visionData = visionResult.getOrNull()
-
-            when {
-                kidsResult.isSuccess && kidsData != null && (kidsData.hlsUrl != null || kidsData.videoStreams.isNotEmpty()) -> {
-                    Log.i(TAG, "Racing: IOS_KIDS won for $videoId (hls=${kidsData.hlsUrl != null})")
-                    kidsResult
-                }
-                visionResult.isSuccess && visionData != null && (visionData.hlsUrl != null || visionData.videoStreams.isNotEmpty()) -> {
-                    Log.i(TAG, "Racing: VISIONOS won for $videoId (hls=${visionData.hlsUrl != null})")
-                    visionResult
-                }
-                else -> null
+            if (kidsData != null && (kidsData.hlsUrl != null || kidsData.videoStreams.isNotEmpty())) {
+                visionDeferred.cancel()
+                Log.i(TAG, "Racing: IOS_KIDS won for $videoId (hls=${kidsData.hlsUrl != null})")
+                return@coroutineScope kidsResult
             }
+            kidsResult.exceptionOrNull()?.message?.let { failureReasons.add(it) }
+
+            val visionResult = visionDeferred.await()
+            val visionData = visionResult.getOrNull()
+            if (visionData != null && (visionData.hlsUrl != null || visionData.videoStreams.isNotEmpty())) {
+                Log.i(TAG, "Racing: VISIONOS won for $videoId (hls=${visionData.hlsUrl != null})")
+                return@coroutineScope visionResult
+            }
+            visionResult.exceptionOrNull()?.message?.let { failureReasons.add(it) }
+            null
         }
 
         if (raceResult != null) return@withContext raceResult
@@ -603,14 +769,30 @@ object InnerTubeClient {
         Log.i(TAG, "preFetchVisitorData: visitorData=${if (cachedVisitorData != null) "OK" else "not available"}, sts=$cachedSignatureTimestamp")
     }
 
-    private fun fetchVisitorDataIfNeeded(videoId: String) {
+    /**
+     * watch ページ (約1MB の HTML) から visitorData を取得する
+     * - Mutex で同時多重ダウンロードを防止 (キッズ先読みの並列抽出時など)
+     * - 失敗時は一定時間再試行しない (旧実装は失敗が続くと VISIONOS 抽出のたびに 1MB を再ダウンロードしていた)
+     */
+    private suspend fun fetchVisitorDataIfNeeded(videoId: String) {
         if (cachedVisitorData != null) return
+        if (System.currentTimeMillis() - lastVisitorFetchFailureMs < VISITOR_RETRY_BACKOFF_MS) return
+        visitorMutex.withLock {
+            if (cachedVisitorData != null) return
+            fetchVisitorDataLocked(videoId)
+            if (cachedVisitorData == null) {
+                lastVisitorFetchFailureMs = System.currentTimeMillis()
+            }
+        }
+    }
+
+    private suspend fun fetchVisitorDataLocked(videoId: String) {
         try {
             val req = Request.Builder()
                 .url("https://www.youtube.com/watch?v=$videoId")
                 .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
                 .build()
-            client.newCall(req).execute().use { response ->
+            client.newCall(req).await().use { response ->
                 if (!response.isSuccessful) return
                 val html = response.body?.string() ?: return
                 val visitorMatch = Regex("""["']visitorData["']\s*:\s*["']([^"']+)["']""").find(html)
@@ -624,11 +806,12 @@ object InnerTubeClient {
                 Log.d(TAG, "Fetched visitorData: ${cachedVisitorData?.take(30)}..., sts=$cachedSignatureTimestamp")
             }
         } catch (e: Throwable) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Log.w(TAG, "fetchVisitorDataIfNeeded failed: ${e.message}")
         }
     }
 
-    private fun fetchVisionOsStream(videoId: String): Result<StreamInfoData> {
+    private suspend fun fetchVisionOsStream(videoId: String): Result<StreamInfoData> {
         return try {
             fetchVisitorDataIfNeeded(videoId)
             val vData = cachedVisitorData
@@ -679,7 +862,7 @@ object InnerTubeClient {
                 reqBuilder.header("X-Goog-Visitor-Id", vData)
             }
 
-            client.newCall(reqBuilder.build()).execute().use { response ->
+            client.newCall(reqBuilder.build()).await().use { response ->
                 if (!response.isSuccessful) {
                     return Result.failure(Exception("VisionOS player HTTP ${response.code}"))
                 }
@@ -688,12 +871,13 @@ object InnerTubeClient {
                 parseStreamInfoFromJson(json, videoId)
             }
         } catch (e: Throwable) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Log.e(TAG, "fetchVisionOsStream failed for $videoId", e)
             Result.failure(e)
         }
     }
 
-    private fun fetchPlayerStream(
+    private suspend fun fetchPlayerStream(
         videoId: String,
         contextJson: JsonObject,
         userAgent: String,
@@ -727,7 +911,7 @@ object InnerTubeClient {
                 .header("User-Agent", userAgent)
                 .build()
 
-            client.newCall(request).execute().use { response ->
+            client.newCall(request).await().use { response ->
                 if (!response.isSuccessful) {
                     return Result.failure(Exception("InnerTube player HTTP ${response.code}"))
                 }
@@ -736,6 +920,7 @@ object InnerTubeClient {
                 parseStreamInfoFromJson(json, videoId)
             }
         } catch (e: Throwable) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Log.e(TAG, "InnerTube fetchPlayerStream failed for $videoId", e)
             Result.failure(e)
         }
@@ -851,7 +1036,8 @@ object InnerTubeClient {
                     ?: nameObj?.get("simpleText")?.asString
                     ?: langCode
                 if (url.isNotEmpty()) {
-                    subtitles.add(SubtitleTrack(url = url, languageName = langName, languageCode = langCode))
+                    val isAsr = trackObj.get("kind")?.asString == "asr"
+                    subtitles.add(SubtitleTrack(url = url, languageName = langName, languageCode = langCode, isAutoGenerated = isAsr))
                 }
             }
         }

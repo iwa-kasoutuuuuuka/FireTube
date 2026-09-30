@@ -5,6 +5,14 @@
     <string name="menu_trending">トレンド</string>
     <string name="menu_kids">👶 キッズ</string>
     <string name="menu_subscriptions">登録チャンネル</string>
+    <string name="menu_subscription_feed">登録チャンネルの新着</string>
+    <string name="menu_watch_later">後で見る</string>
+    <string name="recent_searches">最近の検索</string>
+    <string name="menu_live">🔴 ライブ配信中</string>
+    <string name="menu_shorts">ショート</string>
+    <string name="up_next_queue">再生リストの次の動画</string>
+    <string name="player_options_title">再生オプション</string>
+    <string name="player_options_hint">[決定] 選択  [戻る / ←] 閉じる</string>
     <string name="menu_history">視聴履歴</string>
     <string name="menu_search">検索</string>
     <string name="menu_settings">設定</string>
@@ -15,7 +23,6 @@
     <string name="loading">読み込み中…</string>
     <string name="error_loading">動画情報の取得に失敗しました</string>
     <string name="search_hint">動画やチャンネルを検索…</string>
-    <string name="background_playback_running">バックグラウンド音声再生中</string>
 
     <string name="menu_cast">スマホからキャスト</string>
     <string name="retry">再試行</string>

@@ -95,6 +95,8 @@ object LocalCastServer {
     private fun handleClient(socket: Socket, context: Context) {
         try {
             socket.use { s ->
+                // 何も送らずに接続を保持し続けるクライアントで IO スレッドが永久に占有されるのを防ぐ
+                s.soTimeout = 10_000
                 val reader = BufferedReader(InputStreamReader(s.getInputStream(), Charsets.UTF_8))
                 val out: OutputStream = s.getOutputStream()
 
@@ -280,15 +282,22 @@ object LocalCastServer {
         out.flush()
     }
 
-    private fun extractVideoId(rawUrl: String): String? {
+    private val VIDEO_ID_REGEX = Regex("^[A-Za-z0-9_-]{11}$")
+    private val VIDEO_URL_REGEX = Regex("(?:youtu\\.be/|youtube\\.com/(?:embed/|v/|shorts/|live/|watch\\?v=|watch\\?.+&v=))([A-Za-z0-9_-]{11})")
+
+    /**
+     * 動画IDは必ず YouTube の ID 文字種 (英数字・_・-) 11文字に限定する。
+     * ID は WebView の JavaScript や応答 HTML に埋め込まれるため、任意文字を通すと
+     * 同一LAN内から JS/HTML インジェクションが可能になる。
+     */
+    @androidx.annotation.VisibleForTesting
+    internal fun extractVideoId(rawUrl: String): String? {
         val url = rawUrl.trim()
-        if (url.length == 11 && !url.contains("/") && !url.contains("?")) return url
-        val pattern = "(?:youtu\\.be\\/|youtube\\.com\\/(?:embed\\/|v\\/|shorts\\/|watch\\?v=|watch\\?.+&v=))([\\w-]{11})".toRegex()
-        val match = pattern.find(url)?.groupValues?.get(1)
-        if (match != null) return match
+        if (VIDEO_ID_REGEX.matches(url)) return url
+        VIDEO_URL_REGEX.find(url)?.groupValues?.get(1)?.let { return it }
         if (url.contains("v=")) {
             val vParam = url.substringAfter("v=").substringBefore("&").substringBefore("#")
-            if (vParam.length == 11) return vParam
+            if (VIDEO_ID_REGEX.matches(vParam)) return vParam
         }
         return null
     }

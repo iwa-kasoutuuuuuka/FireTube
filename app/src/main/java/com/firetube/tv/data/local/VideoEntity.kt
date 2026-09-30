@@ -14,7 +14,8 @@ data class VideoHistoryEntity(
     val thumbnailUrl: String,
     val durationSeconds: Long,
     val lastPlayedPositionMs: Long = 0,
-    val lastPlayedTimestamp: Long = System.currentTimeMillis()
+    val lastPlayedTimestamp: Long = System.currentTimeMillis(),
+    val uploaderUrl: String? = null // DB v2 で追加 (履歴から再生した動画でもチャンネル登録を ID で行うため)
 )
 
 @Entity(tableName = "subscriptions")
@@ -23,4 +24,16 @@ data class SubscriptionEntity(
     val channelName: String,
     val channelAvatarUrl: String? = null,
     val subscribedTimestamp: Long = System.currentTimeMillis()
+)
+
+/** 「後で見る」リスト (DB v2 で追加) */
+@Entity(tableName = "watch_later")
+data class WatchLaterEntity(
+    @PrimaryKey val id: String,
+    val title: String,
+    val uploaderName: String,
+    val uploaderUrl: String?,
+    val thumbnailUrl: String,
+    val durationSeconds: Long,
+    val addedTimestamp: Long = System.currentTimeMillis()
 )

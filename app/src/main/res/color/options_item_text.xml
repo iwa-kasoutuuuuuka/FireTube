@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 再生オプションパネルの項目文字色 (フォーカス時は黄色背景に対して暗色) -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:color="@color/background_dark" android:state_focused="true" />
+    <item android:color="@color/text_primary" />
+</selector>

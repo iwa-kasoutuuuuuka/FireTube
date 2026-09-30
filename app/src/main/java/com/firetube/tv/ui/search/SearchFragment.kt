@@ -15,6 +15,7 @@ import com.firetube.tv.R
 import com.firetube.tv.data.model.VideoItem
 import com.firetube.tv.ui.main.VideoCardPresenter
 import com.firetube.tv.ui.player.PlaybackActivity
+import com.firetube.tv.util.AppPreferences
 import com.firetube.tv.util.MemoryManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -30,8 +31,15 @@ import androidx.leanback.widget.SearchOrbView
 class SearchFragment : SearchSupportFragment(), SearchSupportFragment.SearchResultProvider {
 
     private val rowsAdapter = ArrayObjectAdapter(ListRowPresenter())
-    private val resultsAdapter = ArrayObjectAdapter(VideoCardPresenter())
+    private val resultsAdapter = ArrayObjectAdapter(VideoCardPresenter(onLongPress = { item ->
+        com.firetube.tv.ui.common.VideoActionMenu.show(requireContext(), viewLifecycleOwner.lifecycleScope, item)
+    }))
     private var searchJob: Job? = null
+    private var currentQuery: String? = null
+
+    // 最近の検索 (検索結果が無い間のみ表示)
+    private val recentAdapter = ArrayObjectAdapter(VideoCardPresenter())
+    private val recentRow by lazy { ListRow(HeaderItem(1, getString(R.string.recent_searches)), recentAdapter) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,15 +56,34 @@ class SearchFragment : SearchSupportFragment(), SearchSupportFragment.SearchResu
 
         setOnItemViewClickedListener(OnItemViewClickedListener { _, item, _, _ ->
             if (item is VideoItem) {
-                val intent = Intent(requireContext(), PlaybackActivity::class.java).apply {
-                    putExtra(PlaybackActivity.EXTRA_VIDEO_ID, item.id)
-                    putExtra(PlaybackActivity.EXTRA_VIDEO_TITLE, item.title)
-                    putExtra(PlaybackActivity.EXTRA_UPLOADER_NAME, item.uploaderName)
-                    putExtra(PlaybackActivity.EXTRA_THUMBNAIL_URL, item.thumbnailUrl)
+                if (item.id.startsWith(PREFIX_RECENT)) {
+                    setSearchQuery(item.id.removePrefix(PREFIX_RECENT), true)
+                } else if (item.id.startsWith(com.firetube.tv.data.innertube.InnerTubeClient.PLAYLIST_ID_PREFIX)) {
+                    startActivity(Intent(requireContext(), com.firetube.tv.ui.channel.ChannelActivity::class.java).apply {
+                        putExtra(com.firetube.tv.ui.channel.ChannelActivity.EXTRA_PLAYLIST_ID,
+                            item.id.removePrefix(com.firetube.tv.data.innertube.InnerTubeClient.PLAYLIST_ID_PREFIX))
+                        putExtra(com.firetube.tv.ui.channel.ChannelActivity.EXTRA_CHANNEL_NAME, item.title)
+                    })
+                } else {
+                    startActivity(PlaybackActivity.createIntent(requireContext(), item))
                 }
-                startActivity(intent)
             }
         })
+        updateRecentSearchesRow()
+    }
+
+    private fun updateRecentSearchesRow() {
+        val history = AppPreferences.getInstance(requireContext()).searchHistory
+        val rowIndex = rowsAdapter.indexOf(recentRow)
+        if (history.isEmpty() || resultsAdapter.size() > 0) {
+            if (rowIndex >= 0) rowsAdapter.removeItems(rowIndex, 1)
+            return
+        }
+        recentAdapter.clear()
+        recentAdapter.addAll(0, history.map { q ->
+            VideoItem(id = "$PREFIX_RECENT$q", title = q, uploaderName = getString(R.string.recent_searches), thumbnailUrl = "")
+        })
+        if (rowIndex < 0) rowsAdapter.add(recentRow)
     }
 
     override fun getResultsAdapter(): ObjectAdapter {
@@ -76,6 +103,7 @@ class SearchFragment : SearchSupportFragment(), SearchSupportFragment.SearchResu
     override fun onQueryTextSubmit(query: String?): Boolean {
         query?.let {
             if (it.isNotBlank()) {
+                AppPreferences.getInstance(requireContext()).addSearchHistory(it)
                 performSearch(it.trim())
             }
         }
@@ -83,6 +111,9 @@ class SearchFragment : SearchSupportFragment(), SearchSupportFragment.SearchResu
     }
 
     private fun performSearch(query: String) {
+        // 入力途中の検索と確定 (Submit) が同じクエリの場合、実行中/表示済みの検索を再実行しない
+        if (query == currentQuery) return
+        currentQuery = query
         searchJob?.cancel()
         searchJob = viewLifecycleOwner.lifecycleScope.launch {
             delay(400) // 連打防止デバウンス
@@ -90,12 +121,17 @@ class SearchFragment : SearchSupportFragment(), SearchSupportFragment.SearchResu
             result.onSuccess { videos ->
                 resultsAdapter.clear()
                 resultsAdapter.addAll(0, videos)
+                updateRecentSearchesRow()
+            }.onFailure {
+                // 失敗したクエリは再試行できるようにする
+                if (currentQuery == query) currentQuery = null
             }
         }
     }
 
     companion object {
         private const val ARG_INITIAL_QUERY = "arg_initial_query"
+        private const val PREFIX_RECENT = "__recent__:"
         private const val REQUEST_SPEECH = 1001
 
         fun newInstance(initialQuery: String? = null): SearchFragment {

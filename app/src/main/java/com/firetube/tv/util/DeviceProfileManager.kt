@@ -46,6 +46,16 @@ object DeviceProfileManager {
      * ハードウェアスペックの自動検出
      */
     fun detectHardwareTier(context: Context): PerformanceTier {
+        // ハードウェアは実行中に変化しないため初回判定結果を保持
+        // (getMemoryInfo は Binder IPC であり、カードのフォーカス移動毎に呼ばれていた)
+        cachedHardwareTier?.let { return it }
+        return detectHardwareTierUncached(context).also { cachedHardwareTier = it }
+    }
+
+    @Volatile
+    private var cachedHardwareTier: PerformanceTier? = null
+
+    private fun detectHardwareTierUncached(context: Context): PerformanceTier {
         val model = Build.MODEL ?: ""
         if (HIGH_PERFORMANCE_AMAZON_MODELS.contains(model)) {
             return PerformanceTier.HIGH

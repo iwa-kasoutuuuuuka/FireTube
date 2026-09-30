@@ -55,6 +55,7 @@ class GoogleVideoDataSource(
     private var currentPosition: Long = 0L
     private var bytesRemaining: Long = 0L
     private var totalLength: Long = C.LENGTH_UNSET.toLong()
+    private var requestEndExclusive: Long = C.LENGTH_UNSET.toLong()
 
     private var currentResponse: Response? = null
     private var currentStream: InputStream? = null
@@ -85,6 +86,11 @@ class GoogleVideoDataSource(
         // URL クエリの clen から全体のバイト数を即座に推定
         val clenParam = dataSpec.uri.getQueryParameter("clen")?.toLongOrNull()
         this.totalLength = clenParam ?: C.LENGTH_UNSET.toLong()
+        this.requestEndExclusive = if (dataSpec.length != C.LENGTH_UNSET.toLong()) {
+            dataSpec.position + dataSpec.length
+        } else {
+            C.LENGTH_UNSET.toLong()
+        }
 
         openNextChunk()
 
@@ -112,10 +118,15 @@ class GoogleVideoDataSource(
         }
 
         val start = currentPosition
-        val end = if (totalLength != C.LENGTH_UNSET.toLong()) {
+        var end = if (totalLength != C.LENGTH_UNSET.toLong()) {
             minOf(start + chunkSize - 1, totalLength - 1)
         } else {
             start + chunkSize - 1
+        }
+        // 要求範囲 (dataSpec.length) が指定されている場合は、その終端を超えて取得しない
+        // (超過分は読み捨てになり、シーク時やキャッシュ隙間の読み込みで帯域を浪費していた)
+        if (requestEndExclusive != C.LENGTH_UNSET.toLong()) {
+            end = minOf(end, requestEndExclusive - 1)
         }
 
         if (start > end) return

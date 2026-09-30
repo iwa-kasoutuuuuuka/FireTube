@@ -1,12 +1,17 @@
 package com.firetube.tv.data.repository
 
 import android.util.Log
+import com.firetube.tv.FireTubeApp
 import com.firetube.tv.data.extractor.YouTubeStreamExtractor
 import com.firetube.tv.data.innertube.InnerTubeClient
 import com.firetube.tv.data.model.StreamInfoData
 import com.firetube.tv.data.model.VideoItem
 import com.firetube.tv.data.piped.PipedApiClient
+import com.firetube.tv.util.AppPreferences
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
@@ -45,6 +50,36 @@ object VideoRepository {
         }
     }
     private val streamCacheLock = Any()
+
+    // 進行中のストリーム抽出 (streamCacheLock で保護)
+    // 呼び出し元のキャンセル (フォーカス移動・画面遷移) で共有抽出が中断されないよう独立スコープで実行
+    private val inFlightExtractions = HashMap<String, Deferred<Result<StreamInfoData>>>()
+    private val extractionScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    private val preferredApiSource: String
+        get() = AppPreferences.getInstance(FireTubeApp.instance).apiSource
+
+    /** 設定画面の「優先APIソース」に一致するプロバイダをリストの先頭へ移動する */
+    private fun <T> preferredFirst(providers: List<Pair<String, T>>): List<Pair<String, T>> {
+        val preferred = preferredApiSource
+        return providers.sortedBy { if (it.first == preferred) 0 else 1 }
+    }
+
+    /** プロバイダを順に試し、再生可能な動画を 1 件以上返した最初の結果を採用する */
+    private suspend fun firstNonEmptyList(
+        label: String,
+        providers: List<Pair<String, suspend () -> Result<List<VideoItem>>>>
+    ): List<VideoItem>? {
+        for ((name, fetch) in providers) {
+            val items = fetch().getOrNull()?.filter { it.isPlayableAndValid }
+            if (!items.isNullOrEmpty()) {
+                Log.i(TAG, "Loaded $label via $name (${items.size} valid items)")
+                return items
+            }
+            Log.w(TAG, "$name failed or empty for $label, trying next provider...")
+        }
+        return null
+    }
 
     /**
      * UI即時表示用の高速メモリキャッシュ取得（0ms）
@@ -95,42 +130,21 @@ object VideoRepository {
             return@withContext Result.success(cached)
         }
 
-        // 1. YouTube InnerTube API (公式JSON直結・超高速・パースエラーなし)
-        val innerResult = InnerTubeClient.getTrendingVideos()
-        if (innerResult.isSuccess && innerResult.getOrNull()?.isNotEmpty() == true) {
-            val list = innerResult.getOrNull()!!.filter { it.isPlayableAndValid }
-            if (list.isNotEmpty()) {
-                cachedTrendingVideos = list
-                lastTrendingCacheTime = now
-                Log.i(TAG, "Loaded trending videos via InnerTube API (${list.size} valid items)")
-                return@withContext Result.success(list)
-            }
-        }
-        Log.w(TAG, "InnerTube trending failed or empty, trying Piped API...")
-
-        // 2. Piped API (高速インスタンス優先)
-        val pipedResult = PipedApiClient.getTrendingVideos()
-        if (pipedResult.isSuccess && pipedResult.getOrNull()?.isNotEmpty() == true) {
-            val list = pipedResult.getOrNull()!!.filter { it.isPlayableAndValid }
-            if (list.isNotEmpty()) {
-                cachedTrendingVideos = list
-                lastTrendingCacheTime = now
-                Log.i(TAG, "Loaded trending videos via Piped API (${list.size} valid items)")
-                return@withContext Result.success(list)
-            }
-        }
-        Log.w(TAG, "Piped API trending failed, trying NewPipeExtractor...")
-
-        // 3. NewPipeExtractor (スクレイピング・フォールバック)
-        val npResult = YouTubeStreamExtractor.getTrendingVideos()
-        if (npResult.isSuccess && npResult.getOrNull()?.isNotEmpty() == true) {
-            val list = npResult.getOrNull()!!.filter { it.isPlayableAndValid }
-            if (list.isNotEmpty()) {
-                cachedTrendingVideos = list
-                lastTrendingCacheTime = now
-                Log.i(TAG, "Loaded trending videos via NewPipeExtractor (${list.size} valid items)")
-                return@withContext Result.success(list)
-            }
+        // InnerTube → Piped → NewPipe (設定の「優先APIソース」を先頭に移動)
+        val list = firstNonEmptyList(
+            "trending",
+            preferredFirst(
+                listOf(
+                    AppPreferences.API_SOURCE_INNERTUBE to { InnerTubeClient.getTrendingVideos() },
+                    AppPreferences.API_SOURCE_PIPED to { PipedApiClient.getTrendingVideos() },
+                    AppPreferences.API_SOURCE_NEWPIPE to { YouTubeStreamExtractor.getTrendingVideos() }
+                )
+            )
+        )
+        if (list != null) {
+            cachedTrendingVideos = list
+            lastTrendingCacheTime = now
+            return@withContext Result.success(list)
         }
 
         // 全て失敗しても前回のキャッシュがあればそれを返却
@@ -146,37 +160,18 @@ object VideoRepository {
      * 動画検索（非公開動画・削除動画を完全除外）
      */
     suspend fun searchVideos(query: String): Result<List<VideoItem>> = withContext(Dispatchers.IO) {
-        // 1. YouTube InnerTube API
-        val innerResult = InnerTubeClient.searchVideos(query)
-        if (innerResult.isSuccess && innerResult.getOrNull()?.isNotEmpty() == true) {
-            val validItems = innerResult.getOrNull()!!.filter { it.isPlayableAndValid }
-            if (validItems.isNotEmpty()) {
-                Log.i(TAG, "Search successful via InnerTube API for: $query (${validItems.size} videos)")
-                return@withContext Result.success(validItems)
-            }
-        }
-        Log.w(TAG, "InnerTube search failed or empty, trying NewPipeExtractor...")
-
-        // 2. NewPipeExtractor
-        val npResult = YouTubeStreamExtractor.searchVideos(query)
-        if (npResult.isSuccess && npResult.getOrNull()?.isNotEmpty() == true) {
-            val validItems = npResult.getOrNull()!!.filter { it.isPlayableAndValid }
-            if (validItems.isNotEmpty()) {
-                Log.i(TAG, "Search successful via NewPipeExtractor for: $query (${validItems.size} videos)")
-                return@withContext Result.success(validItems)
-            }
-        }
-        Log.w(TAG, "NewPipe search failed or empty, trying Piped API...")
-
-        // 3. Piped API
-        val pipedResult = PipedApiClient.searchVideos(query)
-        if (pipedResult.isSuccess && pipedResult.getOrNull()?.isNotEmpty() == true) {
-            val validItems = pipedResult.getOrNull()!!.filter { it.isPlayableAndValid }
-            if (validItems.isNotEmpty()) {
-                Log.i(TAG, "Search successful via Piped API for: $query (${validItems.size} videos)")
-                return@withContext Result.success(validItems)
-            }
-        }
+        // InnerTube → NewPipe → Piped (設定の「優先APIソース」を先頭に移動)
+        val list = firstNonEmptyList(
+            "search '$query'",
+            preferredFirst(
+                listOf(
+                    AppPreferences.API_SOURCE_INNERTUBE to { InnerTubeClient.searchVideos(query) },
+                    AppPreferences.API_SOURCE_NEWPIPE to { YouTubeStreamExtractor.searchVideos(query) },
+                    AppPreferences.API_SOURCE_PIPED to { PipedApiClient.searchVideos(query) }
+                )
+            )
+        )
+        if (list != null) return@withContext Result.success(list)
 
         Result.failure(Exception("All providers failed to search for: $query"))
     }
@@ -230,8 +225,8 @@ object VideoRepository {
     /**
      * チャンネル動画一覧取得（非公開動画・削除動画を完全除外）
      */
-    suspend fun getChannelVideos(channelIdOrUrl: String): Result<List<VideoItem>> = withContext(Dispatchers.IO) {
-        // 1. InnerTube API で取得
+    suspend fun getChannelVideos(channelIdOrUrl: String, channelName: String? = null): Result<List<VideoItem>> = withContext(Dispatchers.IO) {
+        // 1. InnerTube API で取得 (チャンネル ID / @handle のみ)
         val innerResult = InnerTubeClient.getChannelVideos(channelIdOrUrl)
         if (innerResult.isSuccess && innerResult.getOrNull()?.isNotEmpty() == true) {
             val validItems = innerResult.getOrNull()!!.filter { it.isPlayableAndValid }
@@ -241,9 +236,82 @@ object VideoRepository {
             }
         }
 
-        // 2. チャンネル名での検索フォールバック
-        val queryName = channelIdOrUrl.substringAfterLast("/").substringAfterLast("@")
-        searchVideos(queryName)
+        // 2. チャンネル名での検索フォールバック (旧バージョンで名前をキーに登録したチャンネル等)
+        val queryName = channelName?.takeIf { it.isNotBlank() }
+            ?: channelIdOrUrl.substringAfterLast("/").substringAfterLast("@")
+        searchVideos(queryName).map { videos ->
+            // 検索結果には他チャンネルの動画も混ざるため、チャンネル名が一致するものがあればそれだけに絞る
+            val sameChannel = videos.filter { it.uploaderName.trim() == queryName.trim() }
+            sameChannel.ifEmpty { videos }
+        }
+    }
+
+    private val categoryCache = java.util.concurrent.ConcurrentHashMap<String, Pair<Long, List<VideoItem>>>()
+    private const val CATEGORY_CACHE_TTL_MS = 10 * 60 * 1000L
+
+    suspend fun getPlaylistVideos(playlistId: String): Result<List<VideoItem>> =
+        InnerTubeClient.getPlaylistVideos(playlistId).map { list -> list.filter { it.isPlayableAndValid } }
+
+    /** ホーム画面の「ライブ配信中」行 (InnerTube のライブ絞り込み検索) */
+    suspend fun getLiveVideos(): List<VideoItem> =
+        getCategory("live") { InnerTubeClient.searchVideos("ライブ", InnerTubeClient.SEARCH_FILTER_LIVE) }
+
+    /** ホーム画面の「ショート」行 (InnerTube のショート絞り込み検索) */
+    suspend fun getShortsVideos(): List<VideoItem> =
+        getCategory("shorts") { InnerTubeClient.searchVideos("#shorts", InnerTubeClient.SEARCH_FILTER_SHORTS) }
+
+    private suspend fun getCategory(key: String, fetch: suspend () -> Result<List<VideoItem>>): List<VideoItem> =
+        withContext(Dispatchers.IO) {
+            val now = System.currentTimeMillis()
+            categoryCache[key]?.let { (time, items) ->
+                if (now - time < CATEGORY_CACHE_TTL_MS) return@withContext items
+            }
+            val items = fetch().getOrNull()?.filter { it.isPlayableAndValid }.orEmpty()
+            if (items.isNotEmpty()) categoryCache[key] = now to items
+            items.ifEmpty { categoryCache[key]?.second.orEmpty() }
+        }
+
+    // 登録チャンネル新着フィードのキャッシュ (登録内容が同じなら 10 分間再利用)
+    private const val FEED_CACHE_TTL_MS = 10 * 60 * 1000L
+    private const val FEED_MAX_CHANNELS = 12
+    private const val FEED_VIDEOS_PER_CHANNEL = 6
+
+    @Volatile
+    private var cachedFeed: Triple<List<String>, Long, List<VideoItem>>? = null
+
+    /**
+     * 登録チャンネルの新着動画を並列取得し、チャンネル横断で交互に並べたフィードを返す
+     * (InnerTube の一覧には投稿日時の機械可読な値が無いため、各チャンネルの先頭=最新から順に交互配置)
+     */
+    suspend fun getSubscriptionFeed(channelKeys: List<String>): List<VideoItem> = withContext(Dispatchers.IO) {
+        val keys = channelKeys.filter { com.firetube.tv.data.model.ChannelKey.isResolvable(it) }.take(FEED_MAX_CHANNELS)
+        if (keys.isEmpty()) return@withContext emptyList()
+        val now = System.currentTimeMillis()
+        cachedFeed?.let { (cachedKeys, time, videos) ->
+            if (cachedKeys == keys && now - time < FEED_CACHE_TTL_MS) return@withContext videos
+        }
+
+        val perChannel = kotlinx.coroutines.coroutineScope {
+            keys.map { key ->
+                async {
+                    InnerTubeClient.getChannelVideos(key).getOrNull()
+                        ?.filter { it.isPlayableAndValid }
+                        ?.take(FEED_VIDEOS_PER_CHANNEL)
+                        ?: emptyList()
+                }
+            }.map { it.await() }
+        }
+
+        val seen = HashSet<String>()
+        val feed = mutableListOf<VideoItem>()
+        for (i in 0 until FEED_VIDEOS_PER_CHANNEL) {
+            for (videos in perChannel) {
+                val v = videos.getOrNull(i) ?: continue
+                if (seen.add(v.id)) feed.add(v)
+            }
+        }
+        if (feed.isNotEmpty()) cachedFeed = Triple(keys, now, feed)
+        feed
     }
 
     /**
@@ -251,11 +319,50 @@ object VideoRepository {
      * InnerTube (iOSクライアント直結) を最優先にすることで、子ども向けコンテンツ（Made for Kids）も含め
      * 100% 途切れずに超高速（約150ms）でストリームを取得可能
      */
-    suspend fun extractStreamInfo(videoId: String): Result<StreamInfoData> = withContext(Dispatchers.IO) {
+    suspend fun extractStreamInfo(videoId: String): Result<StreamInfoData> {
         // 0. メモリキャッシュチェック (0ms)
         getCachedStreamInfo(videoId)?.let { cached ->
             Log.i(TAG, "Stream info cache HIT for $videoId (0ms immediate playback)")
-            return@withContext Result.success(cached)
+            return Result.success(cached)
+        }
+
+        // 同一動画の抽出が進行中なら相乗りする (フォーカス先読み中に決定キー押下、キッズ先読みとの重複など)
+        // 旧実装は同じ動画に対して InnerTube 抽出を2重に並列実行していた
+        val deferred = synchronized(streamCacheLock) {
+            inFlightExtractions[videoId] ?: extractionScope.async {
+                extractStreamInfoUncached(videoId)
+            }.also { d ->
+                inFlightExtractions[videoId] = d
+                d.invokeOnCompletion {
+                    synchronized(streamCacheLock) {
+                        if (inFlightExtractions[videoId] === d) inFlightExtractions.remove(videoId)
+                    }
+                }
+            }
+        }
+        return deferred.await()
+    }
+
+    private suspend fun extractStreamInfoUncached(videoId: String): Result<StreamInfoData> = withContext(Dispatchers.IO) {
+        // 設定で NewPipe / Piped が優先指定されている場合はそれを先に試す (失敗時は通常の順序へ)
+        val preferred = preferredApiSource
+        if (preferred != AppPreferences.API_SOURCE_INNERTUBE) {
+            val preferredResult = try {
+                if (preferred == AppPreferences.API_SOURCE_NEWPIPE) {
+                    YouTubeStreamExtractor.extractStreamInfo(videoId)
+                } else {
+                    PipedApiClient.extractStreamInfo(videoId)
+                }
+            } catch (t: Throwable) {
+                if (t is kotlinx.coroutines.CancellationException) throw t
+                Result.failure(t)
+            }
+            val data = preferredResult.getOrNull()
+            if (data != null && (data.videoStreams.isNotEmpty() || data.hlsUrl != null)) {
+                putCachedStreamInfo(videoId, data)
+                Log.i(TAG, "Stream info loaded via preferred source $preferred for $videoId")
+                return@withContext preferredResult
+            }
         }
 
         // 1. YouTube InnerTube API (公式iOSクライアント直結・爆速・子ども向け動画100%対応)

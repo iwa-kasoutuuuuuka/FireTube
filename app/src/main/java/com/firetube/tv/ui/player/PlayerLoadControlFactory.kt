@@ -62,12 +62,6 @@ object PlayerLoadControlFactory {
         return builder.build()
     }
 
-    /**
-     * 既存コード互換用 (HD安全値)
-     */
-    fun createLowRamLoadControl(bufferProfile: String = AppPreferences.BUFFER_FAST): LoadControl {
-        return createAdaptiveLoadControl(null, bufferProfile)
-    }
 
     private data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
 }
