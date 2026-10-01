@@ -13,6 +13,8 @@
 
 [📥 **最新の APK をダウンロード (FireTube-v1.5.1.apk)**](https://github.com/iwa-kasoutuuuuuka/FireTube/raw/main/FireTube-v1.5.1.apk) / [リポジトリ内ファイル](FireTube-v1.5.1.apk) / [GitHub Releases](https://github.com/iwa-kasoutuuuuuka/FireTube/releases)
 
+🗓️ **最新バージョン: v1.5.1 (2026年10月1日 更新)**
+
 </div>
 
 ---
@@ -176,7 +178,7 @@ FireTube v1.4.0 では、**Fire TV Stick 4K Max** の高性能ハードウェア
 ### 1. APK の直接ダウンロード
 リポジトリ直下の APK またはリリース一覧ページより最新の APK ファイルをダウンロードしてください。
 
-- **[📥 FireTube-v1.5.1.apk (リポジトリ直下)](FireTube-v1.5.1.apk)**
+- **[📥 FireTube-v1.5.1.apk (リポジトリ直下)](FireTube-v1.5.1.apk)** — v1.5.1 (2026年10月1日 更新)
 - **[GitHub Releases ページ](https://github.com/iwa-kasoutuuuuuka/FireTube/releases)**
 
 ### 2. Fire TV Stick へのインストール手順
