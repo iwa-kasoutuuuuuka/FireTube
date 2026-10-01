@@ -11,7 +11,7 @@
 [![License](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![GMS Free](https://img.shields.io/badge/Google%20Play%20Services-0%25%20%28Independent%29-green)](#)
 
-[📥 **最新の APK をダウンロード (FireTube-v1.5.0.apk)**](https://github.com/iwa-kasoutuuuuuka/FireTube/raw/main/FireTube-v1.5.0.apk) / [リポジトリ内ファイル](FireTube-v1.5.0.apk) / [GitHub Releases](https://github.com/iwa-kasoutuuuuuka/FireTube/releases)
+[📥 **最新の APK をダウンロード (FireTube-v1.5.1.apk)**](https://github.com/iwa-kasoutuuuuuka/FireTube/raw/main/FireTube-v1.5.1.apk) / [リポジトリ内ファイル](FireTube-v1.5.1.apk) / [GitHub Releases](https://github.com/iwa-kasoutuuuuuka/FireTube/releases)
 
 </div>
 
@@ -44,7 +44,7 @@ WebView（ブラウザベース）を1%も使用せず、**AndroidX Leanback** �
 
 ---
 
-## 🆕 v1.5.0 の新機能・変更点
+## 🆕 v1.5.x の新機能・変更点
 
 | 区分 | 内容 |
 | :--- | :--- |
@@ -176,7 +176,7 @@ FireTube v1.4.0 では、**Fire TV Stick 4K Max** の高性能ハードウェア
 ### 1. APK の直接ダウンロード
 リポジトリ直下の APK またはリリース一覧ページより最新の APK ファイルをダウンロードしてください。
 
-- **[📥 FireTube-v1.5.0.apk (リポジトリ直下)](FireTube-v1.5.0.apk)**
+- **[📥 FireTube-v1.5.1.apk (リポジトリ直下)](FireTube-v1.5.1.apk)**
 - **[GitHub Releases ページ](https://github.com/iwa-kasoutuuuuuka/FireTube/releases)**
 
 ### 2. Fire TV Stick へのインストール手順
@@ -184,7 +184,7 @@ FireTube v1.4.0 では、**Fire TV Stick 4K Max** の高性能ハードウェア
 2. PC と同一 Wi-Fi に接続し、PC のターミナルから ADB でインストールします：
    ```bash
    adb connect <Fire_TV_の_IPアドレス>:5555
-   adb install -r FireTube-v1.5.0.apk
+   adb install -r FireTube-v1.5.1.apk
    ```
    ※ または Fire TV アプリストアの「Downloader」アプリを使って上記 GitHub Releases の APK URL から直接ダウンロード・インストールすることも可能です。
 
@@ -460,6 +460,10 @@ PC 上の Android Studio エミュレーターで、Fire TV Stick 実機環境�
 ---
 
 ## 📝 更新履歴 (Changelog)
+
+### v1.5.1 (2026-10-01)
+- **配布 APK の署名を固定**: GitHub Releases の APK がビルドごとに異なる鍵で署名され、既存インストールへ上書き更新できなかった問題を修正。CI はこれまでの配布 APK と同じ鍵で署名し、公開前に署名証明書を検証します。機能面の変更はありません。
+  - v1.5.0 の GitHub Releases 版 APK をインストールした場合のみ、一度アンインストールしてから v1.5.1 をインストールしてください (リポジトリ直下の APK や v1.4.x からはそのまま上書き更新できます)。
 
 ### v1.5.0 (2026-09-30)
 - **新機能**:
