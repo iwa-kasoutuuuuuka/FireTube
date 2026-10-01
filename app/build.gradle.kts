@@ -18,13 +18,29 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // 配布用の固定署名鍵 (CI では GitHub Secrets から復元した鍵を環境変数で指定)
+    // 既存インストールへ上書き更新できるよう、これまで配布してきた APK と同じ鍵を使う。
+    // 未指定時 (ローカル開発) は通常どおり ~/.android/debug.keystore で署名される。
+    val ciKeystorePath = System.getenv("FIRETUBE_KEYSTORE_PATH")
+    val ciSigning = if (!ciKeystorePath.isNullOrBlank()) {
+        signingConfigs.create("ciFixed") {
+            storeFile = file(ciKeystorePath)
+            storePassword = System.getenv("FIRETUBE_KEYSTORE_PASSWORD")
+            keyAlias = System.getenv("FIRETUBE_KEY_ALIAS")
+            keyPassword = System.getenv("FIRETUBE_KEY_PASSWORD")
+        }
+    } else {
+        null
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = ciSigning ?: signingConfigs.getByName("debug")
         }
         debug {
             isMinifyEnabled = false
+            if (ciSigning != null) signingConfig = ciSigning
         }
     }
 
