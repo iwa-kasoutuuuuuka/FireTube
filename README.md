@@ -15,6 +15,9 @@
 
 🗓️ **最新バージョン: v1.5.1 (2026年10月1日 更新)**
 
+> ⚠️ **Vega OS 搭載の新型 Fire TV Stick (Fire TV Stick 4K Select / 4K 第3世代 / HD 2026年モデルなど) には対応していません。**
+> Vega OS は Android ではないため APK をインストールできません。購入前に [対応機種・非対応機種の一覧](#-動作対応デバイス機種一覧-supported-devices) をご確認ください。
+
 </div>
 
 ---
@@ -387,7 +390,7 @@ FireTube は Google Play 開発者サービス（GMS）や Amazon 固有のク�
 
 | デバイス群 | 具体的な機種名 | OS / 要件 | 動作状況 |
 | :--- | :--- | :--- | :---: |
-| **現行 Fire TV シリーズ** | ・Fire TV Stick 4K Max (第1/第2世代)<br>・Fire TV Stick 4K (第2世代 / 2023年以降)<br>・Fire TV Stick HD (最新)<br>・Fire TV Stick 第3世代 (2020年)<br>・Fire TV Stick Lite<br>・Fire TV Cube (第2/第3世代) | Fire OS 7〜8<br>(Android 9〜11) | **◎ 完全対応**<br>リモコン操作・4K/HD最適化・音声検索など全機能が利用可能 |
+| **現行 Fire TV シリーズ** | ・Fire TV Stick 4K Max (第1/第2世代)<br>・Fire TV Stick 4K (第2世代 / 2023年モデル)<br>・Fire TV Stick HD (2024年モデルまで / Fire OS 7)<br>・Fire TV Stick 第3世代 (2020年)<br>・Fire TV Stick Lite<br>・Fire TV Cube (第2/第3世代) | Fire OS 7〜8<br>(Android 9〜11) | **◎ 完全対応**<br>リモコン操作・4K/HD最適化・音声検索など全機能が利用可能 |
 | **Fire TV 内蔵スマートテレビ** | ・Funai Fire TV<br>・Panasonic 4K 有機EL/液晶 (Fire TV)<br>・TCL / Hisense Fire TV<br>・Amazon Fire TV Omni / 4シリーズ | Fire OS 7〜8 | **◎ 完全対応** |
 | **Android TV / Google TV** | ・Chromecast with Google TV (HD / 4K)<br>・Sony BRAVIA (Android TV / Google TV)<br>・SHARP AQUOS (Android TV)<br>・TOSHIBA REGZA (Android TV)<br>・Xiaomi TV Stick / Box S<br>・Anker Nebula 等のスマートプロジェクター | Android TV 9.0〜14<br>(API 28以上) | **◎ 完全対応**<br>APKをサイドロード（DownloaderアプリやUSB経由）することで通常のリモコンでそのまま快適に利用可能 |
 
@@ -395,6 +398,7 @@ FireTube は Google Play 開発者サービス（GMS）や Amazon 固有のク�
 
 | デバイス | 対象機種 | 理由 |
 | :--- | :--- | :--- |
+| **Vega OS 搭載の新型 Fire TV Stick** | ・**Fire TV Stick 4K (第3世代 / 2026年モデル)**<br>・**Fire TV Stick HD (2026年モデル)**<br>・**Fire TV Stick 4K Select (2025年モデル)**<br>・今後発売される Vega OS 搭載機 | **OS の制約 (対応不可)**<br>Vega OS は Android / Fire OS ではなく Linux ベースの OS です。Android アプリ (APK) をインストールできず、サイドロードも開発者登録をした環境に限られ、入れられるのは Amazon アプリストアのアプリのみです。本アプリは Android 向けのため動作せず、今後対応する予定もありません。<br>※ 同じ 2025 年発売でも **Fire TV Stick 4K Plus は Fire OS 8 (Android ベース)** のため対象外です。 |
 | **Fire OS 6 以前の旧型 Fire TV** | ・**Fire TV Stick 4K (第1世代 / 2018年モデル)**<br>・Fire TV Stick 第2世代 (2016年モデル)<br>・Fire TV Stick 第1世代 (2014年モデル)<br>・Fire TV Box (第1/第2世代) | **OSバージョンの制約**<br>本アプリの動作要件が `Android 9 (Fire OS 7) 以上`（`minSdk 28`）のため、Fire OS 6 (Android 7.1) や Fire OS 5 (Android 5.1) の端末にはインストールできません（インストール時に解析エラーとなります）。 |
 
 ### 3. ⚠️ 動作するが非推奨の端末
