@@ -11,3 +11,8 @@
 .jdk17/
 .tools/
 debug_output/
+
+# Vega
+vega/app/node_modules/
+vega/app/build/
+*.vpkg

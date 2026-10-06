@@ -17,6 +17,8 @@
 
 > ⚠️ **Vega OS 搭載の新型 Fire TV Stick (Fire TV Stick 4K Select / 4K 第3世代 / HD 2026年モデルなど) には対応していません。**
 > Vega OS は Android ではないため APK をインストールできません。購入前に [対応機種・非対応機種の一覧](#-動作対応デバイス機種一覧-supported-devices) をご確認ください。
+>
+> 🚧 Vega OS 向けの別実装 (React Native) を [`vega/`](vega/) で試作中です (未公開)。
 
 </div>
 
