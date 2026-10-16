@@ -19,7 +19,15 @@ run() { # run <記録名> <コマンド...>
 dev() { vega device "$@" -d VirtualDevice; }
 export -f dev
 
-booted() { vega device list 2>/dev/null | grep -qiv 'no devices'; }
+booted() { vega device list 2>&1 | grep -q 'VirtualDevice'; }
+# 起動直後は一覧の取得が一時的に失敗することがあるため、何度か確かめる
+connected() {
+  for i in $(seq 1 12); do
+    booted && return 0
+    sleep 5
+  done
+  return 1
+}
 
 # 起動を待つ。仮想端末の CLI は 60 秒で待つのをやめるが、qemu は動き続けることがあるので自分でも待つ
 wait_boot() {
@@ -68,7 +76,7 @@ if booted; then echo booted > "$OUT/11-boot.txt"; else echo "not booted" > "$OUT
 run 13-device-list vega device list
 run 14-vvd-status vega virtual-device status
 
-if booted && [ -n "$VPKG" ]; then
+if [ -n "$VPKG" ] && connected; then
   # 起動直後は VDA の接続がまだ offline のことがあるため、入るまで繰り返す
   for i in $(seq 1 15); do
     run 21-install dev install-app --packagePath "$VPKG"
