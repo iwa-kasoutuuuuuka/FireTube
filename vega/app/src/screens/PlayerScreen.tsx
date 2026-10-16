@@ -25,6 +25,9 @@ function playSafely(p: VideoPlayer) {
 }
 const SEEK_SHORT = 10;
 const SEEK_LONG = 30;
+const SWITCH_GRACE_MS = 800;
+/** この時間内に再生が始まらない候補は失敗とみなす (エラーが届かず止まったままになるのを防ぐ) */
+const START_TIMEOUT_MS = 20000;
 
 /**
  * 再生画面。候補を順に試す: 分離 DASH (MSE で自前再生) → HLS / MP4 (Vega Media Player の URL モード)。
@@ -41,6 +44,8 @@ export const PlayerScreen = ({video, onEnded}: Props) => {
   const ready = useRef(false);
   const dash = useRef<DashSession | null>(null);
   const streamDuration = useRef(video.durationSeconds);
+  const switchedAt = useRef(0);
+  const startTimer = useRef<ReturnType<typeof setTimeout>>();
   const hideTimer = useRef<ReturnType<typeof setTimeout>>();
 
   const [status, setStatus] = useState('再生情報を取得しています…');
@@ -72,11 +77,19 @@ export const PlayerScreen = ({video, onEnded}: Props) => {
     }
     dash.current?.destroy();
     dash.current = null;
+    switchedAt.current = Date.now();
+    if (startTimer.current) {
+      clearTimeout(startTimer.current);
+    }
+    const index = sourceIndex.current;
+    startTimer.current = setTimeout(
+      () => nextSourceRef.current(index, '再生が始まりませんでした'),
+      START_TIMEOUT_MS,
+    );
     setSourceLabel(`${src.label} / ${src.client}`);
     setStatus('読み込み中…');
     p.autoplay = true;
     if (src.kind === 'dash') {
-      const index = sourceIndex.current;
       const session = new DashSession(
         p as unknown as MediaElementLike,
         () => new MediaSource() as unknown as MediaSourceLike,
@@ -119,6 +132,10 @@ export const PlayerScreen = ({video, onEnded}: Props) => {
         }
         playSource(info.sources[0]);
       } catch (e) {
+        if (startTimer.current) {
+          clearTimeout(startTimer.current);
+        }
+        dash.current?.destroy();
         setError(
           reason ? `再生できませんでした (${reason})` : (e as Error).message,
         );
@@ -155,6 +172,10 @@ export const PlayerScreen = ({video, onEnded}: Props) => {
         error?: {code?: number; message?: string} | null;
       };
       el.addEventListener('playing', () => {
+        if (startTimer.current) {
+          clearTimeout(startTimer.current);
+          startTimer.current = undefined;
+        }
         setStatus('');
         setPaused(false);
         showOverlay();
@@ -185,6 +206,10 @@ export const PlayerScreen = ({video, onEnded}: Props) => {
       });
       el.addEventListener('ended', () => onEnded());
       el.addEventListener('error', () => {
+        // 切り替え直後のエラーは直前の (破棄した) ソースのものなので、新しい候補を失敗扱いにしない
+        if (Date.now() - switchedAt.current < SWITCH_GRACE_MS) {
+          return;
+        }
         const err = el.error;
         nextSourceRef.current(
           sourceIndex.current,
@@ -223,6 +248,9 @@ export const PlayerScreen = ({video, onEnded}: Props) => {
     () => () => {
       if (hideTimer.current) {
         clearTimeout(hideTimer.current);
+      }
+      if (startTimer.current) {
+        clearTimeout(startTimer.current);
       }
       dash.current?.destroy();
       player.current?.pause();

@@ -13,8 +13,25 @@ Android 版 (`../app`) とは別実装で、**Vega SDK の React Native (TypeScr
 | パッケージ ID | `com.firetube.tv` | `com.firetube.tv.vega` (予定) |
 
 ## 状態
-- 開発環境: **未構築** (Windows PC のみのため。`SETUP.md` 参照)
-- プロジェクト雛形: **未生成** (`vega project generate` は SDK 導入後に実行)
+- **試作版 v0.1.0** を Releases (タグ `vega-v0.1.0`) で配布。実機での動作は未検証
+- 機能: 人気の動画 (ジャンル横断検索) / 検索 / 再生 / SponsorBlock 自動スキップ / リモート設定 (`remote-config.json`)
+- 再生経路: 分離 DASH (H.264 + AAC) を MSE で自前再生 (`src/player/dash.ts`) → 失敗時は HLS を URL モードで再生 → 別の InnerTube クライアントで取り直し
+- ビルド: Windows では Vega SDK が動かないため、GitHub Actions ([`vega-build.yml`](../.github/workflows/vega-build.yml)) の Ubuntu で `.vpkg` を作る
+- 雛形: `vega project generate --template helloWorld-rn72` (SDK 0.24 / RN 0.72。w3cmedia の安定版が RN 0.72 向けのため)
+
+## 構成 (`app/src`)
+| パス | 役割 |
+| :--- | :--- |
+| `api/innertube.ts` | InnerTube (検索・人気・player)。Android 版 `InnerTubeClient.kt` の移植 |
+| `api/config.ts` | リモート設定の取得 |
+| `api/sponsorblock.ts` | SponsorBlock |
+| `player/dash.ts`, `player/sidx.ts` | MSE による分離 DASH 再生 (sidx でセグメント境界を得て有界 Range で取得) |
+| `screens/` | ホーム / 検索 / 再生 |
+
+## 実機で最初に確かめること
+1. 起動・十字キーのフォーカス移動・戻るキー
+2. 再生経路 (画面下の「DASH 1080p / VISIONOS」等の表示) と、DASH が失敗して HLS に落ちていないか
+3. シーク (左右キー) 後に再生が続くか
 
 ## ドキュメント
 - [INSTALL_VEGA.txt](INSTALL_VEGA.txt) — Fire TV (Vega OS) へのインストール手順 (開発者モード + Vega CLI)

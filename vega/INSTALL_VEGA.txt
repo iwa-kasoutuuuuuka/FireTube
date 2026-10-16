@@ -7,17 +7,20 @@
       ※ Fire OS (Android) 搭載機は APK 版を使う -> ../INSTALL_FROM_PC.txt
 
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
- 最初に: 現時点 (2026-10) では、インストールできる Vega 版はまだありません
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  - Vega 版は試作段階で、プロジェクト雛形もまだ生成していません
-    (vega/README.md の「状態」を参照)。配布用のファイル (.vpkg) はありません。
+--------------------------------------------------------------
+ 最初に: Vega 版の状態と、インストールの仕組み
+--------------------------------------------------------------
+  - Vega 版は試作版 (vega-v0.1.0) です。GitHub Releases に .vpkg を置いています:
+      https://github.com/iwa-kasoutuuuuuka/FireTube/releases  (タグ vega-v*)
+    ビルドは GitHub Actions (Ubuntu + Vega SDK) で自動で行っています。
+  - 実機での動作はまだ確認していません。特に動画の再生 (MSE / HLS) は
+    端末によって動かない可能性があります。不具合はログと一緒に Issue へ。
   - Vega OS には APK のように「ファイルを入れればインストールできる」仕組みがありません。
     インストールできるのは次の 2 つだけです。
       (1) Amazon アプリストアで公開されたアプリ
-      (2) 開発者モードにした端末へ、開発者自身が Vega CLI で入れたアプリ
-  - 一般の利用者向けに配る方法は (1) しかなく、FireTube はストア審査に通る見込みが
-    低いため、当面は「開発者が自分の端末で試す」(2) の方法になります。
+      (2) 開発者モードにした端末へ、Vega CLI で入れたアプリ
+  - FireTube はストア審査に通る見込みが低いため、(2) の方法で入れます。
+    .vpkg をダウンロードすれば、自分でビルドする必要はありません。
 
 以下は (2) の手順です。
 
@@ -30,7 +33,7 @@
   - 開発用 PC: Ubuntu 20.04 以上 または macOS 10.15 以上 (空き 20GB 以上)
       ※ Windows / WSL は公式に非対応。Windows PC しかない場合は Ubuntu の VM を作る
         (ステップ 1 の補足を参照)。
-  - Node.js 18 以上、Python 3.8、lz4、Watchman
+  - Node.js 18 以上、Python 3.8、lz4、Watchman (Vega SDK の前提)
 
 
 --------------------------------------------------------------
@@ -69,30 +72,51 @@ Fire TV 側:
 
 
 --------------------------------------------------------------
- ステップ 3  Vega 版をビルドする
+ ステップ 3  .vpkg をダウンロードする
 --------------------------------------------------------------
-(Vega 版のアプリ本体ができた後の手順。現在は vega/app がまだありません)
-    cd vega/app
-    npm install
-    npm run build:app
+Releases の最新の vega-v* から、Fire TV Stick 実機用 (armv7) をダウンロードする:
+    FireTube-Vega-<版>-armv7.vpkg       <- Fire TV Stick 実機用
+    FireTube-Vega-<版>-x86_64.vpkg      <- Virtual Device (PC 上の仮想端末) 用 (あれば)
 
-できるファイル:
-    build/armv7-release/<名前>_armv7.vpkg       <- Fire TV Stick 実機用
-    build/x86_64-release/ , build/aarch64-release/ <- Virtual Device (PC 上の仮想端末) 用
+コマンドで取る場合 (例: vega-v0.1.0):
+    curl -LO https://github.com/iwa-kasoutuuuuuka/FireTube/releases/download/vega-v0.1.0/FireTube-Vega-0.1.0-armv7.vpkg
 
 
 --------------------------------------------------------------
  ステップ 4  Fire TV にインストールして起動する
 --------------------------------------------------------------
-    vega device install-app --packagePath build/armv7-release/<名前>_armv7.vpkg
-    vega device launch-app --appName <component-id>
+    vega device install-app --packagePath FireTube-Vega-0.1.0-armv7.vpkg
+    vega device launch-app --appName com.firetube.tv.vega.main
 
-  - <component-id> はアプリの manifest に書かれた ID (パッケージ ID は com.firetube.tv.vega の予定)。
-  - インストール後は Fire TV のアプリ一覧からも起動できる。
-  - 更新するときは、ビルドし直して install-app をもう一度実行する。
+  - インストール後は Fire TV のアプリ一覧からも「FireTube」で起動できる。
+  - 更新するときは、新しい .vpkg で install-app をもう一度実行する。
 
-端末内を調べたいとき:
+端末内を調べたいとき (不具合の報告用にログを見る):
     vega device shell
+
+
+--------------------------------------------------------------
+ 使い方 (リモコン)
+--------------------------------------------------------------
+  ホーム        人気の動画の一覧。十字キーで選び、決定で再生。「検索」で検索画面へ
+  検索          キーワードを入力して決定 → 結果から選んで再生
+  再生中        決定 / 再生ボタン = 一時停止・再開
+                左右 = 10 秒戻る・進む、早送り / 巻き戻し = 30 秒
+                戻る = 一覧へ戻る
+  - SponsorBlock の区間 (スポンサー・イントロ等) は自動でスキップする。
+  - 画面下に「DASH 1080p / VISIONOS」のように再生経路が出る。不具合報告に添えてほしい。
+
+
+--------------------------------------------------------------
+ (開発者向け) 自分でビルドする場合
+--------------------------------------------------------------
+    cd vega/app
+    npm install
+    npm run build:app
+
+できるファイル:
+    build/armv7-release/*.vpkg                     <- Fire TV Stick 実機用
+    build/x86_64-release/ , build/aarch64-release/ <- Virtual Device 用
 
 
 --------------------------------------------------------------
