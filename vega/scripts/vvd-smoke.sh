@@ -87,9 +87,14 @@ if [ -n "$VPKG" ] && connected; then
   run 22-launch dev launch-app --appName "$APP_ID"
   sleep 60
   run 24-is-running dev is-app-running --appName "$APP_ID"
-  applog() { # applog <記録名>: アプリの記録 ([FireTube]) と JS のエラーだけ抜き出す
-    run "$1" dev run-cmd --command "loggingctl log | grep -iE 'FireTube|ReactNativeJS|Exception|TypeError|ReferenceError|fatal' | tail -n 400"
+  # run-cmd では loggingctl の出力が返らないため、端末内のファイルに書いてから copy-from で取り出す
+  applog() { # applog <記録名>
+    dev run-cmd --command "loggingctl log > /tmp/$1.log 2>&1" > /dev/null 2>&1
+    vega device copy-from -d VirtualDevice --source "/tmp/$1.log" --destination "$OUT/" > "$OUT/$1-copy.txt" 2>&1
+    grep -iE 'FireTube|ReactNativeJS|Exception|TypeError|ReferenceError|fatal|w3cmedia|KeplerScript' "$OUT/$1.log" 2>/dev/null | tail -n 600 > "$OUT/$1-app.txt"
   }
+  run 23-log-info dev get-log-info
+  run 23b-copy-from-help vega device copy-from --help
   key() { vega exec inputd-cli button_press "$1" >> "$OUT/50-keys.txt" 2>&1 || dev run-cmd --command "inputd-cli button_press $1" >> "$OUT/50-keys.txt" 2>&1; sleep 2; }
   applog 40-log-home
   # ホームの先頭の動画 (起動時のフォーカス位置) を決定で開き、再生が始まるか見る
