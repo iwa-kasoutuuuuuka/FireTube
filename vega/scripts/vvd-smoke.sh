@@ -55,19 +55,16 @@ run 03-help-copy-logs vega device copy-logs --help
 run 04-help-log-stream vega device start-log-stream --help
 run 05-help-launch vega device launch-app --help
 
-# 1 回目: そのまま起動
-( vega virtual-device start > "$OUT/10-start-plain.txt" 2>&1 ) &
-if wait_boot; then
-  echo booted > "$OUT/11-boot.txt"
-else
-  echo "not booted (plain)" > "$OUT/11-boot.txt"
-  collect_vvd_logs plain
-  vega virtual-device stop > /dev/null 2>&1
-  # 2 回目: 画面 (X) が要る可能性があるので仮想ディスプレイで起動
-  sudo apt-get install -y xvfb > /dev/null 2>&1
-  ( xvfb-run -a vega virtual-device start > "$OUT/12-start-xvfb.txt" 2>&1 ) &
-  if wait_boot; then echo "booted (xvfb)" >> "$OUT/11-boot.txt"; else echo "not booted (xvfb)" >> "$OUT/11-boot.txt"; collect_vvd_logs xvfb; fi
-fi
+# 仮想端末の起動。CI は入れ子の仮想化で遅く、既定の 60 秒では起動前に止められてしまう
+# (virtual_device.log: "failed to access shell")。画面なし・ソフトウェア描画・長い待ち時間で起動する
+( vega virtual-device start --no-gui --no-gl-accel --timeout 900 > "$OUT/10-start.txt" 2>&1 ) &
+START_PID=$!
+for i in $(seq 1 100); do
+  booted && break
+  kill -0 "$START_PID" 2>/dev/null || break
+  sleep 10
+done
+if booted; then echo booted > "$OUT/11-boot.txt"; else echo "not booted" > "$OUT/11-boot.txt"; collect_vvd_logs boot; fi
 run 13-device-list vega device list
 run 14-vvd-status vega virtual-device status
 
