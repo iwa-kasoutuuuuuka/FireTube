@@ -1,8 +1,10 @@
-import React, {memo, useState} from 'react';
+import React, {memo, useEffect, useRef, useState} from 'react';
 import {Image, Pressable, StyleSheet, Text, View} from 'react-native';
 import {thumbnailFor} from '../api/innertube';
+import {prefetchStream} from '../api/streamCache';
 import {VideoItem} from '../api/types';
 import {positions, useStoreSelector} from '../store/library';
+import {settings} from '../store/settings';
 import {colors, formatDuration, s} from '../theme';
 
 interface Props {
@@ -12,6 +14,8 @@ interface Props {
 }
 
 export const CARD_WIDTH = s(400);
+/** この時間フォーカスが留まったら再生情報を先読みする (素早く通り過ぎるカードでは通信しない) */
+const PREFETCH_DWELL_MS = 700;
 
 /**
  * 一覧のカード。memo と 1 本分だけの購読で、フォーカス移動や再生位置の保存のたびに
@@ -23,6 +27,15 @@ export const VideoCard = memo(function VideoCard({
   hasTVPreferredFocus,
 }: Props) {
   const [focused, setFocused] = useState(false);
+  const dwell = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(
+    () => () => {
+      if (dwell.current) {
+        clearTimeout(dwell.current);
+      }
+    },
+    [],
+  );
   const saved = useStoreSelector(positions, (map) => map[item.id]);
   const progress =
     saved && saved.duration > 0
@@ -31,8 +44,19 @@ export const VideoCard = memo(function VideoCard({
   return (
     <Pressable
       style={[styles.card, focused && styles.focused]}
-      onFocus={() => setFocused(true)}
-      onBlur={() => setFocused(false)}
+      onFocus={() => {
+        setFocused(true);
+        dwell.current = setTimeout(
+          () => prefetchStream(item.id, settings.get().maxQuality),
+          PREFETCH_DWELL_MS,
+        );
+      }}
+      onBlur={() => {
+        setFocused(false);
+        if (dwell.current) {
+          clearTimeout(dwell.current);
+        }
+      }}
       onPress={() => onPress(item)}
       hasTVPreferredFocus={hasTVPreferredFocus}
       accessibilityRole="button"

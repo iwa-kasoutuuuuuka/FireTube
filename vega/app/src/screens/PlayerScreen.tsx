@@ -19,6 +19,7 @@ import {
   fetchCaptions,
 } from '../api/innertube';
 import {CATEGORY_LABELS, getSponsorSegments} from '../api/sponsorblock';
+import {takeStream} from '../api/streamCache';
 import {
   Cue,
   PlaybackSource,
@@ -28,6 +29,7 @@ import {
 } from '../api/types';
 import {MenuItem, PlayerMenu} from '../components/PlayerMenu';
 import {CaptionOption, captionOptions, cueAt} from '../player/captions';
+import {Signal, signal, useSignal} from '../player/signal';
 import {DashSession, MediaElementLike, MediaSourceLike} from '../player/dash';
 import {
   addHistory,
@@ -72,6 +74,9 @@ function playSafely(p: VideoPlayer) {
  */
 export const PlayerScreen = ({video, onEnded, onOpenChannel}: Props) => {
   const player = useRef<VideoPlayer | null>(null);
+  // 再生位置 (秒・整数) と字幕は画面全体の state にせず、表示部品だけが購読する
+  const clock = useRef(signal(0)).current;
+  const caption = useRef(signal('')).current;
   const info = useRef<StreamInfo | null>(null);
   const sources = useRef<PlaybackSource[]>([]);
   const sourceIndex = useRef(0);
@@ -96,7 +101,6 @@ export const PlayerScreen = ({video, onEnded, onOpenChannel}: Props) => {
   const [status, setStatus] = useState('再生情報を取得しています…');
   const [error, setError] = useState<string>();
   const [paused, setPaused] = useState(false);
-  const [position, setPosition] = useState(0);
   const [duration, setDuration] = useState(video.durationSeconds);
   const [overlay, setOverlay] = useState(true);
   const [toast, setToast] = useState<string>();
@@ -104,7 +108,6 @@ export const PlayerScreen = ({video, onEnded, onOpenChannel}: Props) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [captionList, setCaptionList] = useState<CaptionOption[]>([]);
   const [captionIndex, setCaptionIndex] = useState(0);
-  const [subtitle, setSubtitle] = useState('');
   const [channel, setChannel] = useState<Channel | null>(
     video.channelId ? {id: video.channelId, name: video.uploaderName} : null,
   );
@@ -193,7 +196,7 @@ export const PlayerScreen = ({video, onEnded, onOpenChannel}: Props) => {
     async (options: CaptionOption[], index: number) => {
       setCaptionIndex(index);
       cues.current = [];
-      setSubtitle('');
+      caption.set('');
       const opt = options[index];
       if (!opt?.track) {
         return;
@@ -204,7 +207,7 @@ export const PlayerScreen = ({video, onEnded, onOpenChannel}: Props) => {
         showToast(`字幕を読み込めませんでした (${(e as Error).message})`);
       }
     },
-    [showToast],
+    [caption, showToast],
   );
 
   /**
@@ -255,7 +258,8 @@ export const PlayerScreen = ({video, onEnded, onOpenChannel}: Props) => {
       getSponsorSegments(video.id).then((list) => (segments.current = list));
     }
     try {
-      const next = await extractStreamInfo(video.id, [], st.maxQuality);
+      // 一覧で先読みしていればそれを使う
+      const next = await takeStream(video.id, st.maxQuality);
       triedClients.current = [next.sources[0].client];
       applyInfo(next);
 
@@ -328,8 +332,8 @@ export const PlayerScreen = ({video, onEnded, onOpenChannel}: Props) => {
       });
       el.addEventListener('timeupdate', () => {
         const t = p.currentTime;
-        setPosition(t);
-        setSubtitle(cues.current.length > 0 ? cueAt(cues.current, t) : '');
+        clock.set(Math.floor(t));
+        caption.set(cues.current.length > 0 ? cueAt(cues.current, t) : '');
         if (Date.now() - lastSaved.current > SAVE_INTERVAL_MS) {
           lastSaved.current = Date.now();
           savePositionNow();
@@ -371,7 +375,7 @@ export const PlayerScreen = ({video, onEnded, onOpenChannel}: Props) => {
         );
       });
     },
-    [onEnded, savePositionNow, showOverlay, showToast, video],
+    [caption, clock, onEnded, savePositionNow, showOverlay, showToast, video],
   );
 
   const onSurfaceViewCreated = async (surfaceHandle: string) => {
@@ -555,7 +559,6 @@ export const PlayerScreen = ({video, onEnded, onOpenChannel}: Props) => {
   }
   menuItems.push({label: '閉じる', onPress: () => setMenuOpen(false)});
 
-  const progress = duration > 0 ? Math.min(1, position / duration) : 0;
   const showBar = (overlay || paused) && !error && !menuOpen;
 
   return (
@@ -574,13 +577,7 @@ export const PlayerScreen = ({video, onEnded, onOpenChannel}: Props) => {
           {error && <Text style={styles.hint}>戻るボタンで一覧に戻ります</Text>}
         </View>
       )}
-      {subtitle !== '' && (
-        <View
-          style={[styles.subtitleBox, showBar && styles.subtitleRaised]}
-          pointerEvents="none">
-          <Text style={styles.subtitle}>{subtitle}</Text>
-        </View>
-      )}
+      <Subtitle text={caption} raised={showBar} />
       {toast && <Text style={styles.toast}>{toast}</Text>}
       {showBar && (
         <View style={styles.overlay} pointerEvents="none">
@@ -591,17 +588,51 @@ export const PlayerScreen = ({video, onEnded, onOpenChannel}: Props) => {
             {video.uploaderName}
             {sourceLabel ? `  ·  ${sourceLabel}` : ''}
           </Text>
-          <View style={styles.bar}>
-            <View style={[styles.barFill, {width: `${progress * 100}%`}]} />
-          </View>
-          <Text style={styles.time}>
-            {paused ? '一時停止中  ' : ''}
-            {formatDuration(position)} / {formatDuration(duration)}
-            {'    '}下キー: メニュー
-          </Text>
+          <TimeBar clock={clock} duration={duration} paused={paused} />
         </View>
       )}
       {menuOpen && <PlayerMenu items={menuItems} />}
+    </View>
+  );
+};
+
+/** 進行バーと時刻。再生位置が 1 秒変わるごとにここだけ描き直す */
+const TimeBar = ({
+  clock,
+  duration,
+  paused,
+}: {
+  clock: Signal<number>;
+  duration: number;
+  paused: boolean;
+}) => {
+  const position = useSignal(clock);
+  const progress = duration > 0 ? Math.min(1, position / duration) : 0;
+  return (
+    <>
+      <View style={styles.bar}>
+        <View style={[styles.barFill, {width: `${progress * 100}%`}]} />
+      </View>
+      <Text style={styles.time}>
+        {paused ? '一時停止中  ' : ''}
+        {formatDuration(position)} / {formatDuration(duration)}
+        {'    '}下キー: メニュー
+      </Text>
+    </>
+  );
+};
+
+/** 字幕。表示する文が変わったときだけ描き直す */
+const Subtitle = ({text, raised}: {text: Signal<string>; raised: boolean}) => {
+  const value = useSignal(text);
+  if (value === '') {
+    return null;
+  }
+  return (
+    <View
+      style={[styles.subtitleBox, raised && styles.subtitleRaised]}
+      pointerEvents="none">
+      <Text style={styles.subtitle}>{value}</Text>
     </View>
   );
 };
