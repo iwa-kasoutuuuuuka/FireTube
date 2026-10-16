@@ -4,7 +4,7 @@ FireTube の Vega OS 版 (Fire TV Stick 4K Select / 4K 第3世代 / HD 2026年�
 
 ### インストール
 Vega OS は APK のようにファイルを開いて入れることができません。**開発者モード + Vega CLI** で入れます。
-手順: [vega/INSTALL_VEGA.txt](https://github.com/iwa-kasoutuuuuuka/FireTube/blob/main/vega/INSTALL_VEGA.txt)
+手順: [vega/INSTALL_VEGA.txt](https://github.com/iwa-kasoutuuuuuka/FireTube/blob/vega-v0.1.0/vega/INSTALL_VEGA.txt)
 
 ```bash
 vega device install-app --packagePath FireTube-Vega-<版>-armv7.vpkg
