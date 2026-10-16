@@ -84,6 +84,10 @@ if [ -n "$VPKG" ] && connected; then
     sleep 20
   done
   run 21b-installed dev is-app-installed --appName "$APP_ID"
+  # 起動から終わりまで、端末のログを流し続けて記録する (アプリ分と全体)
+  ( timeout 420 vega device run-cmd -d VirtualDevice --command 'loggingctl log -f -o short_precise -v com.firetube.tv.vega' > "$OUT/60-stream-app.txt" 2>&1 ) &
+  ( timeout 420 vega device run-cmd -d VirtualDevice --command 'loggingctl log -f -o short_precise' > "$OUT/61-stream-all.txt" 2>&1 ) &
+  sleep 5
   run 22-launch dev launch-app --appName "$APP_ID"
   sleep 60
   run 24-is-running dev is-app-running --appName "$APP_ID"
@@ -108,7 +112,8 @@ if [ -n "$VPKG" ] && connected; then
   sleep 10
   applog 43-log-after-keys
   run 44-is-running dev is-app-running --appName "$APP_ID"
-  run 45-full-log dev run-cmd --command "loggingctl log | tail -n 1500"
+  wait_streams() { sleep 5; grep -hiE 'FireTube|ReactNativeJS|Exception|Error' "$OUT/60-stream-app.txt" "$OUT/61-stream-all.txt" 2>/dev/null | grep -v acr_core_dump | tail -n 800 > "$OUT/62-stream-app-lines.txt"; }
+  wait_streams
   mkdir -p "$OUT/device-logs" "$OUT/doctor"
   # アプリのログは main/var_log 側にある
   run 46-copy-logs dev copy-logs --artifact main/var_log --directory "$OUT/device-logs"
