@@ -70,7 +70,7 @@ describe('parseVideoRenderers', () => {
       title: 'Hello',
       uploaderName: 'Ch',
       durationSeconds: 190,
-      thumbnailUrl: 'b',
+      thumbnailUrl: 'https://i.ytimg.com/vi/vid000001/hqdefault.jpg',
     });
   });
 });

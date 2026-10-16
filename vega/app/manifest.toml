@@ -2,7 +2,7 @@ schema-version = 1
 
 [package]
 title = "FireTube"
-version = "0.2.0"
+version = "0.3.0"
 id = "com.firetube.tv.vega"
 
 [os.version]

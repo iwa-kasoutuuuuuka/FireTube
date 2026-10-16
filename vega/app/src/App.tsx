@@ -7,6 +7,7 @@ import {PlayerScreen} from './screens/PlayerScreen';
 import {SearchScreen} from './screens/SearchScreen';
 import {Channel} from './store/library';
 import {hydrateAll} from './store/persisted';
+import {warmUp} from './startup';
 import {colors} from './theme';
 
 type Route =
@@ -24,7 +25,10 @@ export const App = () => {
   const [stack, setStack] = useState<Route[]>([{name: 'main'}]);
 
   useEffect(() => {
-    hydrateAll().finally(() => setReady(true));
+    hydrateAll().finally(() => {
+      warmUp();
+      setReady(true);
+    });
   }, []);
 
   const push = useCallback(

@@ -9,6 +9,7 @@ import {
   updateSettings,
 } from '../store/settings';
 import {colors, s} from '../theme';
+import {APP_VERSION} from '../version';
 
 const SUBTITLE_LABELS: Record<SubtitleMode, string> = {
   off: 'オフ',
@@ -85,7 +86,7 @@ export const SettingsTab = () => {
       />
       {message && <Text style={styles.message}>{message}</Text>}
       <Text style={styles.about}>
-        FireTube for Vega OS v0.2.0 (試作版) —
+        FireTube for Vega OS v{APP_VERSION} (試作版) —
         データはこの端末内にのみ保存されます
       </Text>
     </ScrollView>

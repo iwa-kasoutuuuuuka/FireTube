@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useCallback} from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -31,6 +31,17 @@ export const VideoGrid = ({
   onRetry,
   focusFirst,
 }: Props) => {
+  // renderItem を毎回作り直すと FlatList が全行を描き直すため固定する
+  const renderItem = useCallback(
+    ({item, index}: {item: VideoItem; index: number}) => (
+      <VideoCard
+        item={item}
+        onPress={onSelect}
+        hasTVPreferredFocus={focusFirst && index === 0}
+      />
+    ),
+    [onSelect, focusFirst],
+  );
   if (loading && items.length === 0) {
     return (
       <View style={styles.center}>
@@ -66,14 +77,10 @@ export const VideoGrid = ({
       numColumns={4}
       contentContainerStyle={styles.list}
       initialNumToRender={8}
+      maxToRenderPerBatch={8}
       windowSize={5}
-      renderItem={({item, index}) => (
-        <VideoCard
-          item={item}
-          onPress={onSelect}
-          hasTVPreferredFocus={focusFirst && index === 0}
-        />
-      )}
+      removeClippedSubviews
+      renderItem={renderItem}
     />
   );
 };

@@ -1,7 +1,8 @@
-import React, {useState} from 'react';
+import React, {memo, useState} from 'react';
 import {Image, Pressable, StyleSheet, Text, View} from 'react-native';
+import {thumbnailFor} from '../api/innertube';
 import {VideoItem} from '../api/types';
-import {positions, useStore} from '../store/library';
+import {positions, useStoreSelector} from '../store/library';
 import {colors, formatDuration, s} from '../theme';
 
 interface Props {
@@ -12,9 +13,17 @@ interface Props {
 
 export const CARD_WIDTH = s(400);
 
-export const VideoCard = ({item, onPress, hasTVPreferredFocus}: Props) => {
+/**
+ * 一覧のカード。memo と 1 本分だけの購読で、フォーカス移動や再生位置の保存のたびに
+ * 一覧全体を描き直さないようにする (Fire TV Stick は CPU が遅い)
+ */
+export const VideoCard = memo(function VideoCard({
+  item,
+  onPress,
+  hasTVPreferredFocus,
+}: Props) {
   const [focused, setFocused] = useState(false);
-  const saved = useStore(positions)[item.id];
+  const saved = useStoreSelector(positions, (map) => map[item.id]);
   const progress =
     saved && saved.duration > 0
       ? Math.min(1, saved.position / saved.duration)
@@ -30,7 +39,7 @@ export const VideoCard = ({item, onPress, hasTVPreferredFocus}: Props) => {
       accessibilityLabel={item.title}>
       <View>
         <Image
-          source={{uri: item.thumbnailUrl}}
+          source={{uri: thumbnailFor(item.id)}}
           style={styles.thumb}
           resizeMode="cover"
         />
@@ -55,7 +64,7 @@ export const VideoCard = ({item, onPress, hasTVPreferredFocus}: Props) => {
       </Text>
     </Pressable>
   );
-};
+});
 
 const styles = StyleSheet.create({
   card: {

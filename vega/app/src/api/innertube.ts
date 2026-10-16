@@ -218,7 +218,6 @@ function parseVideoRenderer(obj: Json): VideoItem | null {
     return null;
   }
 
-  const thumbs: Json[] = obj.thumbnail?.thumbnails ?? [];
   const owner = obj.ownerText ?? obj.shortBylineText ?? obj.longBylineText;
   return {
     id,
@@ -228,12 +227,18 @@ function parseVideoRenderer(obj: Json): VideoItem | null {
       runsText(obj.shortBylineText) ??
       runsText(obj.longBylineText) ??
       '',
-    thumbnailUrl:
-      thumbs[thumbs.length - 1]?.url ??
-      `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
+    thumbnailUrl: thumbnailFor(id),
     durationSeconds: parseDuration(runsText(obj.lengthText)),
     channelId: channelIdOf(owner?.runs?.[0]?.navigationEndpoint),
   };
+}
+
+/**
+ * 一覧用のサムネイル (480x360・約 18KB)。応答に入っている hq720 (1280x720・約 220KB) は
+ * カード (幅 400px) には大きすぎ、Fire TV Stick では通信量・デコード・メモリの負担になる
+ */
+export function thumbnailFor(videoId: string): string {
+  return `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
 }
 
 /** browseEndpoint.browseId が "UC..." ならチャンネル ID */
@@ -260,7 +265,6 @@ function parseLockup(obj: Json): VideoItem | null {
       ?.metadataParts?.[0]?.text;
   const uploader = ownerText?.content;
   const image = obj.contentImage?.thumbnailViewModel;
-  const sources: Json[] = image?.image?.sources ?? [];
 
   let duration = 0;
   for (const ov of image?.overlays ?? []) {
@@ -284,9 +288,7 @@ function parseLockup(obj: Json): VideoItem | null {
       typeof uploader === 'string' && !VIEW_COUNT.test(uploader)
         ? uploader
         : '',
-    thumbnailUrl:
-      sources[sources.length - 1]?.url ??
-      `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
+    thumbnailUrl: thumbnailFor(id),
     durationSeconds: duration,
     channelId: channelIdOf(
       ownerText?.commandRuns?.[0]?.onTap?.innertubeCommand,
@@ -329,32 +331,69 @@ export async function getChannelVideos(
 
 let visitorData: string | undefined;
 let signatureTimestamp = 20711;
-let visitorFetched = false;
+let visitorTask: Promise<void> | null = null;
 
-/** watch ページから visitorData と signatureTimestamp を取る (VISIONOS / 埋め込み IOS 用) */
-async function ensureVisitorData(): Promise<void> {
-  if (visitorFetched) {
-    return;
-  }
-  visitorFetched = true;
-  try {
-    const res = await fetchWithTimeout(
-      'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-      {headers: {'User-Agent': CHROME_UA}},
-      TIMEOUT_MS,
+/** 端末に保存して次回起動時に使い回す visitorData (watch ページ約 1.4MB の取得を省く) */
+export interface VisitorState {
+  visitorData: string;
+  signatureTimestamp: number;
+  fetchedAt: number;
+}
+
+/** 保存済みの値を使う。以後 ensureVisitorData は通信しない */
+export function restoreVisitorData(state: VisitorState) {
+  visitorData = state.visitorData;
+  signatureTimestamp = state.signatureTimestamp;
+  visitorTask = Promise.resolve();
+}
+
+/**
+ * watch ページから visitorData と signatureTimestamp を取る (VISIONOS / 埋め込み IOS 用)。
+ * 同時に呼ばれても取得は 1 回。失敗したら次の呼び出しで取り直す
+ */
+function ensureVisitorData(): Promise<void> {
+  if (!visitorTask) {
+    visitorTask = fetchVisitorData().then(
+      (ok) => {
+        if (!ok) {
+          visitorTask = null;
+        }
+      },
+      () => {
+        visitorTask = null;
+      },
     );
-    if (!res.ok) {
-      return;
-    }
-    const html = await res.text();
-    visitorData = /["']visitorData["']\s*:\s*["']([^"']+)["']/.exec(html)?.[1];
-    const sts = /["']signatureTimestamp["']\s*:\s*(\d+)/.exec(html)?.[1];
-    if (sts) {
-      signatureTimestamp = Number(sts);
-    }
-  } catch {
-    visitorFetched = false;
   }
+  return visitorTask;
+}
+
+async function fetchVisitorData(): Promise<boolean> {
+  const res = await fetchWithTimeout(
+    'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    {headers: {'User-Agent': CHROME_UA}},
+    TIMEOUT_MS,
+  );
+  if (!res.ok) {
+    return false;
+  }
+  const html = await res.text();
+  visitorData = /["']visitorData["']\s*:\s*["']([^"']+)["']/.exec(html)?.[1];
+  const sts = /["']signatureTimestamp["']\s*:\s*(\d+)/.exec(html)?.[1];
+  if (sts) {
+    signatureTimestamp = Number(sts);
+  }
+  return visitorData !== undefined;
+}
+
+/**
+ * 最初の再生を待たせないよう、起動後に先に取得しておく。
+ * @returns 取得できたら保存用の値 (取れなければ null)
+ */
+export async function prefetchVisitorData(
+  now = Date.now(),
+): Promise<VisitorState | null> {
+  await ensureVisitorData();
+  return visitorData ? {visitorData, signatureTimestamp, fetchedAt: now} : null;
 }
 
 interface ClientSpec {

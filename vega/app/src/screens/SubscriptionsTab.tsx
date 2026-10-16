@@ -5,6 +5,7 @@ import {VideoItem} from '../api/types';
 import {FocusButton} from '../components/FocusButton';
 import {VideoGrid} from '../components/VideoGrid';
 import {Channel, subscriptions, useStore} from '../store/library';
+import {getCachedList, putCachedList} from '../store/listCache';
 import {colors, s} from '../theme';
 
 interface Props {
@@ -17,6 +18,7 @@ interface Props {
 /** 一度に問い合わせるチャンネル数 (Fire TV Stick の通信・メモリへの負荷を抑える) */
 const CONCURRENCY = 4;
 const PER_CHANNEL = 12;
+const CACHE_NAME = 'subscriptions';
 
 async function mapLimit<T, R>(
   list: T[],
@@ -43,12 +45,14 @@ export const SubscriptionsTab = ({
   reloadKey,
 }: Props) => {
   const channels = useStore(subscriptions);
-  const [items, setItems] = useState<VideoItem[]>([]);
+  const key = channels.map((c) => c.id).join(',');
+  // 登録内容が前回と同じなら、前回のフィードを先に出す
+  const [items, setItems] = useState<VideoItem[]>(() =>
+    getCachedList(CACHE_NAME, key),
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
   const [loadedFor, setLoadedFor] = useState<string>();
-
-  const key = channels.map((c) => c.id).join(',');
 
   const load = useCallback(async () => {
     if (channels.length === 0) {
@@ -64,14 +68,16 @@ export const SubscriptionsTab = ({
           .catch(() => [] as VideoItem[]),
       );
       const feed = interleave(lists);
-      setItems(feed);
       if (feed.length === 0) {
         setError('新着動画を取得できませんでした');
+      } else {
+        setItems(feed);
+        putCachedList(CACHE_NAME, feed, key);
       }
     } finally {
       setLoading(false);
     }
-  }, [channels]);
+  }, [channels, key]);
 
   // 表示されたとき、登録内容が変わっていたら読み直す
   useEffect(() => {

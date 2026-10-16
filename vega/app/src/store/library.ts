@@ -2,7 +2,7 @@
 import {VideoItem} from '../api/types';
 import {persisted} from './persisted';
 
-export {useStore} from './persisted';
+export {useStore, useStoreSelector} from './persisted';
 
 export interface Channel {
   id: string;

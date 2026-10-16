@@ -76,3 +76,14 @@ export function hydrateAll(): Promise<void> {
 export function useStore<T>(store: Persisted<T>): T {
   return useSyncExternalStore(store.subscribe, store.get);
 }
+
+/**
+ * 値の一部だけを購読する。selector の結果が同じ参照なら再描画しない
+ * (例: 再生位置の表のうち 1 本分。他の動画の位置が保存されても一覧のカードは描き直さない)
+ */
+export function useStoreSelector<T, R>(
+  store: Persisted<T>,
+  selector: (value: T) => R,
+): R {
+  return useSyncExternalStore(store.subscribe, () => selector(store.get()));
+}
