@@ -85,8 +85,8 @@ if [ -n "$VPKG" ] && connected; then
   done
   run 21b-installed dev is-app-installed --appName "$APP_ID"
   # 起動から終わりまで、端末のログを流し続けて記録する (アプリ分と全体)
-  ( timeout 420 vega device run-cmd -d VirtualDevice --command 'loggingctl log -f -o short_precise -v com.firetube.tv.vega' > "$OUT/60-stream-app.txt" 2>&1 ) &
-  ( timeout 420 vega device run-cmd -d VirtualDevice --command 'loggingctl log -f -o short_precise' > "$OUT/61-stream-all.txt" 2>&1 ) &
+  ( timeout 600 vega device run-cmd -d VirtualDevice --command 'loggingctl log -f -o short_precise -v com.firetube.tv.vega' > "$OUT/60-stream-app.txt" 2>&1 ) &
+  ( timeout 600 vega device run-cmd -d VirtualDevice --command 'loggingctl log -f -o short_precise' > "$OUT/61-stream-all.txt" 2>&1 ) &
   sleep 5
   run 22-launch dev launch-app --appName "$APP_ID"
   sleep 60
@@ -104,7 +104,7 @@ if [ -n "$VPKG" ] && connected; then
   applog 40-log-home
   # ホームの先頭の動画 (起動時のフォーカス位置) を決定で開き、再生が始まるか見る
   key KEY_ENTER
-  sleep 60
+  sleep 150
   applog 41-log-after-enter
   run 42-is-running dev is-app-running --appName "$APP_ID"
   # 再生中の操作: 右 (10 秒進む) → 下 (メニュー) → 戻る (閉じる) → 戻る (一覧へ)
