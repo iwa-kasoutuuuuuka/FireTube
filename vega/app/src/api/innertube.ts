@@ -3,7 +3,7 @@
  * NewPipeExtractor は使えないため、一覧も再生 URL も InnerTube を直接叩く。
  */
 import {fetchWithTimeout, getConfig} from './config';
-import {PlaybackSource, StreamInfo, VideoItem} from './types';
+import {DashTrack, PlaybackSource, StreamInfo, VideoItem} from './types';
 
 const BASE_URL = 'https://www.youtube.com/youtubei/v1';
 const TIMEOUT_MS = 12000;
@@ -397,6 +397,16 @@ export function parsePlayerResponse(json: Json, videoId: string, client: string)
   if (!sd) throw new Error('No streamingData');
 
   const sources: PlaybackSource[] = [];
+  const dash = pickDash(sd.adaptiveFormats ?? []);
+  if (dash) {
+    sources.push({
+      kind: 'dash',
+      video: dash.video,
+      audio: dash.audio,
+      label: `DASH ${dash.video.height}p`,
+      client,
+    });
+  }
   if (typeof sd.hlsManifestUrl === 'string') {
     sources.push({url: sd.hlsManifestUrl, kind: 'hls', label: 'HLS (自動画質)', client});
   }
@@ -418,6 +428,43 @@ export function parsePlayerResponse(json: Json, videoId: string, client: string)
     durationSeconds: Number(vd.lengthSeconds) || 0,
     sources,
   };
+}
+
+/** 映像の上限。Fire TV Stick はメモリが少ないため 1080p まで */
+export const MAX_DASH_HEIGHT = 1080;
+
+function toTrack(f: Json): DashTrack | null {
+  const initEnd = Number(f.initRange?.end);
+  const indexStart = Number(f.indexRange?.start);
+  const indexEnd = Number(f.indexRange?.end);
+  if (typeof f.url !== 'string' || !Number.isFinite(initEnd) || !Number.isFinite(indexEnd)) {
+    return null;
+  }
+  return {
+    url: f.url,
+    mimeType: String(f.mimeType ?? ''),
+    initEnd,
+    indexStart,
+    indexEnd,
+    height: Number(f.height) || 0,
+    bitrate: Number(f.bitrate) || 0,
+  };
+}
+
+/**
+ * MSE 用に H.264 (avc1) 映像 + AAC (mp4a) 音声の組を選ぶ。
+ * VP9 / AV1 / Opus は端末の対応が未確認のため使わない
+ */
+export function pickDash(formats: Json[]): {video: DashTrack; audio: DashTrack} | null {
+  const tracks = formats.map(toTrack).filter((t): t is DashTrack => t !== null);
+  const video = tracks
+    .filter((t) => t.mimeType.startsWith('video/mp4') && t.mimeType.includes('avc1'))
+    .filter((t) => t.height > 0 && t.height <= MAX_DASH_HEIGHT)
+    .sort((a, b) => b.height - a.height || b.bitrate - a.bitrate)[0];
+  const audio = tracks
+    .filter((t) => t.mimeType.startsWith('audio/mp4') && t.mimeType.includes('mp4a.40.2'))
+    .sort((a, b) => b.bitrate - a.bitrate)[0];
+  return video && audio ? {video, audio} : null;
 }
 
 const PREFERRED_REASON = /非公開|プレミア|配信前|ご覧いただけません|削除|ログイン/;

@@ -4,6 +4,7 @@ import {
   parseDuration,
   parsePlayerResponse,
   parseVideoRenderers,
+  pickDash,
 } from '../src/api/innertube';
 
 const video = (id: string, title = `t-${id}`) => ({
@@ -95,5 +96,33 @@ describe('parseConfig', () => {
     const c = parseConfig({popularQueries: [], clientVersions: {IOS: '1.0', X: 3}});
     expect(c.popularQueries).toEqual(DEFAULT_CONFIG.popularQueries);
     expect(c.clientVersions).toEqual({IOS: '1.0'});
+  });
+});
+
+describe('pickDash', () => {
+  const f = (itag: number, mimeType: string, height: number, bitrate: number) => ({
+    itag,
+    url: `u${itag}`,
+    mimeType,
+    height,
+    bitrate,
+    initRange: {start: '0', end: '700'},
+    indexRange: {start: '701', end: '1200'},
+  });
+  it('picks highest avc1 <= 1080p and AAC-LC audio', () => {
+    const r = pickDash([
+      f(137, 'video/mp4; codecs="avc1.640028"', 1080, 4000),
+      f(299, 'video/mp4; codecs="avc1.64002a"', 1440, 9000),
+      f(248, 'video/webm; codecs="vp9"', 1080, 3000),
+      f(136, 'video/mp4; codecs="avc1.4D401F"', 720, 2000),
+      f(139, 'audio/mp4; codecs="mp4a.40.5"', 0, 48),
+      f(140, 'audio/mp4; codecs="mp4a.40.2"', 0, 128),
+    ]);
+    expect(r?.video.url).toBe('u137');
+    expect(r?.audio.url).toBe('u140');
+    expect(r?.video.indexStart).toBe(701);
+  });
+  it('returns null without audio', () => {
+    expect(pickDash([f(137, 'video/mp4; codecs="avc1.640028"', 1080, 1)])).toBeNull();
   });
 });

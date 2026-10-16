@@ -1,10 +1,15 @@
 import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {ActivityIndicator, StyleSheet, Text, View} from 'react-native';
 import {useTVEventHandler} from '@amazon-devices/react-native-kepler';
-import {KeplerVideoSurfaceView, VideoPlayer} from '@amazon-devices/react-native-w3cmedia';
+import {
+  KeplerVideoSurfaceView,
+  MediaSource,
+  VideoPlayer,
+} from '@amazon-devices/react-native-w3cmedia';
 import {extractStreamInfo} from '../api/innertube';
 import {CATEGORY_LABELS, getSponsorSegments} from '../api/sponsorblock';
 import {PlaybackSource, SponsorSegment, VideoItem} from '../api/types';
+import {DashSession, MediaElementLike, MediaSourceLike} from '../player/dash';
 import {colors, formatDuration, s} from '../theme';
 
 interface Props {
@@ -13,11 +18,16 @@ interface Props {
 }
 
 const OVERLAY_MS = 4000;
+
+/** play() の Promise 拒否 (データ到着前など) は error / playing イベント側で扱う */
+function playSafely(p: VideoPlayer) {
+  Promise.resolve(p.play()).catch(() => {});
+}
 const SEEK_SHORT = 10;
 const SEEK_LONG = 30;
 
 /**
- * 再生画面。Vega Media Player の URL モードに候補 (HLS → MP4) を順に渡し、
+ * 再生画面。候補を順に試す: 分離 DASH (MSE で自前再生) → HLS / MP4 (Vega Media Player の URL モード)。
  * エラーなら次の候補、候補が尽きたら別の InnerTube クライアントで取り直す。
  *
  * リモコン: 決定/再生 = 一時停止切替、左右 = 10 秒、早送り/巻き戻し = 30 秒、戻る = 一覧へ
@@ -29,6 +39,8 @@ export const PlayerScreen = ({video, onEnded}: Props) => {
   const triedClients = useRef<string[]>([]);
   const segments = useRef<SponsorSegment[]>([]);
   const ready = useRef(false);
+  const dash = useRef<DashSession | null>(null);
+  const streamDuration = useRef(video.durationSeconds);
   const hideTimer = useRef<ReturnType<typeof setTimeout>>();
 
   const [status, setStatus] = useState('再生情報を取得しています…');
@@ -46,19 +58,42 @@ export const PlayerScreen = ({video, onEnded}: Props) => {
     hideTimer.current = setTimeout(() => setOverlay(false), OVERLAY_MS);
   }, []);
 
+  // playSource と nextSource は互いに呼び合うため ref 経由で参照する
+  const nextSourceRef = useRef<(failed: number, reason?: string) => void>(() => {});
+
   const playSource = useCallback((src: PlaybackSource) => {
     const p = player.current;
     if (!p) return;
+    dash.current?.destroy();
+    dash.current = null;
     setSourceLabel(`${src.label} / ${src.client}`);
     setStatus('読み込み中…');
     p.autoplay = true;
-    p.src = src.url;
-    p.play();
+    if (src.kind === 'dash') {
+      const index = sourceIndex.current;
+      const session = new DashSession(
+        p as unknown as MediaElementLike,
+        () => new MediaSource() as unknown as MediaSourceLike,
+        src.video,
+        src.audio,
+        streamDuration.current,
+        (message) => nextSourceRef.current(index, message),
+      );
+      dash.current = session;
+      session.start();
+    } else {
+      p.src = src.url;
+    }
+    playSafely(p);
   }, []);
 
-  /** 現在の候補を捨てて次へ。尽きたら別クライアントで取り直す */
+  /**
+   * 候補 failed を捨てて次へ。尽きたら別クライアントで取り直す。
+   * MSE の失敗とプレーヤーの error イベントが重なっても 1 回だけ進むよう、失敗した候補の番号を受け取る
+   */
   const nextSource = useCallback(
-    async (reason?: string) => {
+    async (failed: number, reason?: string) => {
+      if (failed !== sourceIndex.current) return;
       sourceIndex.current += 1;
       if (sourceIndex.current < sources.current.length) {
         playSource(sources.current[sourceIndex.current]);
@@ -70,7 +105,10 @@ export const PlayerScreen = ({video, onEnded}: Props) => {
         triedClients.current.push(info.sources[0].client);
         sources.current = info.sources;
         sourceIndex.current = 0;
-        if (info.durationSeconds) setDuration(info.durationSeconds);
+        if (info.durationSeconds) {
+          streamDuration.current = info.durationSeconds;
+          setDuration(info.durationSeconds);
+        }
         playSource(info.sources[0]);
       } catch (e) {
         setError(reason ? `再生できませんでした (${reason})` : (e as Error).message);
@@ -78,6 +116,7 @@ export const PlayerScreen = ({video, onEnded}: Props) => {
     },
     [playSource, video.id],
   );
+  nextSourceRef.current = nextSource;
 
   const start = useCallback(async () => {
     if (!ready.current) return;
@@ -87,7 +126,10 @@ export const PlayerScreen = ({video, onEnded}: Props) => {
       triedClients.current = [info.sources[0].client];
       sources.current = info.sources;
       sourceIndex.current = 0;
-      if (info.durationSeconds) setDuration(info.durationSeconds);
+      if (info.durationSeconds) {
+        streamDuration.current = info.durationSeconds;
+        setDuration(info.durationSeconds);
+      }
       playSource(info.sources[0]);
     } catch (e) {
       setError((e as Error).message);
@@ -124,10 +166,13 @@ export const PlayerScreen = ({video, onEnded}: Props) => {
       el.addEventListener('ended', () => onEnded());
       el.addEventListener('error', () => {
         const err = el.error;
-        nextSource(err ? `code ${err.code ?? '?'} ${err.message ?? ''}`.trim() : undefined);
+        nextSourceRef.current(
+          sourceIndex.current,
+          err ? `code ${err.code ?? '?'} ${err.message ?? ''}`.trim() : undefined,
+        );
       });
     },
-    [nextSource, onEnded, showOverlay],
+    [onEnded, showOverlay],
   );
 
   const onSurfaceViewCreated = async (surfaceHandle: string) => {
@@ -144,6 +189,7 @@ export const PlayerScreen = ({video, onEnded}: Props) => {
     const p = player.current;
     player.current = null;
     ready.current = false;
+    dash.current?.destroy();
     if (!p) return;
     p.clearSurfaceHandle(surfaceHandle);
     await p.deinitialize();
@@ -152,6 +198,7 @@ export const PlayerScreen = ({video, onEnded}: Props) => {
   useEffect(
     () => () => {
       if (hideTimer.current) clearTimeout(hideTimer.current);
+      dash.current?.destroy();
       player.current?.pause();
     },
     [],
@@ -168,7 +215,7 @@ export const PlayerScreen = ({video, onEnded}: Props) => {
   const togglePause = () => {
     const p = player.current;
     if (!p) return;
-    if (p.paused) p.play();
+    if (p.paused) playSafely(p);
     else p.pause();
     showOverlay();
   };

@@ -6,13 +6,24 @@ export interface VideoItem {
   durationSeconds: number;
 }
 
-/** 再生候補。Vega Media Player の URL モードへ順に渡し、失敗したら次を試す */
-export interface PlaybackSource {
+/** 分離 DASH の 1 トラック (fMP4)。initRange / indexRange は InnerTube の adaptiveFormats から */
+export interface DashTrack {
   url: string;
-  kind: 'hls' | 'mp4';
-  label: string;
-  client: string;
+  mimeType: string;
+  initEnd: number;
+  indexStart: number;
+  indexEnd: number;
+  height: number;
+  bitrate: number;
 }
+
+/**
+ * 再生候補。先頭から順に試し、失敗したら次へ。
+ * dash = MSE で映像+音声を自前で積む / hls・mp4 = Vega Media Player の URL モード
+ */
+export type PlaybackSource =
+  | {kind: 'dash'; video: DashTrack; audio: DashTrack; label: string; client: string}
+  | {kind: 'hls' | 'mp4'; url: string; label: string; client: string};
 
 export interface StreamInfo {
   videoId: string;
