@@ -7,9 +7,20 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
-    <!-- TV Features: Touchscreen NOT required, Leanback required -->
+    <!--
+        TV Features
+        - touchscreen / faketouch: remote (D-pad) only. Without required="false" the
+          app store treats touch as mandatory and hides the app from Fire TV / Android TV.
+        - leanback: TV-only UI, so the stores list the app for TV devices only
+          (sideloading via adb / Downloader is unaffected).
+        - microphone: implied by RECORD_AUDIO (voice search); optional because most
+          remotes have no mic and the on-screen keyboard works without it.
+    -->
     <uses-feature
         android:name="android.hardware.touchscreen"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.faketouch"
         android:required="false" />
     <uses-feature
         android:name="android.software.leanback"
