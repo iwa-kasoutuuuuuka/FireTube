@@ -108,8 +108,9 @@ jobs:
           mkdir -p dist
           ver="${GITHUB_REF_NAME#vega-v}"
           [[ "$GITHUB_REF_TYPE" == "tag" ]] || ver="dev-${GITHUB_SHA::7}"
-          for f in $(find vega/app/build -name '*.vpkg'); do
-            arch=$(basename "$(dirname "$f")" | sed 's/-release//; s/-debug//')
+          # build/<arch>-release/*.vpkg だけを配る (build 直下の別ディレクトリにも .vpkg ができるため)
+          for f in vega/app/build/*-release/*.vpkg; do
+            arch=$(basename "$(dirname "$f")"); arch=${arch%-release}
             cp "$f" "dist/FireTube-Vega-${ver}-${arch}.vpkg"
           done
           ls -la dist
