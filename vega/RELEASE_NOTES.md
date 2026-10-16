@@ -4,7 +4,7 @@ FireTube の Vega OS 版 (Fire TV Stick 4K Select / 4K 第3世代 / HD 2026年�
 
 ### インストール
 Vega OS は APK のようにファイルを開いて入れることができません。**開発者モード + Vega CLI** で入れます。
-手順: [vega/INSTALL_VEGA.txt](https://github.com/iwa-kasoutuuuuuka/FireTube/blob/vega-v0.1.0/vega/INSTALL_VEGA.txt)
+手順: [vega/INSTALL_VEGA.txt](https://github.com/iwa-kasoutuuuuuka/FireTube/blob/main/vega/INSTALL_VEGA.txt)
 
 ```bash
 vega device install-app --packagePath FireTube-Vega-<版>-armv7.vpkg
@@ -14,10 +14,15 @@ vega device launch-app --appName com.firetube.tv.vega.main
 Fire TV Stick 実機には **armv7** の .vpkg を使ってください (x86_64 / aarch64 は Virtual Device 用)。
 
 ### できること
-- 人気の動画 (ジャンル横断の「今週 × 視聴回数順」)
-- 検索
+- トップ画面のタブ: ホーム (人気の動画) / 登録チャンネル / 後で見る / 履歴 / 検索 / 設定
 - 再生 (分離 DASH を MSE で再生、失敗時は HLS)。決定 = 一時停止、左右 = 10 秒、早送り/巻き戻し = 30 秒
+- 再生中に **下キーでメニュー**: 後で見る / 字幕 / 画質 / チャンネル登録 / チャンネルを開く
+- 字幕 (日本語が無ければ自動翻訳も選べる)、画質切替 (1080p〜144p)
+- 続きから再生、視聴履歴、登録チャンネルの新着フィード
 - SponsorBlock の自動スキップ
+- 設定: 最大画質 / 字幕の既定 / SponsorBlock / 続きから再生 / 履歴の保存・消去
 
-### まだ無いもの
-登録チャンネル・履歴・後で見る・字幕・画質切替・設定画面 (Android 版にある機能は順次移植予定)
+データ (履歴・後で見る・登録チャンネル・設定) は端末内にのみ保存されます。
+
+### 変更点 (v0.2.0)
+- 登録チャンネル・履歴・後で見る・字幕・画質切替・設定画面・続きから再生を追加

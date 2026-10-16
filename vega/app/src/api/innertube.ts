@@ -3,7 +3,14 @@
  * NewPipeExtractor は使えないため、一覧も再生 URL も InnerTube を直接叩く。
  */
 import {fetchWithTimeout, getConfig} from './config';
-import {DashTrack, PlaybackSource, StreamInfo, VideoItem} from './types';
+import {
+  CaptionTrack,
+  Cue,
+  DashTrack,
+  PlaybackSource,
+  StreamInfo,
+  VideoItem,
+} from './types';
 
 const BASE_URL = 'https://www.youtube.com/youtubei/v1';
 const TIMEOUT_MS = 12000;
@@ -117,6 +124,7 @@ export function interleave(lists: VideoItem[][]): VideoItem[] {
 
 const INVALID_TITLE = /非公開動画|private video|deleted video|削除された動画/i;
 const UPCOMING = /プレミア|公開予定|UPCOMING/i;
+const VIEW_COUNT = /回視聴|views?$/i;
 
 function isValid(item: VideoItem): boolean {
   if (!item.id || item.id.length < 5) {
@@ -211,6 +219,7 @@ function parseVideoRenderer(obj: Json): VideoItem | null {
   }
 
   const thumbs: Json[] = obj.thumbnail?.thumbnails ?? [];
+  const owner = obj.ownerText ?? obj.shortBylineText ?? obj.longBylineText;
   return {
     id,
     title: runsText(obj.title) ?? 'No title',
@@ -223,7 +232,14 @@ function parseVideoRenderer(obj: Json): VideoItem | null {
       thumbs[thumbs.length - 1]?.url ??
       `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
     durationSeconds: parseDuration(runsText(obj.lengthText)),
+    channelId: channelIdOf(owner?.runs?.[0]?.navigationEndpoint),
   };
+}
+
+/** browseEndpoint.browseId が "UC..." ならチャンネル ID */
+function channelIdOf(endpoint: Json | undefined): string | undefined {
+  const id = endpoint?.browseEndpoint?.browseId;
+  return typeof id === 'string' && /^UC[\w-]{22}$/.test(id) ? id : undefined;
 }
 
 function parseLockup(obj: Json): VideoItem | null {
@@ -239,9 +255,10 @@ function parseLockup(obj: Json): VideoItem | null {
   }
 
   const meta = obj.metadata?.lockupMetadataViewModel;
-  const uploader =
+  const ownerText =
     meta?.metadata?.contentMetadataViewModel?.metadataRows?.[0]
-      ?.metadataParts?.[0]?.text?.content;
+      ?.metadataParts?.[0]?.text;
+  const uploader = ownerText?.content;
   const image = obj.contentImage?.thumbnailViewModel;
   const sources: Json[] = image?.image?.sources ?? [];
 
@@ -263,12 +280,49 @@ function parseLockup(obj: Json): VideoItem | null {
   return {
     id,
     title: meta?.title?.content ?? 'No title',
-    uploaderName: typeof uploader === 'string' ? uploader : '',
+    uploaderName:
+      typeof uploader === 'string' && !VIEW_COUNT.test(uploader)
+        ? uploader
+        : '',
     thumbnailUrl:
       sources[sources.length - 1]?.url ??
       `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
     durationSeconds: duration,
+    channelId: channelIdOf(
+      ownerText?.commandRuns?.[0]?.onTap?.innertubeCommand,
+    ),
   };
+}
+
+// ---------------------------------------------------------------- チャンネル
+
+/** チャンネル「動画」タブ (新しい順) を指定する browse params */
+const CHANNEL_VIDEOS_TAB_PARAMS = 'EgZ2aWRlb3PyBgQKAjoA';
+
+/**
+ * チャンネルの新着動画。動画タブが空 (ショート・ライブのみ等) ならホームタブにフォールバック。
+ * 一覧の投稿者名・チャンネル ID はチャンネル自身で埋める (タブ内の項目には無いことが多い)
+ */
+export async function getChannelVideos(
+  channelId: string,
+  channelName?: string,
+): Promise<VideoItem[]> {
+  const browse = (params?: string) =>
+    postJson('browse?prettyPrint=false', {
+      context: webContext(),
+      browseId: channelId,
+      ...(params ? {params} : {}),
+    }).then(parseVideoRenderers);
+  let items = await browse(CHANNEL_VIDEOS_TAB_PARAMS);
+  if (items.length === 0) {
+    items = await browse();
+  }
+  return items.map((v) => ({
+    ...v,
+    channelId: v.channelId ?? channelId,
+    // タブ内の項目は 1 行目が投稿者でなく視聴回数のことがあるため、チャンネル名で上書きする
+    uploaderName: channelName || v.uploaderName,
+  }));
 }
 
 // ---------------------------------------------------------------- 再生 URL
@@ -425,7 +479,11 @@ function clientSpec(name: string): ClientSpec | null {
   }
 }
 
-async function fetchPlayer(name: string, videoId: string): Promise<StreamInfo> {
+async function fetchPlayer(
+  name: string,
+  videoId: string,
+  maxHeight: number,
+): Promise<StreamInfo> {
   const spec = clientSpec(name);
   if (!spec) {
     throw new Error(`Unknown client ${name}`);
@@ -454,13 +512,14 @@ async function fetchPlayer(name: string, videoId: string): Promise<StreamInfo> {
     }
   }
   const json = await postJson('player?prettyPrint=false', body, headers);
-  return parsePlayerResponse(json, videoId, name);
+  return parsePlayerResponse(json, videoId, name, maxHeight);
 }
 
 export function parsePlayerResponse(
   json: Json,
   videoId: string,
   client: string,
+  maxHeight = MAX_DASH_HEIGHT,
 ): StreamInfo {
   const ps = json.playabilityStatus;
   if (ps?.status !== 'OK') {
@@ -481,14 +540,9 @@ export function parsePlayerResponse(
 
   const sources: PlaybackSource[] = [];
   const dash = pickDash(sd.adaptiveFormats ?? []);
-  if (dash) {
-    sources.push({
-      kind: 'dash',
-      video: dash.video,
-      audio: dash.audio,
-      label: `DASH ${dash.video.height}p`,
-      client,
-    });
+  const video = dash && chooseQuality(dash.videos, maxHeight);
+  if (dash && video) {
+    sources.push(dashSource(video, dash.audio, client));
   }
   if (typeof sd.hlsManifestUrl === 'string') {
     sources.push({
@@ -521,9 +575,42 @@ export function parsePlayerResponse(
     videoId,
     title: vd.title ?? '',
     uploaderName: vd.author ?? '',
+    channelId: typeof vd.channelId === 'string' ? vd.channelId : undefined,
     durationSeconds: Number(vd.lengthSeconds) || 0,
     sources,
+    dashVideos: dash?.videos ?? [],
+    dashAudio: dash?.audio,
+    captions: parseCaptionTracks(json),
   };
+}
+
+export function dashSource(
+  video: DashTrack,
+  audio: DashTrack,
+  client: string,
+): PlaybackSource {
+  return {kind: 'dash', video, audio, label: `DASH ${video.height}p`, client};
+}
+
+/** maxHeight 以下で最も高画質な映像。無ければ最も低い画質 */
+export function chooseQuality(
+  videos: DashTrack[],
+  maxHeight: number,
+): DashTrack | undefined {
+  return videos.find((v) => v.height <= maxHeight) ?? videos[videos.length - 1];
+}
+
+function parseCaptionTracks(json: Json): CaptionTrack[] {
+  const tracks: Json[] =
+    json.captions?.playerCaptionsTracklistRenderer?.captionTracks ?? [];
+  return tracks
+    .filter((t) => typeof t.baseUrl === 'string')
+    .map((t) => ({
+      baseUrl: t.baseUrl,
+      languageCode: String(t.languageCode ?? ''),
+      name: runsText(t.name) ?? String(t.languageCode ?? ''),
+      isAutoGenerated: t.kind === 'asr',
+    }));
 }
 
 /** 映像の上限。Fire TV Stick はメモリが少ないため 1080p まで */
@@ -557,21 +644,23 @@ function toTrack(f: Json): DashTrack | null {
  */
 export function pickDash(
   formats: Json[],
-): {video: DashTrack; audio: DashTrack} | null {
+): {videos: DashTrack[]; audio: DashTrack} | null {
   const tracks = formats.map(toTrack).filter((t): t is DashTrack => t !== null);
-  const video = tracks
+  const videos = tracks
     .filter(
       (t) => t.mimeType.startsWith('video/mp4') && t.mimeType.includes('avc1'),
     )
     .filter((t) => t.height > 0 && t.height <= MAX_DASH_HEIGHT)
-    .sort((a, b) => b.height - a.height || b.bitrate - a.bitrate)[0];
+    .sort((a, b) => b.height - a.height || b.bitrate - a.bitrate)
+    // 同じ画質が複数あればビットレートの高い方だけ残す
+    .filter((t, i, list) => i === 0 || list[i - 1].height !== t.height);
   const audio = tracks
     .filter(
       (t) =>
         t.mimeType.startsWith('audio/mp4') && t.mimeType.includes('mp4a.40.2'),
     )
     .sort((a, b) => b.bitrate - a.bitrate)[0];
-  return video && audio ? {video, audio} : null;
+  return videos.length > 0 && audio ? {videos, audio} : null;
 }
 
 const PREFERRED_REASON =
@@ -585,12 +674,13 @@ const PREFERRED_REASON =
 export async function extractStreamInfo(
   videoId: string,
   skip: string[] = [],
+  maxHeight = MAX_DASH_HEIGHT,
 ): Promise<StreamInfo> {
   const config = getConfig();
   const reasons: string[] = [];
   const race = config.playerRaceClients.filter((c) => !skip.includes(c));
   const pending = race.map((c) =>
-    fetchPlayer(c, videoId).catch((e: Error) => e),
+    fetchPlayer(c, videoId, maxHeight).catch((e: Error) => e),
   );
   for (const p of pending) {
     const r = await p;
@@ -604,7 +694,7 @@ export async function extractStreamInfo(
       continue;
     }
     try {
-      return await fetchPlayer(c, videoId);
+      return await fetchPlayer(c, videoId, maxHeight);
     } catch (e) {
       reasons.push((e as Error).message);
     }
@@ -614,4 +704,60 @@ export async function extractStreamInfo(
     reasons.find((r) => !/HTTP|failed|streamingData|timeout/i.test(r)) ??
     'この動画は再生できません';
   throw new Error(best);
+}
+
+// ---------------------------------------------------------------- 字幕
+
+/**
+ * 字幕 (timedtext の json3 形式) を取得してキューにする。
+ * @param translateTo 指定するとその言語へ自動翻訳した字幕を取る (例: "ja")
+ */
+export async function fetchCaptions(
+  track: CaptionTrack,
+  translateTo?: string,
+): Promise<Cue[]> {
+  const url =
+    `${track.baseUrl}&fmt=json3` +
+    (translateTo ? `&tlang=${encodeURIComponent(translateTo)}` : '');
+  const res = await fetchWithTimeout(url, {}, TIMEOUT_MS);
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}`);
+  }
+  return parseJson3(await res.json());
+}
+
+export function parseJson3(json: Json): Cue[] {
+  const events: Json[] = Array.isArray(json?.events) ? json.events : [];
+  const cues: Cue[] = [];
+  for (const e of events) {
+    const segs: Json[] = Array.isArray(e.segs) ? e.segs : [];
+    const text = segs
+      .map((s) => s?.utf8 ?? '')
+      .join('')
+      .trim();
+    const start = Number(e.tStartMs);
+    if (!text || !Number.isFinite(start)) {
+      continue;
+    }
+    const end = start + (Number(e.dDurationMs) || 0);
+    cues.push({start: start / 1000, end: end / 1000, text});
+  }
+  return cues;
+}
+
+/** 字幕の既定 (設定) から使うトラックを決める。日本語が無ければ最初のトラックを日本語に翻訳する */
+export function chooseCaption(
+  tracks: CaptionTrack[],
+  mode: 'off' | 'ja' | 'default',
+): {track: CaptionTrack; translateTo?: string} | null {
+  if (mode === 'off' || tracks.length === 0) {
+    return null;
+  }
+  if (mode === 'ja') {
+    const ja =
+      tracks.find((t) => t.languageCode === 'ja' && !t.isAutoGenerated) ??
+      tracks.find((t) => t.languageCode === 'ja');
+    return ja ? {track: ja} : {track: tracks[0], translateTo: 'ja'};
+  }
+  return {track: tracks.find((t) => !t.isAutoGenerated) ?? tracks[0]};
 }

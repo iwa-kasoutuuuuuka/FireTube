@@ -7,7 +7,7 @@ name: Vega Build
 on:
   workflow_dispatch:
   push:
-    branches: [vega-build]
+    branches: [main, vega-build]
     tags: ['vega-v*']
     paths:
       - 'vega/**'

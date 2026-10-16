@@ -188,9 +188,9 @@ describe('pickDash', () => {
       f(139, 'audio/mp4; codecs="mp4a.40.5"', 0, 48),
       f(140, 'audio/mp4; codecs="mp4a.40.2"', 0, 128),
     ]);
-    expect(r?.video.url).toBe('u137');
+    expect(r?.videos.map((v) => v.url)).toEqual(['u137', 'u136']);
     expect(r?.audio.url).toBe('u140');
-    expect(r?.video.indexStart).toBe(701);
+    expect(r?.videos[0].indexStart).toBe(701);
   });
   it('returns null without audio', () => {
     expect(

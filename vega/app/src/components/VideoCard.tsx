@@ -1,6 +1,7 @@
 import React, {useState} from 'react';
 import {Image, Pressable, StyleSheet, Text, View} from 'react-native';
 import {VideoItem} from '../api/types';
+import {positions, useStore} from '../store/library';
 import {colors, formatDuration, s} from '../theme';
 
 interface Props {
@@ -13,6 +14,11 @@ export const CARD_WIDTH = s(400);
 
 export const VideoCard = ({item, onPress, hasTVPreferredFocus}: Props) => {
   const [focused, setFocused] = useState(false);
+  const saved = useStore(positions)[item.id];
+  const progress =
+    saved && saved.duration > 0
+      ? Math.min(1, saved.position / saved.duration)
+      : 0;
   return (
     <Pressable
       style={[styles.card, focused && styles.focused]}
@@ -32,6 +38,13 @@ export const VideoCard = ({item, onPress, hasTVPreferredFocus}: Props) => {
           <Text style={styles.duration}>
             {formatDuration(item.durationSeconds)}
           </Text>
+        )}
+        {progress > 0 && (
+          <View style={styles.progressTrack}>
+            <View
+              style={[styles.progressFill, {width: `${progress * 100}%`}]}
+            />
+          </View>
         )}
       </View>
       <Text style={styles.title} numberOfLines={2}>
@@ -75,6 +88,15 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: s(20),
   },
+  progressTrack: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: s(6),
+    backgroundColor: 'rgba(255,255,255,0.3)',
+  },
+  progressFill: {height: '100%', backgroundColor: colors.accent},
   title: {
     color: colors.text,
     fontSize: s(24),
