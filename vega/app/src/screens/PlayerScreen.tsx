@@ -47,6 +47,7 @@ import {
 } from '../store/library';
 import {settings, SPEED_OPTIONS, updateSettings} from '../store/settings';
 import {colors, formatDuration, s} from '../theme';
+import {log} from '../log';
 
 interface Props {
   video: VideoItem;
@@ -159,43 +160,47 @@ export const PlayerScreen = ({
   }, [video.id]);
 
   /** @param resumeAt 再生開始後にこの位置へ移る (画質切替・続きから再生) */
-  const playSource = useCallback((src: PlaybackSource, resumeAt = 0) => {
-    const p = player.current;
-    if (!p) {
-      return;
-    }
-    dash.current?.destroy();
-    dash.current = null;
-    switchedAt.current = Date.now();
-    pendingSeek.current = resumeAt;
-    if (startTimer.current) {
-      clearTimeout(startTimer.current);
-    }
-    const index = sourceIndex.current;
-    startTimer.current = setTimeout(
-      () => nextSourceRef.current(index, '再生が始まりませんでした'),
-      START_TIMEOUT_MS,
-    );
-    setCurrentSource(src);
-    setSourceLabel(`${src.label} / ${src.client}`);
-    setStatus('読み込み中…');
-    p.autoplay = true;
-    if (src.kind === 'dash') {
-      const session = new DashSession(
-        p as unknown as MediaElementLike,
-        () => new MediaSource() as unknown as MediaSourceLike,
-        src.video,
-        src.audio,
-        streamDuration.current,
-        (message) => nextSourceRef.current(index, message),
+  const playSource = useCallback(
+    (src: PlaybackSource, resumeAt = 0) => {
+      const p = player.current;
+      if (!p) {
+        return;
+      }
+      dash.current?.destroy();
+      dash.current = null;
+      switchedAt.current = Date.now();
+      pendingSeek.current = resumeAt;
+      if (startTimer.current) {
+        clearTimeout(startTimer.current);
+      }
+      const index = sourceIndex.current;
+      startTimer.current = setTimeout(
+        () => nextSourceRef.current(index, '再生が始まりませんでした'),
+        START_TIMEOUT_MS,
       );
-      dash.current = session;
-      session.start();
-    } else {
-      p.src = src.url;
-    }
-    playSafely(p);
-  }, []);
+      log('play source', video.id, src.label, src.client, 'resumeAt', resumeAt);
+      setCurrentSource(src);
+      setSourceLabel(`${src.label} / ${src.client}`);
+      setStatus('読み込み中…');
+      p.autoplay = true;
+      if (src.kind === 'dash') {
+        const session = new DashSession(
+          p as unknown as MediaElementLike,
+          () => new MediaSource() as unknown as MediaSourceLike,
+          src.video,
+          src.audio,
+          streamDuration.current,
+          (message) => nextSourceRef.current(index, message),
+        );
+        dash.current = session;
+        session.start();
+      } else {
+        p.src = src.url;
+      }
+      playSafely(p);
+    },
+    [video.id],
+  );
 
   const applyInfo = useCallback((next: StreamInfo) => {
     info.current = next;
@@ -237,6 +242,7 @@ export const PlayerScreen = ({
       if (failed !== sourceIndex.current) {
         return;
       }
+      log('source failed', video.id, failed, reason);
       const resumeAt = player.current?.currentTime ?? 0;
       sourceIndex.current += 1;
       if (sourceIndex.current < sources.current.length) {
@@ -285,6 +291,13 @@ export const PlayerScreen = ({
     try {
       // 一覧で先読みしていればそれを使う
       const next = await takeStream(video.id, st.maxQuality);
+      log(
+        'stream info',
+        video.id,
+        next.sources.map((x) => x.label).join(','),
+        'captions',
+        next.captions.length,
+      );
       triedClients.current = [next.sources[0].client];
       applyInfo(next);
 
@@ -343,6 +356,7 @@ export const PlayerScreen = ({
             });
           }
         }
+        log('playing', video.id, 'at', Math.floor(p.currentTime));
         setStatus('');
         setPaused(false);
         showOverlay();
@@ -402,6 +416,7 @@ export const PlayerScreen = ({
           return;
         }
         const err = el.error;
+        log('media error', video.id, err?.code, err?.message);
         nextSourceRef.current(
           sourceIndex.current,
           err

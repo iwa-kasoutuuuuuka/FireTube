@@ -4,6 +4,7 @@ import {getPopularVideos} from '../api/innertube';
 import {VideoItem} from '../api/types';
 import {VideoGrid} from '../components/VideoGrid';
 import {getCachedList, putCachedList} from '../store/listCache';
+import {log} from '../log';
 
 interface Props {
   onSelect: (item: VideoItem) => void;
@@ -30,9 +31,11 @@ export const PopularTab = ({onSelect, reloadKey}: Props) => {
     try {
       // リモート設定は起動時に裏で読み込み済み (未取得なら組み込みの既定値)。ここでは待たない
       const fresh = await getPopularVideos(getConfig().popularQueries);
+      log('popular loaded', fresh.length);
       setItems(fresh);
       putCachedList(CACHE_NAME, fresh);
     } catch (e) {
+      log('popular failed', (e as Error).message);
       setError(`読み込みに失敗しました: ${(e as Error).message}`);
     } finally {
       setLoading(false);

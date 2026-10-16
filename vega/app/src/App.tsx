@@ -9,6 +9,8 @@ import {Channel} from './store/library';
 import {hydrateAll} from './store/persisted';
 import {warmUp} from './startup';
 import {colors} from './theme';
+import {log} from './log';
+import {APP_VERSION} from './version';
 
 type Route =
   | {name: 'main'}
@@ -26,6 +28,7 @@ export const App = () => {
 
   useEffect(() => {
     hydrateAll().finally(() => {
+      log('start', APP_VERSION);
       warmUp();
       setReady(true);
     });
