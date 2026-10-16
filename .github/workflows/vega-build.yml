@@ -1,0 +1,66 @@
+name: Vega Build
+
+# Vega OS 版 (vega/app) を Ubuntu 上の Vega SDK でビルドし、.vpkg を成果物にする。
+# 開発 PC (Windows) では Vega SDK が動かないため、ビルドはここで行う。
+# vega-v* タグの push では GitHub Release に .vpkg を添付する。
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [vega-build]
+    tags: ['vega-v*']
+    paths:
+      - 'vega/**'
+      - '.github/workflows/vega-build.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install SDK prerequisites
+        run: |
+          sudo add-apt-repository -y ppa:deadsnakes/ppa
+          sudo apt-get update
+          sudo apt-get install -y lz4 jq python3.8 libpython3.8-dev
+
+      - name: Install Vega SDK
+        env:
+          NONINTERACTIVE: 'true'
+          FORCE_ASCII: 'true'
+        run: |
+          curl -fsSL https://sdk-installer.vega.labcollab.net/get_vvm.sh | bash
+          source "$HOME/vega/env"
+          vega --version
+          echo "$HOME/vega/bin" >> "$GITHUB_PATH"
+          cat "$HOME/vega/env"
+
+      - name: Probe templates
+        if: ${{ hashFiles('vega/app/package.json') == '' }}
+        run: |
+          source "$HOME/vega/env"
+          vega project list-templates || true
+          vega project generate --help || true
+          vega project generate --template helloWorld --name firetube --packageId com.firetube.tv.vega --outputDir "$RUNNER_TEMP/gen"
+          cd "$RUNNER_TEMP/gen"
+          find . -type f -not -path '*/node_modules/*' | sort
+          for f in $(find . -type f -not -path '*/node_modules/*' \( -name '*.json' -o -name '*.toml' -o -name '*.ts' -o -name '*.tsx' -o -name '*.js' -o -name '*.md' \) | sort); do
+            echo "===== $f"; cat "$f"; echo
+          done
+
+      - name: Upload generated template
+        if: ${{ hashFiles('vega/app/package.json') == '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: vega-template
+          path: ${{ runner.temp }}/gen
