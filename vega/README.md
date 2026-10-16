@@ -17,6 +17,7 @@ Android 版 (`../app`) とは別実装で、**Vega SDK の React Native (TypeScr
 - プロジェクト雛形: **未生成** (`vega project generate` は SDK 導入後に実行)
 
 ## ドキュメント
+- [INSTALL_VEGA.txt](INSTALL_VEGA.txt) — Fire TV (Vega OS) へのインストール手順 (開発者モード + Vega CLI)
 - [SETUP.md](SETUP.md) — 開発環境の構築と実機接続
 - [docs/porting-spec.md](docs/porting-spec.md) — Android 版からの移植仕様 (取得経路・再生・補助 API・型)
 - [`.agents/skills/vega-development`](../.agents/skills/vega-development/SKILL.md) — Vega 開発スキル

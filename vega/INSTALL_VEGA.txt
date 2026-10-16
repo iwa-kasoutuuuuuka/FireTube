@@ -1,0 +1,132 @@
+==============================================================
+ FireTube Vega OS 版を Fire TV にインストールする方法
+==============================================================
+
+対象: Vega OS 搭載の Fire TV
+      (Fire TV Stick 4K Select、Fire TV Stick 4K 第3世代 / HD の 2026年モデルなど)
+      ※ Fire OS (Android) 搭載機は APK 版を使う -> ../INSTALL_FROM_PC.txt
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ 最初に: 現時点 (2026-10) では、インストールできる Vega 版はまだありません
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  - Vega 版は試作段階で、プロジェクト雛形もまだ生成していません
+    (vega/README.md の「状態」を参照)。配布用のファイル (.vpkg) はありません。
+  - Vega OS には APK のように「ファイルを入れればインストールできる」仕組みがありません。
+    インストールできるのは次の 2 つだけです。
+      (1) Amazon アプリストアで公開されたアプリ
+      (2) 開発者モードにした端末へ、開発者自身が Vega CLI で入れたアプリ
+  - 一般の利用者向けに配る方法は (1) しかなく、FireTube はストア審査に通る見込みが
+    低いため、当面は「開発者が自分の端末で試す」(2) の方法になります。
+
+以下は (2) の手順です。
+
+
+--------------------------------------------------------------
+ 用意するもの
+--------------------------------------------------------------
+  - Vega OS 搭載の Fire TV (開発機と同じ LAN に接続)
+  - Amazon 開発者アカウント (https://developer.amazon.com/ 無料)
+  - 開発用 PC: Ubuntu 20.04 以上 または macOS 10.15 以上 (空き 20GB 以上)
+      ※ Windows / WSL は公式に非対応。Windows PC しかない場合は Ubuntu の VM を作る
+        (ステップ 1 の補足を参照)。
+  - Node.js 18 以上、Python 3.8、lz4、Watchman
+
+
+--------------------------------------------------------------
+ ステップ 1  開発用 PC に Vega SDK (Vega CLI) を入れる (初回のみ)
+--------------------------------------------------------------
+リポジトリを clone したフォルダで実行:
+    bash vega/scripts/setup-dev-env.sh
+
+最後に `vega --version` でバージョンが表示されれば OK。
+新しいターミナルを開いたときは、最初に次を実行して vega コマンドを使えるようにする:
+    source ~/vega/env
+
+[補足] Windows PC しかない場合 (Hyper-V で Ubuntu 22.04 の VM を作る)
+  管理者 PowerShell で実行:
+    powershell -ExecutionPolicy Bypass -File E:\ZFireTube\vega\scripts\windows\create-ubuntu-vm.ps1
+  Ubuntu のインストール時に「OpenSSH server」を選ぶ。完了後に ssh で VM に入り、
+  リポジトリを clone してから上の setup-dev-env.sh を実行する。
+  ※ VM から Fire TV に接続できるかは未検証。つながらない場合は Hyper-V の
+    外部スイッチ (ブリッジ接続) に切り替える。
+
+
+--------------------------------------------------------------
+ ステップ 2  Fire TV を開発者モードにする (初回のみ)
+--------------------------------------------------------------
+Fire TV 側:
+  1. 設定 > マイ Fire TV > バージョン情報 で、端末名を選んで決定ボタンを 7 回押す。
+  2. マイ Fire TV に「開発者向けオプション」が表示される。
+  3. 開発者向けオプション > 開発者モード > 続行 で表示される 6 桁のコードを控える。
+
+開発用 PC 側:
+    vega devmode login                                # Amazon 開発者アカウントでログイン
+    vega devmode enable-device --code <6桁コード>      # Fire TV が再起動する
+    vega device list                                  # Fire TV が表示されれば OK
+
+  ※ 開発者モードを有効にするたびに Fire TV の再起動が必要です。
+
+
+--------------------------------------------------------------
+ ステップ 3  Vega 版をビルドする
+--------------------------------------------------------------
+(Vega 版のアプリ本体ができた後の手順。現在は vega/app がまだありません)
+    cd vega/app
+    npm install
+    npm run build:app
+
+できるファイル:
+    build/armv7-release/<名前>_armv7.vpkg       <- Fire TV Stick 実機用
+    build/x86_64-release/ , build/aarch64-release/ <- Virtual Device (PC 上の仮想端末) 用
+
+
+--------------------------------------------------------------
+ ステップ 4  Fire TV にインストールして起動する
+--------------------------------------------------------------
+    vega device install-app --packagePath build/armv7-release/<名前>_armv7.vpkg
+    vega device launch-app --appName <component-id>
+
+  - <component-id> はアプリの manifest に書かれた ID (パッケージ ID は com.firetube.tv.vega の予定)。
+  - インストール後は Fire TV のアプリ一覧からも起動できる。
+  - 更新するときは、ビルドし直して install-app をもう一度実行する。
+
+端末内を調べたいとき:
+    vega device shell
+
+
+--------------------------------------------------------------
+ 実機が無いとき (Virtual Device で試す)
+--------------------------------------------------------------
+Ubuntu の場合は KVM (/dev/kvm) が必要。VM の中では入れ子の仮想化が必要で、動くかは未検証。
+    vega virtual-device start
+    vega run-app <vpkg ファイル> <app-id> -d VirtualDevice
+    vega virtual-device stop
+
+
+--------------------------------------------------------------
+ うまくいかないとき
+--------------------------------------------------------------
+■ vega: command not found
+  - `source ~/vega/env` を実行していない。新しいターミナルごとに必要。
+
+■ vega device list に Fire TV が出ない
+  - 開発用 PC と Fire TV が同じネットワークにいるか確認 (ゲスト Wi-Fi は不可のことが多い)。
+  - 開発者モードが有効か確認 (Fire TV の再起動後に無効になっていないか)。
+  - VM から接続している場合は、外部スイッチ (ブリッジ接続) を試す。
+
+■ 6 桁コードが通らない
+  - コードには有効期限がある。Fire TV 側で開発者モードの画面を開き直して新しいコードを使う。
+  - `vega devmode login` で、コードを表示したのと同じ Amazon 開発者アカウントにログインしているか確認。
+
+■ install-app で失敗する
+  - 実機には armv7 の .vpkg を使う (x86_64 / aarch64 は Virtual Device 用)。
+
+
+--------------------------------------------------------------
+ 参考 (Amazon 公式ドキュメント。SDK の版に合わせて URL の 0.2x を読み替える)
+--------------------------------------------------------------
+  SDK の導入   https://developer.amazon.com/docs/vega/0.23/install-vega-sdk.html
+  開発者モード https://developer.amazon.com/docs/vega/0.24/developer-mode.html
+  アプリの実行 https://developer.amazon.com/docs/vega/0.22/run-apps.html
+  詳しい開発手順は vega/SETUP.md を参照。

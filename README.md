@@ -18,7 +18,7 @@
 > ⚠️ **Vega OS 搭載の新型 Fire TV Stick (Fire TV Stick 4K Select / 4K 第3世代 / HD 2026年モデルなど) には対応していません。**
 > Vega OS は Android ではないため APK をインストールできません。購入前に [対応機種・非対応機種の一覧](#-動作対応デバイス機種一覧-supported-devices) をご確認ください。
 >
-> 🚧 Vega OS 向けの別実装 (React Native) を [`vega/`](vega/) で試作中です (未公開)。
+> 🚧 Vega OS 向けの別実装 (React Native) を [`vega/`](vega/) で試作中です (未公開)。開発者モードの端末へ入れる手順は [`vega/INSTALL_VEGA.txt`](vega/INSTALL_VEGA.txt) を参照してください。
 
 </div>
 
@@ -556,7 +556,7 @@ PC 上の Android Studio エミュレーターで、Fire TV Stick 実機環境�
 
 ### Vega OS 版 (React Native) の開発環境 (試作)
 新型 Fire TV Stick (4K Select / 4K 第3世代等) 向けに、Vega SDK を用いた別実装を [`vega/`](vega/) で試作進行中です。
-- **ドキュメント**: [`vega/SETUP.md`](vega/SETUP.md) (SDKセットアップと実機接続ガイド) / [`vega/docs/porting-spec.md`](vega/docs/porting-spec.md) (移植仕様)
+- **ドキュメント**: [`vega/INSTALL_VEGA.txt`](vega/INSTALL_VEGA.txt) (Vega OS 実機へのインストール手順。現時点では配布用ビルドは無く、開発者モード + Vega CLI のみ) / [`vega/SETUP.md`](vega/SETUP.md) (SDKセットアップと実機接続ガイド) / [`vega/docs/porting-spec.md`](vega/docs/porting-spec.md) (移植仕様)
 - **VM 構築スクリプト**: Windows Hyper-V 上で Ubuntu 22.04 ビルド環境を自動構築する [`vega/scripts/windows/create-ubuntu-vm.ps1`](vega/scripts/windows/create-ubuntu-vm.ps1)
 - **スキル**: [`.agents/skills/vega-development`](.agents/skills/vega-development/SKILL.md)
 
@@ -567,7 +567,7 @@ PC 上の Android Studio エミュレーターで、Fire TV Stick 実機環境�
 ### 未リリース (main)
 - **テレビ用バナーを作り直し**: アプリ一覧に表示されるバナー (`android:banner`) を、アイコンを中央に置いただけの画像から、背景を端まで塗りつぶしアプリ名「FireTube」を入れたデザインに変更。1080p のテレビでもぼやけないよう、高解像度版 (640×360、`drawable-xhdpi`) を追加しました (320×180 版も更新)。
 - **TV 向け `uses-feature` 宣言を見直し**: `touchscreen` に加えて `faketouch` も `required="false"` と宣言し、リモコンだけで使えるアプリとしてストアに正しく扱われるようにしました。`leanback` (テレビ専用) と `microphone` (任意) の宣言は理由をコメントで明記。
-- **PC からのインストール手順書**: [`INSTALL_FROM_PC.txt`](INSTALL_FROM_PC.txt) を追加 (ADB の導入・接続・インストール、Downloader で受け取る方法、エラー別の対処)。
+- **PC からのインストール手順書**: [`INSTALL_FROM_PC.txt`](INSTALL_FROM_PC.txt) を追加 (ADB の導入・接続・インストール、Downloader で受け取る方法、エラー別の対処)。Vega OS 版は [`vega/INSTALL_VEGA.txt`](vega/INSTALL_VEGA.txt) (開発者モード + Vega CLI)。
 - **リモート設定と上流ヘルスチェック**: Piped インスタンス・再生クライアントの優先順などを [`remote-config.json`](remote-config.json) から取得するようにし、週 1 回 CI で疎通を確認 (詳細は「上流サービスへの依存と既知の制限」)。
 - **ストリーム選択の修正**: 画質・コーデックの判定を `StreamSelector` に切り出し、"360p" が 720p 扱いになる・mp4 コンテナの AV1 を AVC と誤判定する・HD 端末で 2160p を選び得る問題を修正。
 - ホーム先頭の行名を「トレンド」から「人気の動画」に変更 (YouTube の急上昇ページ廃止に対応)。
