@@ -35,6 +35,7 @@ Android 版 (`../app`) とは別実装で、**Vega SDK の React Native (TypeScr
 
 ## ドキュメント
 - [INSTALL_VEGA.txt](INSTALL_VEGA.txt) — Fire TV (Vega OS) へのインストール手順 (開発者モード + Vega CLI)
+- [TRANSFER_FROM_WINDOWS.txt](TRANSFER_FROM_WINDOWS.txt) — Windows 11 PC から実機へ転送する手順 (Hyper-V の Ubuntu VM + usbipd-win)
 - [SETUP.md](SETUP.md) — 開発環境の構築と実機接続
 - [docs/porting-spec.md](docs/porting-spec.md) — Android 版からの移植仕様 (取得経路・再生・補助 API・型)
 - [`.agents/skills/vega-development`](../.agents/skills/vega-development/SKILL.md) — Vega 開発スキル
