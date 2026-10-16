@@ -90,14 +90,23 @@ export async function searchVideos(
 export async function getPopularVideos(
   queries: string[],
 ): Promise<VideoItem[]> {
+  const errors: string[] = [];
   const lists = await Promise.all(
     queries.map((q) =>
-      searchVideos(q, SEARCH_FILTER_POPULAR_THIS_WEEK).catch(() => []),
+      searchVideos(q, SEARCH_FILTER_POPULAR_THIS_WEEK).catch((e: Error) => {
+        errors.push(e.message);
+        return [] as VideoItem[];
+      }),
     ),
   );
   const items = interleave(lists);
   if (items.length === 0) {
-    throw new Error('人気の動画を取得できませんでした');
+    log('popular: all searches failed', errors.join(' | '));
+    throw new Error(
+      errors[0]
+        ? `人気の動画を取得できませんでした (${errors[0]})`
+        : '人気の動画を取得できませんでした',
+    );
   }
   return items;
 }
