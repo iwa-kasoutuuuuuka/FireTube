@@ -88,7 +88,9 @@ if [ -n "$VPKG" ] && connected; then
   done
   run 21b-installed dev is-app-installed --appName "$APP_ID"
   # 起動から終わりまで、端末のログを流し続けて記録する (アプリ分と全体)
-  ( timeout 600 vega device run-cmd -d VirtualDevice --command 'loggingctl log -f -o short_precise -v com.firetube.tv.vega' > "$OUT/60-stream-app.txt" 2>&1 ) &
+  ( timeout 900 vega device run-cmd -d VirtualDevice --command 'loggingctl log -f -o short_precise -v com.firetube.tv.vega' > "$OUT/60-stream-app.txt" 2>&1 ) &
+  # 量が多いと途中で切れるため、要点だけの記録も別に取る
+  ( timeout 900 vega device run-cmd -d VirtualDevice --command "loggingctl log -f -o short_precise -v com.firetube.tv.vega | grep --line-buffered -E 'FireTube|E W3CMEDIA|E MEDIA_PLAYERV2|Seek|GWSI_LOG.*Consumed'" > "$OUT/63-stream-key.txt" 2>&1 ) &
   ( timeout 600 vega device run-cmd -d VirtualDevice --command 'loggingctl log -f -o short_precise' > "$OUT/61-stream-all.txt" 2>&1 ) &
   sleep 5
   run 22-launch dev launch-app --appName "$APP_ID"
@@ -105,14 +107,17 @@ if [ -n "$VPKG" ] && connected; then
   run 23b-copy-from-help vega device copy-from --help
   key() { vega exec inputd-cli button_press "$1" >> "$OUT/50-keys.txt" 2>&1 || dev run-cmd --command "inputd-cli button_press $1" >> "$OUT/50-keys.txt" 2>&1; sleep 2; }
   applog 40-log-home
-  # ホームの先頭の動画 (起動時のフォーカス位置) を決定で開き、再生が始まるか見る
+  # 1 本目 (DASH): 先頭の動画を開いて再生 → 右で 10 秒進める → 下でメニュー → 戻るで閉じる → 戻るで一覧へ
   key KEY_ENTER
-  sleep 150
+  sleep 60
   applog 41-log-after-enter
   run 42-is-running dev is-app-running --appName "$APP_ID"
-  # 再生中の操作: 右 (10 秒進む) → 下 (メニュー) → 戻る (閉じる) → 戻る (一覧へ)
-  key KEY_RIGHT; key KEY_DOWN; sleep 3; key KEY_BACK; key KEY_BACK
-  sleep 10
+  key KEY_RIGHT; sleep 20
+  key KEY_DOWN; sleep 5; key KEY_BACK; sleep 3; key KEY_BACK; sleep 10
+  # 2 本目 (HLS): 右の動画を開く
+  key KEY_RIGHT; key KEY_ENTER
+  sleep 60
+  key KEY_BACK; sleep 10
   applog 43-log-after-keys
   run 44-is-running dev is-app-running --appName "$APP_ID"
   wait_streams() { sleep 5; grep -hiE 'FireTube|ReactNativeJS|Exception|Error' "$OUT/60-stream-app.txt" "$OUT/61-stream-all.txt" 2>/dev/null | grep -v acr_core_dump | tail -n 800 > "$OUT/62-stream-app-lines.txt"; }

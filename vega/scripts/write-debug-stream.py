@@ -34,16 +34,17 @@ def track(path, url, mime, height):
 media, host, out = sys.argv[1:4]
 print('v.mp4 boxes:', [(k, o, s) for k, o, s in boxes(f'{media}/v.mp4')][:5])
 print('a.mp4 boxes:', [(k, o, s) for k, o, s in boxes(f'{media}/a.mp4')][:5])
-video = track(f'{media}/v.mp4', f'{host}/v.mp4', 'video/mp4; codecs="avc1.4D401F"', 720)
+video = track(f'{media}/v.mp4', f'{host}/v.mp4', 'video/mp4; codecs="avc1.4D401E"', 240)
 audio = track(f'{media}/a.mp4', f'{host}/a.mp4', 'audio/mp4; codecs="mp4a.40.2"', 0)
-stream = {
-    'videoId': 'debug', 'title': 'CI テスト動画', 'uploaderName': 'CI', 'durationSeconds': 40,
-    'sources': [
-        {'kind': 'dash', 'video': video, 'audio': audio, 'label': 'DASH 720p', 'client': 'CI'},
-        {'kind': 'hls', 'url': f'{host}/hls/index.m3u8', 'label': 'HLS', 'client': 'CI'},
-    ],
-    'dashVideos': [video], 'dashAudio': audio, 'captions': [],
-}
+base = {'uploaderName': 'CI', 'durationSeconds': 60, 'dashVideos': [video], 'dashAudio': audio, 'captions': []}
+dash = dict(base, videoId='debug-dash', title='CI テスト (DASH)', sources=[
+    {'kind': 'dash', 'video': video, 'audio': audio, 'label': 'DASH 240p', 'client': 'CI'}])
+hls = dict(base, videoId='debug-hls', title='CI テスト (HLS)', sources=[
+    {'kind': 'hls', 'url': f'{host}/hls/index.m3u8', 'label': 'HLS', 'client': 'CI'}])
+with open(out, encoding='utf-8') as f:
+    src = f.read()
+marker = 'export const DEBUG_STREAMS: StreamInfo[] = [];'
+assert marker in src
+src = src.replace(marker, 'export const DEBUG_STREAMS: StreamInfo[] = ' + json.dumps([dash, hls], ensure_ascii=False, indent=2) + ';')
 with open(out, 'w', encoding='utf-8') as f:
-    f.write("import {StreamInfo} from './api/types';\n\n")
-    f.write('export const DEBUG_STREAM: StreamInfo | null = ' + json.dumps(stream, ensure_ascii=False, indent=2) + ';\n')
+    f.write(src)
