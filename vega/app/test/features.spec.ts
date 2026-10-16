@@ -221,3 +221,37 @@ describe('settings', () => {
     });
   });
 });
+
+describe('playback fallback order', () => {
+  it('tries a lower DASH quality before HLS', () => {
+    const fmt = (itag: number, mimeType: string, height = 0) => ({
+      itag,
+      url: `u${itag}`,
+      mimeType,
+      height,
+      bitrate: 1,
+      initRange: {start: '0', end: '10'},
+      indexRange: {start: '11', end: '20'},
+    });
+    const info = parsePlayerResponse(
+      {
+        playabilityStatus: {status: 'OK'},
+        streamingData: {
+          hlsManifestUrl: 'hls',
+          adaptiveFormats: [
+            fmt(137, 'video/mp4; codecs="avc1.640028"', 1080),
+            fmt(135, 'video/mp4; codecs="avc1.4D401E"', 480),
+            fmt(140, 'audio/mp4; codecs="mp4a.40.2"'),
+          ],
+        },
+      },
+      'vid',
+      'VISIONOS',
+    );
+    expect(info.sources.map((x) => x.label)).toEqual([
+      'DASH 1080p',
+      'DASH 480p',
+      'HLS (自動画質)',
+    ]);
+  });
+});

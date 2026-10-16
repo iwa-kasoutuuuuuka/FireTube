@@ -612,6 +612,12 @@ export function parsePlayerResponse(
   const video = dash && chooseQuality(dash.videos, maxHeight);
   if (dash && video) {
     sources.push(dashSource(video, dash.audio, client));
+    // 予備: 低い画質の DASH。Vega の URL モードは HLS を開けないことがある
+    // (Virtual Device で確認: set_src_uri が 50004 で失敗) ため、HLS より先に試す
+    const lower = chooseQuality(dash.videos, FALLBACK_DASH_HEIGHT);
+    if (lower && lower.height < video.height) {
+      sources.push(dashSource(lower, dash.audio, client));
+    }
   }
   if (typeof sd.hlsManifestUrl === 'string') {
     sources.push({
@@ -684,6 +690,8 @@ function parseCaptionTracks(json: Json): CaptionTrack[] {
 
 /** 映像の上限。Fire TV Stick はメモリが少ないため 1080p まで */
 export const MAX_DASH_HEIGHT = 1080;
+/** DASH が再生できなかったときに試す低い画質 */
+const FALLBACK_DASH_HEIGHT = 480;
 
 function toTrack(f: Json): DashTrack | null {
   const initEnd = Number(f.initRange?.end);
