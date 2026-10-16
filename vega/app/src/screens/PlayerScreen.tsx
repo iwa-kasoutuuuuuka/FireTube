@@ -48,7 +48,7 @@ import {
 import {settings, SPEED_OPTIONS, updateSettings} from '../store/settings';
 import {colors, formatDuration, s} from '../theme';
 import {log} from '../log';
-import {DEBUG_STREAM} from '../debugStream';
+import {nextDebugStream} from '../debugStream';
 
 interface Props {
   video: VideoItem;
@@ -292,7 +292,8 @@ export const PlayerScreen = ({
       .catch(() => {});
     try {
       // 一覧で先読みしていればそれを使う
-      const next = DEBUG_STREAM ?? (await takeStream(video.id, st.maxQuality));
+      const next =
+        nextDebugStream() ?? (await takeStream(video.id, st.maxQuality));
       log(
         'stream info',
         video.id,
