@@ -3,7 +3,8 @@ name: Build and Release APK
 on:
   push:
     tags:
-      - 'v*'
+      # 'v*' だと Vega 版の vega-v* タグにも一致するため、数字で始まる版だけにする
+      - 'v[0-9]*'
   workflow_dispatch:
 
 permissions:
