@@ -75,19 +75,29 @@ if booted && [ -n "$VPKG" ]; then
     grep -q '\[exit 0\]' "$OUT/21-install.txt" && break
     sleep 20
   done
-  run 20-info dev info
   run 21b-installed dev is-app-installed --appName "$APP_ID"
-  ( timeout 240 vega device start-log-stream -d VirtualDevice > "$OUT/25-log-stream.txt" 2>&1 ) &
   run 22-launch dev launch-app --appName "$APP_ID"
-  sleep 30
-  run 23-running dev running-apps
-  run 24-is-running dev is-app-running --appName "$APP_ID"
   sleep 60
-  run 26-is-running-90s dev is-app-running --appName "$APP_ID"
-  run 30-journal dev run-cmd --command 'journalctl --no-pager -n 6000'
-  run 31-journal-app dev run-cmd --command "journalctl --no-pager -n 20000 | grep -iE 'firetube|ReactNativeJS|keplerscript|w3cmedia|exception|crash' | tail -n 800"
-  run 32-copy-logs dev copy-logs --artifact system/var_log --directory "$OUT/device-logs"
-  run 33-doctor dev doctor --directory "$OUT/doctor" --since 30m --appName "$APP_ID"
+  run 24-is-running dev is-app-running --appName "$APP_ID"
+  applog() { # applog <記録名>: アプリの記録 ([FireTube]) と JS のエラーだけ抜き出す
+    run "$1" dev run-cmd --command "loggingctl log | grep -iE 'FireTube|ReactNativeJS|Exception|TypeError|ReferenceError|fatal' | tail -n 400"
+  }
+  key() { vega exec inputd-cli button_press "$1" >> "$OUT/50-keys.txt" 2>&1 || dev run-cmd --command "inputd-cli button_press $1" >> "$OUT/50-keys.txt" 2>&1; sleep 2; }
+  applog 40-log-home
+  # ホームの先頭の動画 (起動時のフォーカス位置) を決定で開き、再生が始まるか見る
+  key KEY_ENTER
+  sleep 60
+  applog 41-log-after-enter
+  run 42-is-running dev is-app-running --appName "$APP_ID"
+  # 再生中の操作: 右 (10 秒進む) → 下 (メニュー) → 戻る (閉じる) → 戻る (一覧へ)
+  key KEY_RIGHT; key KEY_DOWN; sleep 3; key KEY_BACK; key KEY_BACK
+  sleep 10
+  applog 43-log-after-keys
+  run 44-is-running dev is-app-running --appName "$APP_ID"
+  run 45-full-log dev run-cmd --command "loggingctl log | tail -n 1500"
+  mkdir -p "$OUT/device-logs" "$OUT/doctor"
+  run 46-copy-logs dev copy-logs --artifact system/var_log --directory "$OUT/device-logs"
+  run 47-doctor dev doctor --directory "$OUT/doctor" --since 30m --appName "$APP_ID"
   vega device stop-log-stream -d VirtualDevice > /dev/null 2>&1
 fi
 
