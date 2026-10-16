@@ -1,0 +1,73 @@
+name: Vega Debug (Virtual Device)
+
+# Vega Virtual Device (KVM 上の Fire TV 相当の仮想端末) で vega/app を起動し、ログと画面を取る。
+# 開発 PC には KVM が無く実機も未接続のため、動作確認はここで行う。
+# 結果は vega-debug-logs ブランチにコミットする (Actions のログは未ログインでは読めないため)。
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [vega-debug]
+
+permissions:
+  contents: write
+
+jobs:
+  debug:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          ls -l /dev/kvm
+
+      - name: Install SDK prerequisites
+        run: |
+          sudo add-apt-repository -y ppa:deadsnakes/ppa
+          sudo apt-get update
+          sudo apt-get install -y lz4 jq python3.8 libpython3.8-dev
+
+      - name: Install Vega SDK
+        env:
+          NONINTERACTIVE: 'true'
+          FORCE_ASCII: 'true'
+        run: |
+          curl -fsSL https://sdk-installer.vega.labcollab.net/get_vvm.sh | bash
+          echo "$HOME/vega/bin" >> "$GITHUB_PATH"
+
+      - name: Build app
+        working-directory: vega/app
+        run: |
+          source "$HOME/vega/env"
+          npm install --no-audit --no-fund
+          npm run build:release
+          find build -name '*.vpkg'
+
+      - name: Run on Virtual Device and collect logs
+        env:
+          OUT: ${{ runner.temp }}/out
+        run: vega/scripts/vvd-smoke.sh
+
+      - name: Publish logs to vega-debug-logs branch
+        if: always()
+        env:
+          OUT: ${{ runner.temp }}/out
+        run: |
+          cd "$OUT" || exit 0
+          git init -q
+          git checkout -q -b vega-debug-logs
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -qm "logs for ${GITHUB_SHA::7} [skip ci]"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" vega-debug-logs
