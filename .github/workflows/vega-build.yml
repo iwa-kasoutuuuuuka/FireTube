@@ -72,3 +72,55 @@ jobs:
           git reset -q -- vega/app/node_modules 2>/dev/null || true
           git commit -m "chore(vega): add generated helloWorld-rn72 template [skip ci]"
           git push
+
+      - name: Install dependencies
+        if: ${{ hashFiles('vega/app/package.json') != '' }}
+        working-directory: vega/app
+        run: ../scripts/ci-run.sh 'npm install' npm install --no-audit --no-fund
+
+      - name: Type check
+        if: ${{ hashFiles('vega/app/package.json') != '' }}
+        working-directory: vega/app
+        run: ../scripts/ci-run.sh 'tsc' npx tsc --noEmit
+
+      - name: Unit tests
+        if: ${{ hashFiles('vega/app/package.json') != '' }}
+        working-directory: vega/app
+        run: ../scripts/ci-run.sh 'jest' npx jest --ci
+
+      - name: Build .vpkg
+        if: ${{ hashFiles('vega/app/package.json') != '' }}
+        working-directory: vega/app
+        run: |
+          source "$HOME/vega/env"
+          ../scripts/ci-run.sh 'build-vega' npm run build:release
+          find build -name '*.vpkg' -print
+
+      - name: Collect .vpkg
+        if: ${{ hashFiles('vega/app/package.json') != '' }}
+        id: collect
+        run: |
+          mkdir -p dist
+          ver="${GITHUB_REF_NAME#vega-v}"
+          [[ "$GITHUB_REF_TYPE" == "tag" ]] || ver="dev-${GITHUB_SHA::7}"
+          for f in $(find vega/app/build -name '*.vpkg'); do
+            arch=$(basename "$(dirname "$f")" | sed 's/-release//; s/-debug//')
+            cp "$f" "dist/FireTube-Vega-${ver}-${arch}.vpkg"
+          done
+          ls -la dist
+          test -n "$(ls dist)"
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ hashFiles('vega/app/package.json') != '' }}
+        with:
+          name: firetube-vega-vpkg
+          path: dist/*.vpkg
+
+      - name: Create GitHub Release
+        if: ${{ startsWith(github.ref, 'refs/tags/vega-v') }}
+        uses: softprops/action-gh-release@v2
+        with:
+          name: FireTube Vega ${{ github.ref_name }}
+          prerelease: true
+          body_path: vega/RELEASE_NOTES.md
+          files: dist/*.vpkg
