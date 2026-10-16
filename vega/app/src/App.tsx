@@ -115,6 +115,7 @@ export const App = () => {
             video={top.video}
             onEnded={pop}
             onOpenChannel={openChannel}
+            onPlayNext={openVideo}
           />
         </Layer>
       )}

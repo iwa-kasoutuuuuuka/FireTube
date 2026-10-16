@@ -17,7 +17,9 @@ import {
   dashSource,
   extractStreamInfo,
   fetchCaptions,
+  getRelatedVideos,
 } from '../api/innertube';
+import {formatCount, getVotes, Votes} from '../api/extras';
 import {CATEGORY_LABELS, getSponsorSegments} from '../api/sponsorblock';
 import {takeStream} from '../api/streamCache';
 import {
@@ -28,6 +30,7 @@ import {
   VideoItem,
 } from '../api/types';
 import {MenuItem, PlayerMenu} from '../components/PlayerMenu';
+import {RelatedPanel} from '../components/RelatedPanel';
 import {CaptionOption, captionOptions, cueAt} from '../player/captions';
 import {Signal, signal, useSignal} from '../player/signal';
 import {DashSession, MediaElementLike, MediaSourceLike} from '../player/dash';
@@ -42,13 +45,15 @@ import {
   useStore,
   watchLater,
 } from '../store/library';
-import {settings} from '../store/settings';
+import {settings, SPEED_OPTIONS, updateSettings} from '../store/settings';
 import {colors, formatDuration, s} from '../theme';
 
 interface Props {
   video: VideoItem;
   onEnded: () => void;
   onOpenChannel: (channel: Channel) => void;
+  /** 関連動画・自動再生で別の動画へ移る */
+  onPlayNext: (video: VideoItem) => void;
 }
 
 const OVERLAY_MS = 4000;
@@ -59,6 +64,8 @@ const SWITCH_GRACE_MS = 800;
 /** この時間内に再生が始まらない候補は失敗とみなす (エラーが届かず止まったままになるのを防ぐ) */
 const START_TIMEOUT_MS = 20000;
 const SAVE_INTERVAL_MS = 15000;
+/** 再生終了から次の動画を自動再生するまでの秒数 */
+const AUTOPLAY_SECONDS = 8;
 
 /** play() の Promise 拒否 (データ到着前など) は error / playing イベント側で扱う */
 function playSafely(p: VideoPlayer) {
@@ -72,7 +79,12 @@ function playSafely(p: VideoPlayer) {
  * リモコン: 決定/再生 = 一時停止切替、左右 = 10 秒、早送り/巻き戻し = 30 秒、
  * 下 (またはメニュー) = メニュー (後で見る・チャンネル登録・字幕・画質)、戻る = 一覧へ
  */
-export const PlayerScreen = ({video, onEnded, onOpenChannel}: Props) => {
+export const PlayerScreen = ({
+  video,
+  onEnded,
+  onOpenChannel,
+  onPlayNext,
+}: Props) => {
   const player = useRef<VideoPlayer | null>(null);
   // 再生位置 (秒・整数) と字幕は画面全体の state にせず、表示部品だけが購読する
   const clock = useRef(signal(0)).current;
@@ -106,6 +118,12 @@ export const PlayerScreen = ({video, onEnded, onOpenChannel}: Props) => {
   const [toast, setToast] = useState<string>();
   const [sourceLabel, setSourceLabel] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
+  /** 関連動画の列: related = メニューから開いた / upnext = 再生終了後 (自動再生のカウントダウン付き) */
+  const [panel, setPanel] = useState<'none' | 'related' | 'upnext'>('none');
+  const [related, setRelated] = useState<VideoItem[]>([]);
+  const relatedRef = useRef<VideoItem[]>([]);
+  const [countdown, setCountdown] = useState<number>();
+  const [votes, setVotes] = useState<Votes | null>(null);
   const [captionList, setCaptionList] = useState<CaptionOption[]>([]);
   const [captionIndex, setCaptionIndex] = useState(0);
   const [channel, setChannel] = useState<Channel | null>(
@@ -257,6 +275,13 @@ export const PlayerScreen = ({video, onEnded, onOpenChannel}: Props) => {
     if (st.sponsorBlock) {
       getSponsorSegments(video.id).then((list) => (segments.current = list));
     }
+    getVotes(video.id).then(setVotes);
+    getRelatedVideos(video.id)
+      .then((list) => {
+        relatedRef.current = list;
+        setRelated(list);
+      })
+      .catch(() => {});
     try {
       // 一覧で先読みしていればそれを使う
       const next = await takeStream(video.id, st.maxQuality);
@@ -304,6 +329,10 @@ export const PlayerScreen = ({video, onEnded, onOpenChannel}: Props) => {
           startTimer.current = undefined;
         }
         applyPendingSeek();
+        const rate = settings.get().playbackRate;
+        if (p.playbackRate !== rate) {
+          p.playbackRate = rate;
+        }
         if (!recorded.current) {
           recorded.current = true;
           if (settings.get().saveHistory) {
@@ -359,7 +388,13 @@ export const PlayerScreen = ({video, onEnded, onOpenChannel}: Props) => {
             streamDuration.current,
           );
         }
-        onEnded();
+        if (settings.get().autoplay && relatedRef.current.length > 0) {
+          setMenuOpen(false);
+          setCountdown(AUTOPLAY_SECONDS);
+          setPanel('upnext');
+        } else {
+          onEnded();
+        }
       });
       el.addEventListener('error', () => {
         // 切り替え直後のエラーは直前の (破棄した) ソースのものなので、新しい候補を失敗扱いにしない
@@ -413,17 +448,38 @@ export const PlayerScreen = ({video, onEnded, onOpenChannel}: Props) => {
     [savePositionNow],
   );
 
-  // メニューを開いている間は、戻るでメニューだけ閉じる (App の戻る処理より先に呼ばれる)
+  // メニュー・関連動画を開いている間は、戻るでそれだけ閉じる (App の戻る処理より先に呼ばれる)。
+  // 再生終了後の「次の動画」では一覧へ戻る
   useEffect(() => {
-    if (!menuOpen) {
+    if (!menuOpen && panel === 'none') {
       return;
     }
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (panel === 'upnext') {
+        return false;
+      }
       setMenuOpen(false);
+      setPanel('none');
       return true;
     });
     return () => sub.remove();
-  }, [menuOpen]);
+  }, [menuOpen, panel]);
+
+  // 再生終了後のカウントダウン。0 になったら関連動画の先頭へ
+  useEffect(() => {
+    if (panel !== 'upnext' || countdown === undefined) {
+      return;
+    }
+    if (countdown <= 0) {
+      const next = relatedRef.current[0];
+      if (next) {
+        onPlayNext(next);
+      }
+      return;
+    }
+    const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [panel, countdown, onPlayNext]);
 
   const seekBy = (delta: number) => {
     const p = player.current;
@@ -449,7 +505,7 @@ export const PlayerScreen = ({video, onEnded, onOpenChannel}: Props) => {
   };
 
   useTVEventHandler((evt: {eventType?: string; eventKeyAction?: number}) => {
-    if (evt.eventKeyAction !== 0 || menuOpen) {
+    if (evt.eventKeyAction !== 0 || menuOpen || panel !== 'none') {
       return; // 押下時のみ (1 = 離した時)。メニュー表示中は標準のフォーカス移動に任せる
     }
     switch (evt.eventType) {
@@ -521,7 +577,25 @@ export const PlayerScreen = ({video, onEnded, onOpenChannel}: Props) => {
     showToast(`字幕: ${captionList[next].label}`);
   };
 
+  const cycleSpeed = () => {
+    const cur = settings.get().playbackRate;
+    const next =
+      SPEED_OPTIONS[(SPEED_OPTIONS.indexOf(cur) + 1) % SPEED_OPTIONS.length];
+    updateSettings({playbackRate: next});
+    if (player.current) {
+      player.current.playbackRate = next;
+    }
+    showToast(`再生速度: ${next}x`);
+  };
+
   const menuItems: MenuItem[] = [
+    {
+      label: '関連動画',
+      onPress: () => {
+        setMenuOpen(false);
+        setPanel('related');
+      },
+    },
     {
       label: inLater ? '「後で見る」から削除' : '「後で見る」に追加',
       onPress: () =>
@@ -536,6 +610,7 @@ export const PlayerScreen = ({video, onEnded, onOpenChannel}: Props) => {
       onPress: cycleCaption,
     },
     {label: `画質: ${qualityLabel}`, onPress: cycleQuality},
+    {label: `再生速度: ${settings.get().playbackRate}x`, onPress: cycleSpeed},
   ];
   if (channel) {
     menuItems.push(
@@ -559,7 +634,8 @@ export const PlayerScreen = ({video, onEnded, onOpenChannel}: Props) => {
   }
   menuItems.push({label: '閉じる', onPress: () => setMenuOpen(false)});
 
-  const showBar = (overlay || paused) && !error && !menuOpen;
+  const showBar =
+    (overlay || paused) && !error && !menuOpen && panel === 'none';
 
   return (
     <View style={styles.root}>
@@ -586,12 +662,30 @@ export const PlayerScreen = ({video, onEnded, onOpenChannel}: Props) => {
           </Text>
           <Text style={styles.uploader}>
             {video.uploaderName}
+            {votes
+              ? `  ·  高評価 ${formatCount(votes.likes)} / 低評価 ${formatCount(
+                  votes.dislikes,
+                )}`
+              : ''}
             {sourceLabel ? `  ·  ${sourceLabel}` : ''}
           </Text>
           <TimeBar clock={clock} duration={duration} paused={paused} />
         </View>
       )}
       {menuOpen && <PlayerMenu items={menuItems} />}
+      {panel !== 'none' && (
+        <RelatedPanel
+          title={panel === 'upnext' ? '次の動画' : '関連動画'}
+          items={related}
+          onSelect={onPlayNext}
+          countdown={panel === 'upnext' ? countdown : undefined}
+          onCancel={
+            panel === 'upnext' && countdown !== undefined
+              ? () => setCountdown(undefined)
+              : undefined
+          }
+        />
+      )}
     </View>
   );
 };

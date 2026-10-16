@@ -1,7 +1,13 @@
 import React, {useState} from 'react';
 import {ScrollView, StyleSheet, Text, View} from 'react-native';
 import {FocusButton} from '../components/FocusButton';
-import {clearHistory, history, useStore, watchLater} from '../store/library';
+import {
+  clearHistory,
+  history,
+  searchHistory,
+  useStore,
+  watchLater,
+} from '../store/library';
 import {
   QUALITY_OPTIONS,
   settings,
@@ -29,6 +35,7 @@ export const SettingsTab = () => {
   const st = useStore(settings);
   const historyCount = useStore(history).length;
   const laterCount = useStore(watchLater).length;
+  const searchCount = useStore(searchHistory).length;
   const [message, setMessage] = useState<string>();
 
   return (
@@ -62,6 +69,12 @@ export const SettingsTab = () => {
         onPress={() => updateSettings({resume: !st.resume})}
       />
       <Row
+        title="次の動画を自動再生"
+        note="再生が終わったら関連動画の先頭を 8 秒後に再生"
+        value={onOff(st.autoplay)}
+        onPress={() => updateSettings({autoplay: !st.autoplay})}
+      />
+      <Row
         title="視聴履歴を保存"
         value={onOff(st.saveHistory)}
         onPress={() => updateSettings({saveHistory: !st.saveHistory})}
@@ -82,6 +95,15 @@ export const SettingsTab = () => {
         onPress={() => {
           watchLater.set([]);
           setMessage('「後で見る」を空にしました');
+        }}
+      />
+      <Row
+        title="検索履歴を消去"
+        note={`${searchCount} 件`}
+        value="消去"
+        onPress={() => {
+          searchHistory.set([]);
+          setMessage('検索履歴を消去しました');
         }}
       />
       {message && <Text style={styles.message}>{message}</Text>}

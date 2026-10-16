@@ -149,3 +149,23 @@ export function savePosition(
 export function resumePosition(id: string): number {
   return positions.get()[id]?.position ?? 0;
 }
+
+// ---------------------------------------------------------------- 検索履歴
+
+const SEARCH_HISTORY_MAX = 20;
+
+export const searchHistory = persisted<string[]>('searchHistory', [], (raw) =>
+  Array.isArray(raw)
+    ? raw.filter((q): q is string => typeof q === 'string' && q.length > 0)
+    : [],
+);
+
+export function addSearchHistory(query: string) {
+  const q = query.trim();
+  if (!q) {
+    return;
+  }
+  searchHistory.set((list) =>
+    [q, ...list.filter((x) => x !== q)].slice(0, SEARCH_HISTORY_MAX),
+  );
+}
