@@ -48,6 +48,7 @@ import {
 import {settings, SPEED_OPTIONS, updateSettings} from '../store/settings';
 import {colors, formatDuration, s} from '../theme';
 import {log} from '../log';
+import {DEBUG_STREAM} from '../debugStream';
 
 interface Props {
   video: VideoItem;
@@ -291,7 +292,7 @@ export const PlayerScreen = ({
       .catch(() => {});
     try {
       // 一覧で先読みしていればそれを使う
-      const next = await takeStream(video.id, st.maxQuality);
+      const next = DEBUG_STREAM ?? (await takeStream(video.id, st.maxQuality));
       log(
         'stream info',
         video.id,
@@ -381,6 +382,7 @@ export const PlayerScreen = ({
         caption.set(cues.current.length > 0 ? cueAt(cues.current, t) : '');
         if (Date.now() - lastSaved.current > SAVE_INTERVAL_MS) {
           lastSaved.current = Date.now();
+          log('position', video.id, Math.floor(t));
           savePositionNow();
         }
         const seg = segments.current.find(
