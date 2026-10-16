@@ -6,7 +6,10 @@ import {PlayerScreen} from './screens/PlayerScreen';
 import {SearchScreen} from './screens/SearchScreen';
 import {colors} from './theme';
 
-type Route = {name: 'home'} | {name: 'search'} | {name: 'player'; video: VideoItem};
+type Route =
+  | {name: 'home'}
+  | {name: 'search'}
+  | {name: 'player'; video: VideoItem};
 
 /**
  * 画面は スタック (ホーム → 検索 → 再生) で管理し、リモコンの戻るで 1 階層戻る。
@@ -15,12 +18,21 @@ type Route = {name: 'home'} | {name: 'search'} | {name: 'player'; video: VideoIt
 export const App = () => {
   const [stack, setStack] = useState<Route[]>([{name: 'home'}]);
 
-  const push = useCallback((route: Route) => setStack((st) => [...st, route]), []);
-  const pop = useCallback(() => setStack((st) => (st.length > 1 ? st.slice(0, -1) : st)), []);
+  const push = useCallback(
+    (route: Route) => setStack((st) => [...st, route]),
+    [],
+  );
+  const pop = useCallback(
+    () => setStack((st) => (st.length > 1 ? st.slice(0, -1) : st)),
+    [],
+  );
 
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (stack.length <= 1) return false; // ホームではアプリを閉じる
+      // ホームでは処理せず、既定の動作 (アプリを閉じる) に任せる
+      if (stack.length <= 1) {
+        return false;
+      }
       pop();
       return true;
     });
@@ -43,7 +55,10 @@ export const App = () => {
   return (
     <View style={styles.root}>
       <Layer visible={top.name === 'home'}>
-        <HomeScreen onSelect={openVideo} onSearch={() => push({name: 'search'})} />
+        <HomeScreen
+          onSelect={openVideo}
+          onSearch={() => push({name: 'search'})}
+        />
       </Layer>
       {hasSearch && (
         <Layer visible={top.name === 'search'}>
@@ -60,8 +75,16 @@ export const App = () => {
 };
 
 /** 非表示の画面はフォーカスも受けないよう display: none にする */
-const Layer = ({visible, children}: {visible: boolean; children: React.ReactNode}) => (
-  <View style={[StyleSheet.absoluteFill, !visible && styles.hidden]}>{children}</View>
+const Layer = ({
+  visible,
+  children,
+}: {
+  visible: boolean;
+  children: React.ReactNode;
+}) => (
+  <View style={[StyleSheet.absoluteFill, !visible && styles.hidden]}>
+    {children}
+  </View>
 );
 
 const styles = StyleSheet.create({

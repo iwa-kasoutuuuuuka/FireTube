@@ -34,8 +34,12 @@ let current: RemoteConfig = DEFAULT_CONFIG;
 let loading: Promise<RemoteConfig> | null = null;
 
 function stringList(value: unknown, fallback: string[]): string[] {
-  if (!Array.isArray(value)) return fallback;
-  const list = value.filter((v): v is string => typeof v === 'string' && v.length > 0);
+  if (!Array.isArray(value)) {
+    return fallback;
+  }
+  const list = value.filter(
+    (v): v is string => typeof v === 'string' && v.length > 0,
+  );
   return list.length > 0 ? list : fallback;
 }
 
@@ -44,18 +48,31 @@ export function parseConfig(json: unknown): RemoteConfig {
   const versions: Record<string, string> = {};
   const rawVersions = obj.clientVersions;
   if (rawVersions && typeof rawVersions === 'object') {
-    for (const [k, v] of Object.entries(rawVersions as Record<string, unknown>)) {
-      if (typeof v === 'string' && v.length > 0) versions[k] = v;
+    for (const [k, v] of Object.entries(
+      rawVersions as Record<string, unknown>,
+    )) {
+      if (typeof v === 'string' && v.length > 0) {
+        versions[k] = v;
+      }
     }
   }
   return {
-    pipedInstances: stringList(obj.pipedInstances, DEFAULT_CONFIG.pipedInstances),
-    playerRaceClients: stringList(obj.playerRaceClients, DEFAULT_CONFIG.playerRaceClients),
+    pipedInstances: stringList(
+      obj.pipedInstances,
+      DEFAULT_CONFIG.pipedInstances,
+    ),
+    playerRaceClients: stringList(
+      obj.playerRaceClients,
+      DEFAULT_CONFIG.playerRaceClients,
+    ),
     playerFallbackClients: stringList(
       obj.playerFallbackClients,
       DEFAULT_CONFIG.playerFallbackClients,
     ),
-    popularQueries: stringList(obj.popularQueries, DEFAULT_CONFIG.popularQueries),
+    popularQueries: stringList(
+      obj.popularQueries,
+      DEFAULT_CONFIG.popularQueries,
+    ),
     clientVersions: versions,
   };
 }
@@ -64,7 +81,9 @@ export function parseConfig(json: unknown): RemoteConfig {
 export function loadConfig(): Promise<RemoteConfig> {
   if (!loading) {
     loading = fetchWithTimeout(CONFIG_URL, {}, 5000)
-      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))))
+      .then((res) =>
+        res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`)),
+      )
       .then((json) => {
         current = parseConfig(json);
         return current;
@@ -78,14 +97,17 @@ export function getConfig(): RemoteConfig {
   return current;
 }
 
+type FetchInit = Parameters<typeof fetch>[1];
+type FetchResponse = Awaited<ReturnType<typeof fetch>>;
+
 export async function fetchWithTimeout(
   url: string,
-  init: RequestInit,
+  init: FetchInit,
   timeoutMs: number,
-): Promise<Response> {
+): Promise<FetchResponse> {
   return await Promise.race([
     fetch(url, init),
-    new Promise<Response>((_, reject) =>
+    new Promise<FetchResponse>((_, reject) =>
       setTimeout(() => reject(new Error('timeout')), timeoutMs),
     ),
   ]);

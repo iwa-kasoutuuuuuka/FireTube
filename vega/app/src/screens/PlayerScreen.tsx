@@ -54,16 +54,22 @@ export const PlayerScreen = ({video, onEnded}: Props) => {
 
   const showOverlay = useCallback(() => {
     setOverlay(true);
-    if (hideTimer.current) clearTimeout(hideTimer.current);
+    if (hideTimer.current) {
+      clearTimeout(hideTimer.current);
+    }
     hideTimer.current = setTimeout(() => setOverlay(false), OVERLAY_MS);
   }, []);
 
   // playSource と nextSource は互いに呼び合うため ref 経由で参照する
-  const nextSourceRef = useRef<(failed: number, reason?: string) => void>(() => {});
+  const nextSourceRef = useRef<(failed: number, reason?: string) => void>(
+    () => {},
+  );
 
   const playSource = useCallback((src: PlaybackSource) => {
     const p = player.current;
-    if (!p) return;
+    if (!p) {
+      return;
+    }
     dash.current?.destroy();
     dash.current = null;
     setSourceLabel(`${src.label} / ${src.client}`);
@@ -93,7 +99,9 @@ export const PlayerScreen = ({video, onEnded}: Props) => {
    */
   const nextSource = useCallback(
     async (failed: number, reason?: string) => {
-      if (failed !== sourceIndex.current) return;
+      if (failed !== sourceIndex.current) {
+        return;
+      }
       sourceIndex.current += 1;
       if (sourceIndex.current < sources.current.length) {
         playSource(sources.current[sourceIndex.current]);
@@ -111,7 +119,9 @@ export const PlayerScreen = ({video, onEnded}: Props) => {
         }
         playSource(info.sources[0]);
       } catch (e) {
-        setError(reason ? `再生できませんでした (${reason})` : (e as Error).message);
+        setError(
+          reason ? `再生できませんでした (${reason})` : (e as Error).message,
+        );
       }
     },
     [playSource, video.id],
@@ -119,7 +129,9 @@ export const PlayerScreen = ({video, onEnded}: Props) => {
   nextSourceRef.current = nextSource;
 
   const start = useCallback(async () => {
-    if (!ready.current) return;
+    if (!ready.current) {
+      return;
+    }
     getSponsorSegments(video.id).then((list) => (segments.current = list));
     try {
       const info = await extractStreamInfo(video.id);
@@ -151,15 +163,23 @@ export const PlayerScreen = ({video, onEnded}: Props) => {
       el.addEventListener('waiting', () => setStatus('バッファ中…'));
       el.addEventListener('durationchange', () => {
         const d = p.duration;
-        if (Number.isFinite(d) && d > 0) setDuration(d);
+        if (Number.isFinite(d) && d > 0) {
+          setDuration(d);
+        }
       });
       el.addEventListener('timeupdate', () => {
         const t = p.currentTime;
         setPosition(t);
-        const seg = segments.current.find((sg) => t >= sg.start && t < sg.end - 0.5);
+        const seg = segments.current.find(
+          (sg) => t >= sg.start && t < sg.end - 0.5,
+        );
         if (seg) {
           p.currentTime = seg.end;
-          setToast(`${CATEGORY_LABELS[seg.category] ?? seg.category} をスキップしました`);
+          setToast(
+            `${
+              CATEGORY_LABELS[seg.category] ?? seg.category
+            } をスキップしました`,
+          );
           setTimeout(() => setToast(undefined), 3000);
         }
       });
@@ -168,7 +188,9 @@ export const PlayerScreen = ({video, onEnded}: Props) => {
         const err = el.error;
         nextSourceRef.current(
           sourceIndex.current,
-          err ? `code ${err.code ?? '?'} ${err.message ?? ''}`.trim() : undefined,
+          err
+            ? `code ${err.code ?? '?'} ${err.message ?? ''}`.trim()
+            : undefined,
         );
       });
     },
@@ -190,14 +212,18 @@ export const PlayerScreen = ({video, onEnded}: Props) => {
     player.current = null;
     ready.current = false;
     dash.current?.destroy();
-    if (!p) return;
+    if (!p) {
+      return;
+    }
     p.clearSurfaceHandle(surfaceHandle);
     await p.deinitialize();
   };
 
   useEffect(
     () => () => {
-      if (hideTimer.current) clearTimeout(hideTimer.current);
+      if (hideTimer.current) {
+        clearTimeout(hideTimer.current);
+      }
       dash.current?.destroy();
       player.current?.pause();
     },
@@ -206,7 +232,9 @@ export const PlayerScreen = ({video, onEnded}: Props) => {
 
   const seekBy = (delta: number) => {
     const p = player.current;
-    if (!p) return;
+    if (!p) {
+      return;
+    }
     const max = duration > 0 ? duration - 1 : Number.MAX_SAFE_INTEGER;
     p.currentTime = Math.min(max, Math.max(0, p.currentTime + delta));
     showOverlay();
@@ -214,14 +242,21 @@ export const PlayerScreen = ({video, onEnded}: Props) => {
 
   const togglePause = () => {
     const p = player.current;
-    if (!p) return;
-    if (p.paused) playSafely(p);
-    else p.pause();
+    if (!p) {
+      return;
+    }
+    if (p.paused) {
+      playSafely(p);
+    } else {
+      p.pause();
+    }
     showOverlay();
   };
 
   useTVEventHandler((evt: {eventType?: string; eventKeyAction?: number}) => {
-    if (evt.eventKeyAction !== 0) return; // 押下時のみ (1 = 離した時)
+    if (evt.eventKeyAction !== 0) {
+      return;
+    } // 押下時のみ (1 = 離した時)
     switch (evt.eventType) {
       case 'select':
       case 'playpause':
@@ -260,7 +295,9 @@ export const PlayerScreen = ({video, onEnded}: Props) => {
       {(status !== '' || error) && (
         <View style={styles.center} pointerEvents="none">
           {!error && <ActivityIndicator size="large" color={colors.accent} />}
-          <Text style={error ? styles.error : styles.status}>{error ?? status}</Text>
+          <Text style={error ? styles.error : styles.status}>
+            {error ?? status}
+          </Text>
           {error && <Text style={styles.hint}>戻るボタンで一覧に戻ります</Text>}
         </View>
       )}
@@ -296,7 +333,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   status: {color: colors.text, fontSize: s(30), marginTop: s(24)},
-  error: {color: colors.error, fontSize: s(32), marginHorizontal: s(120), textAlign: 'center'},
+  error: {
+    color: colors.error,
+    fontSize: s(32),
+    marginHorizontal: s(120),
+    textAlign: 'center',
+  },
   hint: {color: colors.textDim, fontSize: s(24), marginTop: s(16)},
   toast: {
     position: 'absolute',

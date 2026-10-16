@@ -83,6 +83,11 @@ jobs:
         working-directory: vega/app
         run: ../scripts/ci-run.sh 'tsc' npx tsc --noEmit
 
+      - name: Lint
+        if: ${{ hashFiles('vega/app/package.json') != '' }}
+        working-directory: vega/app
+        run: ../scripts/ci-run.sh 'eslint' npx eslint src test --ext .ts,.tsx
+
       - name: Unit tests
         if: ${{ hashFiles('vega/app/package.json') != '' }}
         working-directory: vega/app

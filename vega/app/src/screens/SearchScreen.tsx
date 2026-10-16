@@ -19,7 +19,9 @@ export const SearchScreen = ({onSelect}: Props) => {
 
   const submit = async () => {
     const q = query.trim();
-    if (!q) return;
+    if (!q) {
+      return;
+    }
     setLoading(true);
     setError(undefined);
     setItems([]);

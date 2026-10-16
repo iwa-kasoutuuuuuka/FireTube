@@ -23,9 +23,15 @@ export const VideoCard = ({item, onPress, hasTVPreferredFocus}: Props) => {
       accessibilityRole="button"
       accessibilityLabel={item.title}>
       <View>
-        <Image source={{uri: item.thumbnailUrl}} style={styles.thumb} resizeMode="cover" />
+        <Image
+          source={{uri: item.thumbnailUrl}}
+          style={styles.thumb}
+          resizeMode="cover"
+        />
         {item.durationSeconds > 0 && (
-          <Text style={styles.duration}>{formatDuration(item.durationSeconds)}</Text>
+          <Text style={styles.duration}>
+            {formatDuration(item.durationSeconds)}
+          </Text>
         )}
       </View>
       <Text style={styles.title} numberOfLines={2}>

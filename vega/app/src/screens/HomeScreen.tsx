@@ -63,6 +63,11 @@ const styles = StyleSheet.create({
     paddingTop: s(40),
     paddingBottom: s(16),
   },
-  logo: {color: colors.accent, fontSize: s(48), fontWeight: 'bold', marginRight: s(48)},
+  logo: {
+    color: colors.accent,
+    fontSize: s(48),
+    fontWeight: 'bold',
+    marginRight: s(48),
+  },
   section: {color: colors.textDim, fontSize: s(28), marginLeft: s(24)},
 });

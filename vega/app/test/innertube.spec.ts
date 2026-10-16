@@ -25,7 +25,10 @@ describe('parseDuration', () => {
 
 describe('interleave', () => {
   it('alternates lists and drops duplicates', () => {
-    const r = interleave([[video('aaaaa'), video('bbbbb')], [video('ccccc'), video('aaaaa')]]);
+    const r = interleave([
+      [video('aaaaa'), video('bbbbb')],
+      [video('ccccc'), video('aaaaa')],
+    ]);
     expect(r.map((v) => v.id)).toEqual(['aaaaa', 'ccccc', 'bbbbb']);
   });
 });
@@ -43,7 +46,12 @@ describe('parseVideoRenderers', () => {
             thumbnail: {thumbnails: [{url: 'a'}, {url: 'b'}]},
           },
         },
-        {videoRenderer: {videoId: 'vid000002', title: {simpleText: '非公開動画'}}},
+        {
+          videoRenderer: {
+            videoId: 'vid000002',
+            title: {simpleText: '非公開動画'},
+          },
+        },
         {
           deep: {
             lockupViewModel: {
@@ -58,7 +66,12 @@ describe('parseVideoRenderers', () => {
     };
     const items = parseVideoRenderers(json);
     expect(items.map((v) => v.id)).toEqual(['vid000001', 'vid000003']);
-    expect(items[0]).toMatchObject({title: 'Hello', uploaderName: 'Ch', durationSeconds: 190, thumbnailUrl: 'b'});
+    expect(items[0]).toMatchObject({
+      title: 'Hello',
+      uploaderName: 'Ch',
+      durationSeconds: 190,
+      thumbnailUrl: 'b',
+    });
   });
 });
 
@@ -70,8 +83,18 @@ describe('parsePlayerResponse', () => {
         streamingData: {
           hlsManifestUrl: 'hls',
           formats: [
-            {url: 'm360', mimeType: 'video/mp4', height: 360, qualityLabel: '360p'},
-            {url: 'm720', mimeType: 'video/mp4', height: 720, qualityLabel: '720p'},
+            {
+              url: 'm360',
+              mimeType: 'video/mp4',
+              height: 360,
+              qualityLabel: '360p',
+            },
+            {
+              url: 'm720',
+              mimeType: 'video/mp4',
+              height: 720,
+              qualityLabel: '720p',
+            },
             {url: 'w', mimeType: 'video/webm', height: 1080},
           ],
         },
@@ -80,27 +103,74 @@ describe('parsePlayerResponse', () => {
       'vid',
       'IOS',
     );
-    expect(info.sources.map((x) => x.url)).toEqual(['hls', 'm720', 'm360']);
+    expect(
+      info.sources.map((x) => (x.kind === 'dash' ? 'dash' : x.url)),
+    ).toEqual(['hls', 'm720', 'm360']);
     expect(info.durationSeconds).toBe(42);
+  });
+
+  it('puts split DASH (avc1 + AAC) before HLS', () => {
+    const fmt = (itag: number, mimeType: string, height = 0) => ({
+      itag,
+      url: `u${itag}`,
+      mimeType,
+      height,
+      bitrate: 1,
+      initRange: {start: '0', end: '10'},
+      indexRange: {start: '11', end: '20'},
+    });
+    const info = parsePlayerResponse(
+      {
+        playabilityStatus: {status: 'OK'},
+        streamingData: {
+          hlsManifestUrl: 'hls',
+          adaptiveFormats: [
+            fmt(136, 'video/mp4; codecs="avc1.4D401F"', 720),
+            fmt(140, 'audio/mp4; codecs="mp4a.40.2"'),
+          ],
+        },
+      },
+      'vid',
+      'VISIONOS',
+    );
+    expect(info.sources.map((x) => x.kind)).toEqual(['dash', 'hls']);
+    expect(info.sources[0].label).toBe('DASH 720p');
   });
 
   it('throws the reason when unplayable', () => {
     expect(() =>
-      parsePlayerResponse({playabilityStatus: {status: 'LOGIN_REQUIRED', reason: 'ログインが必要'}}, 'v', 'IOS'),
+      parsePlayerResponse(
+        {
+          playabilityStatus: {
+            status: 'LOGIN_REQUIRED',
+            reason: 'ログインが必要',
+          },
+        },
+        'v',
+        'IOS',
+      ),
     ).toThrow('ログインが必要');
   });
 });
 
 describe('parseConfig', () => {
   it('falls back to defaults for missing or invalid fields', () => {
-    const c = parseConfig({popularQueries: [], clientVersions: {IOS: '1.0', X: 3}});
+    const c = parseConfig({
+      popularQueries: [],
+      clientVersions: {IOS: '1.0', X: 3},
+    });
     expect(c.popularQueries).toEqual(DEFAULT_CONFIG.popularQueries);
     expect(c.clientVersions).toEqual({IOS: '1.0'});
   });
 });
 
 describe('pickDash', () => {
-  const f = (itag: number, mimeType: string, height: number, bitrate: number) => ({
+  const f = (
+    itag: number,
+    mimeType: string,
+    height: number,
+    bitrate: number,
+  ) => ({
     itag,
     url: `u${itag}`,
     mimeType,
@@ -123,6 +193,8 @@ describe('pickDash', () => {
     expect(r?.video.indexStart).toBe(701);
   });
   it('returns null without audio', () => {
-    expect(pickDash([f(137, 'video/mp4; codecs="avc1.640028"', 1080, 1)])).toBeNull();
+    expect(
+      pickDash([f(137, 'video/mp4; codecs="avc1.640028"', 1080, 1)]),
+    ).toBeNull();
   });
 });

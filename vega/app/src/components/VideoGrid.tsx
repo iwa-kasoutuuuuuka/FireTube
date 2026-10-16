@@ -1,5 +1,11 @@
 import React from 'react';
-import {ActivityIndicator, FlatList, StyleSheet, Text, View} from 'react-native';
+import {
+  ActivityIndicator,
+  FlatList,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import {VideoItem} from '../api/types';
 import {colors, s} from '../theme';
 import {FocusButton} from './FocusButton';
@@ -36,7 +42,13 @@ export const VideoGrid = ({
     return (
       <View style={styles.center}>
         <Text style={styles.error}>{error}</Text>
-        {onRetry && <FocusButton label="再読み込み" onPress={onRetry} hasTVPreferredFocus />}
+        {onRetry && (
+          <FocusButton
+            label="再読み込み"
+            onPress={onRetry}
+            hasTVPreferredFocus
+          />
+        )}
       </View>
     );
   }
@@ -56,7 +68,11 @@ export const VideoGrid = ({
       initialNumToRender={8}
       windowSize={5}
       renderItem={({item, index}) => (
-        <VideoCard item={item} onPress={onSelect} hasTVPreferredFocus={focusFirst && index === 0} />
+        <VideoCard
+          item={item}
+          onPress={onSelect}
+          hasTVPreferredFocus={focusFirst && index === 0}
+        />
       )}
     />
   );
@@ -66,5 +82,10 @@ const styles = StyleSheet.create({
   center: {flex: 1, alignItems: 'center', justifyContent: 'center'},
   list: {paddingHorizontal: s(48), paddingBottom: s(48)},
   message: {color: colors.textDim, fontSize: s(32)},
-  error: {color: colors.error, fontSize: s(32), marginBottom: s(24), textAlign: 'center'},
+  error: {
+    color: colors.error,
+    fontSize: s(32),
+    marginBottom: s(24),
+    textAlign: 'center',
+  },
 });

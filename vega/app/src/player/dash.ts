@@ -7,7 +7,8 @@
 import {DashTrack} from '../api/types';
 import {parseSidx, Segment} from './sidx';
 
-const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+const UA =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 const MAX_CHUNK = 1024 * 1024;
 const BUFFER_AHEAD = 30;
 const BUFFER_BEHIND = 20;
@@ -41,7 +42,11 @@ export interface MediaElementLike {
 }
 
 /** RN の fetch は arrayBuffer() が使えない版があるため XHR で取る */
-export function fetchRange(url: string, start: number, end: number): Promise<ArrayBuffer> {
+export function fetchRange(
+  url: string,
+  start: number,
+  end: number,
+): Promise<ArrayBuffer> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('GET', url);
@@ -50,8 +55,11 @@ export function fetchRange(url: string, start: number, end: number): Promise<Arr
     xhr.setRequestHeader('User-Agent', UA);
     xhr.timeout = 20000;
     xhr.onload = () => {
-      if (xhr.status === 200 || xhr.status === 206) resolve(xhr.response as ArrayBuffer);
-      else reject(new Error(`HTTP ${xhr.status}`));
+      if (xhr.status === 200 || xhr.status === 206) {
+        resolve(xhr.response as ArrayBuffer);
+      } else {
+        reject(new Error(`HTTP ${xhr.status}`));
+      }
     };
     xhr.onerror = () => reject(new Error('network error'));
     xhr.ontimeout = () => reject(new Error('timeout'));
@@ -59,8 +67,14 @@ export function fetchRange(url: string, start: number, end: number): Promise<Arr
   });
 }
 
-async function fetchBytes(url: string, start: number, end: number): Promise<ArrayBuffer> {
-  if (end - start + 1 <= MAX_CHUNK) return retry(() => fetchRange(url, start, end));
+async function fetchBytes(
+  url: string,
+  start: number,
+  end: number,
+): Promise<ArrayBuffer> {
+  if (end - start + 1 <= MAX_CHUNK) {
+    return retry(() => fetchRange(url, start, end));
+  }
   const parts: ArrayBuffer[] = [];
   for (let s = start; s <= end; s += MAX_CHUNK) {
     const e = Math.min(end, s + MAX_CHUNK - 1);
@@ -84,18 +98,22 @@ async function retry<T>(fn: () => Promise<T>, times = 3): Promise<T> {
     } catch (e) {
       last = e;
       // 403 は URL 失効なので再試行しても無駄
-      if (String((e as Error).message).includes('403')) break;
+      if (String((e as Error).message).includes('403')) {
+        break;
+      }
       await sleep(500 * (i + 1));
     }
   }
   throw last;
 }
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 function bufferedEndAt(ranges: TimeRangesLike, t: number): number {
   for (let i = 0; i < ranges.length; i++) {
-    if (ranges.start(i) <= t + 0.3 && t <= ranges.end(i)) return ranges.end(i);
+    if (ranges.start(i) <= t + 0.3 && t <= ranges.end(i)) {
+      return ranges.end(i);
+    }
   }
   return t;
 }
@@ -112,8 +130,13 @@ class TrackPump {
     this.sb = ms.addSourceBuffer(this.track.mimeType);
     const head = await fetchBytes(this.track.url, 0, this.track.indexEnd);
     const bytes = new Uint8Array(head);
-    this.segments = parseSidx(bytes.subarray(this.track.indexStart), this.track.indexStart);
-    if (this.segments.length === 0) throw new Error('セグメントがありません');
+    this.segments = parseSidx(
+      bytes.subarray(this.track.indexStart),
+      this.track.indexStart,
+    );
+    if (this.segments.length === 0) {
+      throw new Error('セグメントがありません');
+    }
     await this.append(head.slice(0, this.track.initEnd + 1));
   }
 
@@ -122,14 +145,18 @@ class TrackPump {
     const end = bufferedEndAt(this.sb.buffered, t);
     const target = end > t ? end : t;
     let i = this.segments.findIndex((s) => s.time + s.duration > target + 0.01);
-    if (i < 0) i = this.segments.length;
+    if (i < 0) {
+      i = this.segments.length;
+    }
     this.next = i;
     this.done = i >= this.segments.length;
   }
 
   /** 1 回分の作業をする。何もしなかったら false */
   async step(t: number): Promise<boolean> {
-    if (this.done || this.sb.updating) return false;
+    if (this.done || this.sb.updating) {
+      return false;
+    }
     const ahead = bufferedEndAt(this.sb.buffered, t) - t;
     if (ahead >= BUFFER_AHEAD) {
       await this.evict(t);
@@ -138,11 +165,17 @@ class TrackPump {
     const seg = this.segments[this.next];
     const gen = this.session.generation;
     const data = await fetchBytes(this.track.url, seg.start, seg.end);
-    if (gen !== this.session.generation || this.session.destroyed) return true; // シークで不要になった
+    if (gen !== this.session.generation || this.session.destroyed) {
+      return true;
+    } // シークで不要になった
     await this.append(data);
-    if (gen !== this.session.generation) return true; // 追加中にシークされた (seek() が next を決め直している)
+    if (gen !== this.session.generation) {
+      return true;
+    } // 追加中にシークされた (seek() が next を決め直している)
     this.next += 1;
-    if (this.next >= this.segments.length) this.done = true;
+    if (this.next >= this.segments.length) {
+      this.done = true;
+    }
     return true;
   }
 
@@ -201,13 +234,19 @@ export class DashSession {
     const ms = this.createMediaSource();
     ms.addEventListener('sourceopen', () => {
       this.run(ms).catch((e: Error) => {
-        if (!this.destroyed) this.onFatal(e.message);
+        if (!this.destroyed) {
+          this.onFatal(e.message);
+        }
       });
     });
     this.element.addEventListener('seeking', () => {
-      if (this.destroyed) return;
+      if (this.destroyed) {
+        return;
+      }
       this.generation += 1;
-      for (const p of this.pumps) p.seek(this.element.currentTime);
+      for (const p of this.pumps) {
+        p.seek(this.element.currentTime);
+      }
     });
     this.element.srcObject = ms;
   }
@@ -217,8 +256,13 @@ export class DashSession {
   }
 
   private async run(ms: MediaSourceLike) {
-    if (this.durationSeconds > 0) ms.duration = this.durationSeconds;
-    this.pumps = [new TrackPump(this.video, this), new TrackPump(this.audio, this)];
+    if (this.durationSeconds > 0) {
+      ms.duration = this.durationSeconds;
+    }
+    this.pumps = [
+      new TrackPump(this.video, this),
+      new TrackPump(this.audio, this),
+    ];
     // 映像と音声の SourceBuffer は両方を作ってから初期化セグメントを積む
     await Promise.all(this.pumps.map((p) => p.init(ms)));
     let ended = false;
@@ -238,7 +282,9 @@ export class DashSession {
       } else {
         ended = false;
       }
-      if (!results.some(Boolean)) await sleep(IDLE_MS);
+      if (!results.some(Boolean)) {
+        await sleep(IDLE_MS);
+      }
     }
   }
 }

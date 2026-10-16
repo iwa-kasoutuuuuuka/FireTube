@@ -1,7 +1,11 @@
 import {parseSidx} from '../src/player/sidx';
 
 /** version 0 の sidx を組み立てる */
-function sidx(timescale: number, firstOffset: number, refs: [number, number][]): Uint8Array {
+function sidx(
+  timescale: number,
+  firstOffset: number,
+  refs: [number, number][],
+): Uint8Array {
   const size = 32 + refs.length * 12;
   const buf = new Uint8Array(size);
   const v = new DataView(buf.buffer);

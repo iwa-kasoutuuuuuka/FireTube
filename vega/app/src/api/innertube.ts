@@ -43,7 +43,9 @@ async function postJson(
     },
     TIMEOUT_MS,
   );
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}`);
+  }
   return (await res.json()) as Json;
 }
 
@@ -61,9 +63,14 @@ function webContext(): Json {
 
 // ---------------------------------------------------------------- 一覧
 
-export async function searchVideos(query: string, params?: string): Promise<VideoItem[]> {
+export async function searchVideos(
+  query: string,
+  params?: string,
+): Promise<VideoItem[]> {
   const body: Json = {context: webContext(), query};
-  if (params) body.params = params;
+  if (params) {
+    body.params = params;
+  }
   const json = await postJson('search', body);
   return parseVideoRenderers(json);
 }
@@ -72,12 +79,18 @@ export async function searchVideos(query: string, params?: string): Promise<Vide
  * 「人気の動画」。急上昇 (FEtrending) は廃止されたため、
  * 複数ジャンルを「今週 × 視聴回数順」で検索し交互に並べる (Android 版と同じ方式)
  */
-export async function getPopularVideos(queries: string[]): Promise<VideoItem[]> {
+export async function getPopularVideos(
+  queries: string[],
+): Promise<VideoItem[]> {
   const lists = await Promise.all(
-    queries.map((q) => searchVideos(q, SEARCH_FILTER_POPULAR_THIS_WEEK).catch(() => [])),
+    queries.map((q) =>
+      searchVideos(q, SEARCH_FILTER_POPULAR_THIS_WEEK).catch(() => []),
+    ),
   );
   const items = interleave(lists);
-  if (items.length === 0) throw new Error('人気の動画を取得できませんでした');
+  if (items.length === 0) {
+    throw new Error('人気の動画を取得できませんでした');
+  }
   return items;
 }
 
@@ -106,23 +119,36 @@ const INVALID_TITLE = /非公開動画|private video|deleted video|削除され�
 const UPCOMING = /プレミア|公開予定|UPCOMING/i;
 
 function isValid(item: VideoItem): boolean {
-  if (!item.id || item.id.length < 5) return false;
+  if (!item.id || item.id.length < 5) {
+    return false;
+  }
   const t = item.title.trim();
-  if (!t || t === 'No title' || t === 'Unknown Title') return false;
+  if (!t || t === 'No title' || t === 'Unknown Title') {
+    return false;
+  }
   return !INVALID_TITLE.test(t);
 }
 
 function runsText(obj: Json | undefined): string | undefined {
-  if (!obj) return undefined;
+  if (!obj) {
+    return undefined;
+  }
   if (Array.isArray(obj.runs)) {
-    const s = obj.runs.map((r: Json) => r?.text ?? '').join('').trim();
-    if (s) return s;
+    const s = obj.runs
+      .map((r: Json) => r?.text ?? '')
+      .join('')
+      .trim();
+    if (s) {
+      return s;
+    }
   }
   return typeof obj.simpleText === 'string' ? obj.simpleText : undefined;
 }
 
 export function parseDuration(text?: string): number {
-  if (!text) return 0;
+  if (!text) {
+    return 0;
+  }
   return text
     .split(':')
     .reduce((sec, p) => sec * 60 + (Number.parseInt(p, 10) || 0), 0);
@@ -139,14 +165,24 @@ export function parseVideoRenderers(root: Json): VideoItem[] {
     }
   };
   const walk = (node: any, depth: number) => {
-    if (depth > 32 || node === null || typeof node !== 'object') return;
+    if (depth > 32 || node === null || typeof node !== 'object') {
+      return;
+    }
     if (Array.isArray(node)) {
-      for (const child of node) walk(child, depth + 1);
+      for (const child of node) {
+        walk(child, depth + 1);
+      }
       return;
     }
     for (const [key, value] of Object.entries(node)) {
-      if (value === null || typeof value !== 'object') continue;
-      if (key === 'videoRenderer' || key === 'compactVideoRenderer' || key === 'gridVideoRenderer') {
+      if (value === null || typeof value !== 'object') {
+        continue;
+      }
+      if (
+        key === 'videoRenderer' ||
+        key === 'compactVideoRenderer' ||
+        key === 'gridVideoRenderer'
+      ) {
         add(parseVideoRenderer(value as Json));
       } else if (key === 'lockupViewModel') {
         add(parseLockup(value as Json));
@@ -161,32 +197,51 @@ export function parseVideoRenderers(root: Json): VideoItem[] {
 
 function parseVideoRenderer(obj: Json): VideoItem | null {
   const id = obj.videoId;
-  if (typeof id !== 'string') return null;
-  if (obj.isPlayable === false || obj.unplayableText || obj.upcomingEventData) return null;
+  if (typeof id !== 'string') {
+    return null;
+  }
+  if (obj.isPlayable === false || obj.unplayableText || obj.upcomingEventData) {
+    return null;
+  }
   const badges: Json[] = Array.isArray(obj.badges) ? obj.badges : [];
-  if (badges.some((b) => UPCOMING.test(b?.metadataBadgeRenderer?.label ?? ''))) return null;
+  if (
+    badges.some((b) => UPCOMING.test(b?.metadataBadgeRenderer?.label ?? ''))
+  ) {
+    return null;
+  }
 
   const thumbs: Json[] = obj.thumbnail?.thumbnails ?? [];
   return {
     id,
     title: runsText(obj.title) ?? 'No title',
     uploaderName:
-      runsText(obj.ownerText) ?? runsText(obj.shortBylineText) ?? runsText(obj.longBylineText) ?? '',
-    thumbnailUrl: thumbs[thumbs.length - 1]?.url ?? `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
+      runsText(obj.ownerText) ??
+      runsText(obj.shortBylineText) ??
+      runsText(obj.longBylineText) ??
+      '',
+    thumbnailUrl:
+      thumbs[thumbs.length - 1]?.url ??
+      `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
     durationSeconds: parseDuration(runsText(obj.lengthText)),
   };
 }
 
 function parseLockup(obj: Json): VideoItem | null {
-  if (obj.contentType && obj.contentType !== 'LOCKUP_CONTENT_TYPE_VIDEO') return null;
+  if (obj.contentType && obj.contentType !== 'LOCKUP_CONTENT_TYPE_VIDEO') {
+    return null;
+  }
   const id: unknown =
     obj.contentId ||
-    obj.rendererContext?.commandContext?.onTap?.innertubeCommand?.watchEndpoint?.videoId;
-  if (typeof id !== 'string') return null;
+    obj.rendererContext?.commandContext?.onTap?.innertubeCommand?.watchEndpoint
+      ?.videoId;
+  if (typeof id !== 'string') {
+    return null;
+  }
 
   const meta = obj.metadata?.lockupMetadataViewModel;
   const uploader =
-    meta?.metadata?.contentMetadataViewModel?.metadataRows?.[0]?.metadataParts?.[0]?.text?.content;
+    meta?.metadata?.contentMetadataViewModel?.metadataRows?.[0]
+      ?.metadataParts?.[0]?.text?.content;
   const image = obj.contentImage?.thumbnailViewModel;
   const sources: Json[] = image?.image?.sources ?? [];
 
@@ -194,16 +249,24 @@ function parseLockup(obj: Json): VideoItem | null {
   for (const ov of image?.overlays ?? []) {
     for (const b of ov?.thumbnailBottomOverlayViewModel?.badges ?? []) {
       const t: string | undefined = b?.thumbnailBadgeViewModel?.text;
-      if (!t) continue;
-      if (UPCOMING.test(t)) return null;
-      if (t.includes(':')) duration = parseDuration(t);
+      if (!t) {
+        continue;
+      }
+      if (UPCOMING.test(t)) {
+        return null;
+      }
+      if (t.includes(':')) {
+        duration = parseDuration(t);
+      }
     }
   }
   return {
     id,
     title: meta?.title?.content ?? 'No title',
     uploaderName: typeof uploader === 'string' ? uploader : '',
-    thumbnailUrl: sources[sources.length - 1]?.url ?? `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
+    thumbnailUrl:
+      sources[sources.length - 1]?.url ??
+      `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
     durationSeconds: duration,
   };
 }
@@ -216,7 +279,9 @@ let visitorFetched = false;
 
 /** watch ページから visitorData と signatureTimestamp を取る (VISIONOS / 埋め込み IOS 用) */
 async function ensureVisitorData(): Promise<void> {
-  if (visitorFetched) return;
+  if (visitorFetched) {
+    return;
+  }
   visitorFetched = true;
   try {
     const res = await fetchWithTimeout(
@@ -224,11 +289,15 @@ async function ensureVisitorData(): Promise<void> {
       {headers: {'User-Agent': CHROME_UA}},
       TIMEOUT_MS,
     );
-    if (!res.ok) return;
+    if (!res.ok) {
+      return;
+    }
     const html = await res.text();
     visitorData = /["']visitorData["']\s*:\s*["']([^"']+)["']/.exec(html)?.[1];
     const sts = /["']signatureTimestamp["']\s*:\s*(\d+)/.exec(html)?.[1];
-    if (sts) signatureTimestamp = Number(sts);
+    if (sts) {
+      signatureTimestamp = Number(sts);
+    }
   } catch {
     visitorFetched = false;
   }
@@ -358,18 +427,26 @@ function clientSpec(name: string): ClientSpec | null {
 
 async function fetchPlayer(name: string, videoId: string): Promise<StreamInfo> {
   const spec = clientSpec(name);
-  if (!spec) throw new Error(`Unknown client ${name}`);
-  if (spec.needsVisitor) await ensureVisitorData();
+  if (!spec) {
+    throw new Error(`Unknown client ${name}`);
+  }
+  if (spec.needsVisitor) {
+    await ensureVisitorData();
+  }
 
   const body: Json = {
     context: JSON.parse(JSON.stringify(spec.context)),
     videoId,
     ...(spec.extraBody ? JSON.parse(JSON.stringify(spec.extraBody)) : {}),
   };
-  const headers: Record<string, string> = {'User-Agent': spec.userAgent, ...spec.headers};
+  const headers: Record<string, string> = {
+    'User-Agent': spec.userAgent,
+    ...spec.headers,
+  };
   if (spec.needsVisitor) {
     if (body.playbackContext?.contentPlaybackContext) {
-      body.playbackContext.contentPlaybackContext.signatureTimestamp = signatureTimestamp;
+      body.playbackContext.contentPlaybackContext.signatureTimestamp =
+        signatureTimestamp;
     }
     if (visitorData && name === 'VISIONOS') {
       body.context.client.visitorData = visitorData;
@@ -380,7 +457,11 @@ async function fetchPlayer(name: string, videoId: string): Promise<StreamInfo> {
   return parsePlayerResponse(json, videoId, name);
 }
 
-export function parsePlayerResponse(json: Json, videoId: string, client: string): StreamInfo {
+export function parsePlayerResponse(
+  json: Json,
+  videoId: string,
+  client: string,
+): StreamInfo {
   const ps = json.playabilityStatus;
   if (ps?.status !== 'OK') {
     const r = ps?.errorScreen?.playerErrorMessageRenderer;
@@ -394,7 +475,9 @@ export function parsePlayerResponse(json: Json, videoId: string, client: string)
     throw new Error(reason);
   }
   const sd = json.streamingData;
-  if (!sd) throw new Error('No streamingData');
+  if (!sd) {
+    throw new Error('No streamingData');
+  }
 
   const sources: PlaybackSource[] = [];
   const dash = pickDash(sd.adaptiveFormats ?? []);
@@ -408,17 +491,30 @@ export function parsePlayerResponse(json: Json, videoId: string, client: string)
     });
   }
   if (typeof sd.hlsManifestUrl === 'string') {
-    sources.push({url: sd.hlsManifestUrl, kind: 'hls', label: 'HLS (自動画質)', client});
+    sources.push({
+      url: sd.hlsManifestUrl,
+      kind: 'hls',
+      label: 'HLS (自動画質)',
+      client,
+    });
   }
   // 映像+音声が 1 本になった MP4 (360p / 720p)。高画質順
   const muxed: Json[] = (sd.formats ?? []).filter(
-    (f: Json) => typeof f.url === 'string' && String(f.mimeType ?? '').includes('mp4'),
+    (f: Json) =>
+      typeof f.url === 'string' && String(f.mimeType ?? '').includes('mp4'),
   );
   muxed.sort((a, b) => (b.height ?? 0) - (a.height ?? 0));
   for (const f of muxed) {
-    sources.push({url: f.url, kind: 'mp4', label: `MP4 ${f.qualityLabel ?? ''}`.trim(), client});
+    sources.push({
+      url: f.url,
+      kind: 'mp4',
+      label: `MP4 ${f.qualityLabel ?? ''}`.trim(),
+      client,
+    });
   }
-  if (sources.length === 0) throw new Error('再生できるストリームがありません');
+  if (sources.length === 0) {
+    throw new Error('再生できるストリームがありません');
+  }
 
   const vd = json.videoDetails ?? {};
   return {
@@ -437,7 +533,11 @@ function toTrack(f: Json): DashTrack | null {
   const initEnd = Number(f.initRange?.end);
   const indexStart = Number(f.indexRange?.start);
   const indexEnd = Number(f.indexRange?.end);
-  if (typeof f.url !== 'string' || !Number.isFinite(initEnd) || !Number.isFinite(indexEnd)) {
+  if (
+    typeof f.url !== 'string' ||
+    !Number.isFinite(initEnd) ||
+    !Number.isFinite(indexEnd)
+  ) {
     return null;
   }
   return {
@@ -455,19 +555,27 @@ function toTrack(f: Json): DashTrack | null {
  * MSE 用に H.264 (avc1) 映像 + AAC (mp4a) 音声の組を選ぶ。
  * VP9 / AV1 / Opus は端末の対応が未確認のため使わない
  */
-export function pickDash(formats: Json[]): {video: DashTrack; audio: DashTrack} | null {
+export function pickDash(
+  formats: Json[],
+): {video: DashTrack; audio: DashTrack} | null {
   const tracks = formats.map(toTrack).filter((t): t is DashTrack => t !== null);
   const video = tracks
-    .filter((t) => t.mimeType.startsWith('video/mp4') && t.mimeType.includes('avc1'))
+    .filter(
+      (t) => t.mimeType.startsWith('video/mp4') && t.mimeType.includes('avc1'),
+    )
     .filter((t) => t.height > 0 && t.height <= MAX_DASH_HEIGHT)
     .sort((a, b) => b.height - a.height || b.bitrate - a.bitrate)[0];
   const audio = tracks
-    .filter((t) => t.mimeType.startsWith('audio/mp4') && t.mimeType.includes('mp4a.40.2'))
+    .filter(
+      (t) =>
+        t.mimeType.startsWith('audio/mp4') && t.mimeType.includes('mp4a.40.2'),
+    )
     .sort((a, b) => b.bitrate - a.bitrate)[0];
   return video && audio ? {video, audio} : null;
 }
 
-const PREFERRED_REASON = /非公開|プレミア|配信前|ご覧いただけません|削除|ログイン/;
+const PREFERRED_REASON =
+  /非公開|プレミア|配信前|ご覧いただけません|削除|ログイン/;
 
 /**
  * 再生情報の取得。race クライアントを並列に叩いて優先順に採用し、
@@ -481,14 +589,20 @@ export async function extractStreamInfo(
   const config = getConfig();
   const reasons: string[] = [];
   const race = config.playerRaceClients.filter((c) => !skip.includes(c));
-  const pending = race.map((c) => fetchPlayer(c, videoId).catch((e: Error) => e));
+  const pending = race.map((c) =>
+    fetchPlayer(c, videoId).catch((e: Error) => e),
+  );
   for (const p of pending) {
     const r = await p;
-    if (!(r instanceof Error)) return r;
+    if (!(r instanceof Error)) {
+      return r;
+    }
     reasons.push(r.message);
   }
   for (const c of config.playerFallbackClients) {
-    if (skip.includes(c) || race.includes(c)) continue;
+    if (skip.includes(c) || race.includes(c)) {
+      continue;
+    }
     try {
       return await fetchPlayer(c, videoId);
     } catch (e) {

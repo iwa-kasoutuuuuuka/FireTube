@@ -22,7 +22,13 @@ export interface DashTrack {
  * dash = MSE で映像+音声を自前で積む / hls・mp4 = Vega Media Player の URL モード
  */
 export type PlaybackSource =
-  | {kind: 'dash'; video: DashTrack; audio: DashTrack; label: string; client: string}
+  | {
+      kind: 'dash';
+      video: DashTrack;
+      audio: DashTrack;
+      label: string;
+      client: string;
+    }
   | {kind: 'hls' | 'mp4'; url: string; label: string; client: string};
 
 export interface StreamInfo {

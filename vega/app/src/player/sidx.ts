@@ -18,12 +18,23 @@ export function parseSidx(buf: Uint8Array, boxOffset: number): Segment[] {
   // 先頭に別ボックスがあっても sidx まで進める
   while (pos + 8 <= buf.byteLength) {
     const size = view.getUint32(pos);
-    const type = String.fromCharCode(buf[pos + 4], buf[pos + 5], buf[pos + 6], buf[pos + 7]);
-    if (type === 'sidx') break;
-    if (size < 8) throw new Error('invalid box');
+    const type = String.fromCharCode(
+      buf[pos + 4],
+      buf[pos + 5],
+      buf[pos + 6],
+      buf[pos + 7],
+    );
+    if (type === 'sidx') {
+      break;
+    }
+    if (size < 8) {
+      throw new Error('invalid box');
+    }
     pos += size;
   }
-  if (pos + 8 > buf.byteLength) throw new Error('sidx not found');
+  if (pos + 8 > buf.byteLength) {
+    throw new Error('sidx not found');
+  }
 
   const boxStart = pos;
   const boxSize = view.getUint32(pos);
@@ -54,6 +65,8 @@ export function parseSidx(buf: Uint8Array, boxOffset: number): Segment[] {
     const ref = view.getUint32(pos);
     const dur = view.getUint32(pos + 4);
     pos += 12;
+    // 先頭 1 bit は reference_type (0 = メディア)。残り 31 bit がサイズ
+    // eslint-disable-next-line no-bitwise
     const size = ref & 0x7fffffff;
     segments.push({
       start: offset,
