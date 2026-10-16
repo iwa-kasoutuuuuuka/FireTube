@@ -51,7 +51,7 @@ jobs:
           source "$HOME/vega/env"
           vega project list-templates || true
           vega project generate --help || true
-          vega project generate --template helloWorld --name firetube --packageId com.firetube.tv.vega --outputDir "$RUNNER_TEMP/gen"
+          vega project generate --template helloWorld-rn72 --name firetube --packageId com.firetube.tv.vega --outputDir "$RUNNER_TEMP/gen"
           cd "$RUNNER_TEMP/gen"
           find . -type f -not -path '*/node_modules/*' | sort
           for f in $(find . -type f -not -path '*/node_modules/*' \( -name '*.json' -o -name '*.toml' -o -name '*.ts' -o -name '*.tsx' -o -name '*.js' -o -name '*.md' \) | sort); do
@@ -70,5 +70,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -f vega/app
           git reset -q -- vega/app/node_modules 2>/dev/null || true
-          git commit -m "chore(vega): add generated helloWorld template [skip ci]"
+          git commit -m "chore(vega): add generated helloWorld-rn72 template [skip ci]"
           git push
