@@ -63,6 +63,9 @@ run 03-help-copy-logs vega device copy-logs --help
 run 04-help-log-stream vega device start-log-stream --help
 run 05-help-launch vega device launch-app --help
 
+# テスト動画を配る (仮想端末からは http://10.0.2.2:8000)
+( python3 vega/scripts/range-server.py "${MEDIA:-/tmp/test-media}" 8000 > "$OUT/70-media-server.txt" 2>&1 ) &
+
 # 仮想端末の起動。CI は入れ子の仮想化で遅く、既定の 60 秒では起動前に止められてしまう
 # (virtual_device.log: "failed to access shell")。画面なし・ソフトウェア描画・長い待ち時間で起動する
 ( vega virtual-device start --no-gui --no-gl-accel --timeout 900 > "$OUT/10-start.txt" 2>&1 ) &

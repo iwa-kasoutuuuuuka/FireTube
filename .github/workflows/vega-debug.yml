@@ -45,6 +45,11 @@ jobs:
           curl -fsSL https://sdk-installer.vega.labcollab.net/get_vvm.sh | bash
           echo "$HOME/vega/bin" >> "$GITHUB_PATH"
 
+      - name: Prepare test media (DASH / HLS) and point the app at it
+        run: |
+          sudo apt-get install -y ffmpeg > /dev/null
+          bash vega/scripts/make-test-media.sh
+
       - name: Build app
         working-directory: vega/app
         run: |
