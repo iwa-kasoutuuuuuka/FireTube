@@ -13,6 +13,7 @@ interface Props {
 }
 
 const CACHE_NAME = 'popular';
+const RETRY_DELAYS_MS = [3000, 6000];
 
 /**
  * 人気の動画 (ジャンル横断の「今週 × 視聴回数順」)。
@@ -28,18 +29,25 @@ export const PopularTab = ({onSelect, reloadKey}: Props) => {
   const load = useCallback(async () => {
     setLoading(true);
     setError(undefined);
-    try {
-      // リモート設定は起動時に裏で読み込み済み (未取得なら組み込みの既定値)。ここでは待たない
-      const fresh = await getPopularVideos(getConfig().popularQueries);
-      log('popular loaded', fresh.length);
-      setItems(fresh);
-      putCachedList(CACHE_NAME, fresh);
-    } catch (e) {
-      log('popular failed', (e as Error).message);
-      setError(`読み込みに失敗しました: ${(e as Error).message}`);
-    } finally {
-      setLoading(false);
+    // 電源を入れた直後などはネットワークの準備がまだのことがあるため、少し待って取り直す
+    for (let attempt = 0; ; attempt++) {
+      try {
+        // リモート設定は起動時に裏で読み込み済み (未取得なら組み込みの既定値)。ここでは待たない
+        const fresh = await getPopularVideos(getConfig().popularQueries);
+        log('popular loaded', fresh.length);
+        setItems(fresh);
+        putCachedList(CACHE_NAME, fresh);
+        break;
+      } catch (e) {
+        log('popular failed', attempt, (e as Error).message);
+        if (attempt >= RETRY_DELAYS_MS.length) {
+          setError(`読み込みに失敗しました: ${(e as Error).message}`);
+          break;
+        }
+        await new Promise<void>((r) => setTimeout(r, RETRY_DELAYS_MS[attempt]));
+      }
     }
+    setLoading(false);
   }, []);
 
   useEffect(() => {
