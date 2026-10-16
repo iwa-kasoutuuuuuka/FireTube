@@ -26,6 +26,7 @@
  用意するもの
 --------------------------------------------------------------
   - Vega OS 搭載の Fire TV (開発機と同じ LAN に接続)
+  - USB データケーブル (Fire TV と開発機を最初に接続するため。充電専用ケーブルは不可)
   - Amazon 開発者アカウント (https://developer.amazon.com/ 無料)
   - 開発用 PC: Ubuntu 20.04 以上 または macOS 10.15 以上 (空き 20GB 以上)
       ※ Windows / WSL は公式に非対応。Windows PC しかない場合は Ubuntu の VM を作る
@@ -48,8 +49,8 @@
     powershell -ExecutionPolicy Bypass -File E:\ZFireTube\vega\scripts\windows\create-ubuntu-vm.ps1
   Ubuntu のインストール時に「OpenSSH server」を選ぶ。完了後に ssh で VM に入り、
   リポジトリを clone してから上の setup-dev-env.sh を実行する。
-  ※ VM から Fire TV に接続できるかは未検証。つながらない場合は Hyper-V の
-    外部スイッチ (ブリッジ接続) に切り替える。
+  ※ VM から Fire TV への接続 (最初の USB 接続を含む) は、後述の
+    「Windows 11 PC から実機に転送する場合」を参照。
 
 
 --------------------------------------------------------------
@@ -96,6 +97,55 @@ Fire TV 側:
 
 
 --------------------------------------------------------------
+ Windows 11 PC から実機に転送する場合
+--------------------------------------------------------------
+Vega CLI と端末接続ツール VDA (adb に相当) は Windows 版がありません。
+Windows 11 PC では Ubuntu の VM を経由して転送します。
+
+ポイント:
+  - VDA は既定で USB 接続。Wi-Fi (TCP/IP) に切り替えられるが、最初の 1 回は USB 接続が必要。
+  - Hyper-V の VM は USB を直接渡せないため、usbipd-win で USB をネットワーク越しに VM へ渡す。
+
+[推奨] Hyper-V の Ubuntu VM + usbipd-win
+  (VM はステップ 1 の補足 create-ubuntu-vm.ps1 で作ったものを使う)
+
+  1. Fire TV Stick を USB データケーブルで PC に、HDMI でテレビにつなぐ。
+     ※ 充電専用ケーブルは不可。PC の USB で電力が足りない場合は電源付き USB ハブを使う。
+
+  2. Windows (管理者 PowerShell) で、Fire TV の USB を共有する:
+       winget install usbipd
+       usbipd list                          # Fire TV の BUSID (例: 2-3) を確認
+       usbipd bind --busid <BUSID>
+
+  3. Ubuntu VM で、共有された USB を接続して認識を確認する:
+       sudo apt install linux-tools-generic hwdata
+       sudo usbip attach -r <VM から見た Windows の IP> -b <BUSID>
+       vega exec vda devices                # Fire TV が表示されれば OK
+     ※ Windows の IP は VM で `ip route | grep default` の via の後ろ (Default Switch の場合)。
+     ※ Windows ファイアウォールで TCP 3240 番 (usbipd) の受信を許可する必要がある場合がある。
+
+  4. Wi-Fi 接続に切り替える (以降は USB ケーブルを抜いてよい):
+       vega exec vda tcpip 5555
+       vega exec vda connect <Fire TV の IP>:5555
+       vega device list
+     ※ Fire TV の IP: 設定 > マイ Fire TV > バージョン情報 > ネットワーク
+
+  5. ステップ 4 と同じく install-app / launch-app でインストール・起動する。
+
+[その他の方法]
+  - VMware Workstation Pro (個人利用は無料) / VirtualBox の Ubuntu VM:
+      USB を VM に直接渡せるので usbipd は不要。ただし Hyper-V と競合することがある。
+  - Ubuntu を USB メモリから起動 (ライブ起動) / デュアルブート:
+      公式の構成に最も近い。使うたびに PC の再起動が必要。
+  - Mac を借りる: 一番簡単。
+
+[未検証の点]
+  - usbip 経由で VDA が Fire TV を認識するか。
+  - Fire TV を再起動した後も Wi-Fi 接続 (tcpip モード) が続くか。
+    adb では続かないため、再起動のたびに手順 2-4 (USB 接続) をやり直す可能性がある。
+
+
+--------------------------------------------------------------
  実機が無いとき (Virtual Device で試す)
 --------------------------------------------------------------
 Ubuntu の場合は KVM (/dev/kvm) が必要。VM の中では入れ子の仮想化が必要で、動くかは未検証。
@@ -113,6 +163,8 @@ Ubuntu の場合は KVM (/dev/kvm) が必要。VM の中では入れ子の仮想
 ■ vega device list に Fire TV が出ない
   - 開発用 PC と Fire TV が同じネットワークにいるか確認 (ゲスト Wi-Fi は不可のことが多い)。
   - 開発者モードが有効か確認 (Fire TV の再起動後に無効になっていないか)。
+  - 最初の 1 回は USB 接続が必要 (VDA の既定は USB)。Wi-Fi で使うには
+    `vega exec vda tcpip 5555` -> `vega exec vda connect <IP>:5555` を先に行う。
   - VM から接続している場合は、外部スイッチ (ブリッジ接続) を試す。
 
 ■ 6 桁コードが通らない
@@ -129,4 +181,6 @@ Ubuntu の場合は KVM (/dev/kvm) が必要。VM の中では入れ子の仮想
   SDK の導入   https://developer.amazon.com/docs/vega/0.23/install-vega-sdk.html
   開発者モード https://developer.amazon.com/docs/vega/0.24/developer-mode.html
   アプリの実行 https://developer.amazon.com/docs/vega/0.22/run-apps.html
+  VDA の Wi-Fi 接続 https://developer.amazon.com/docs/vega/0.24/vda-over-tcpip.html
+  usbipd-win   https://github.com/dorssel/usbipd-win
   詳しい開発手順は vega/SETUP.md を参照。
