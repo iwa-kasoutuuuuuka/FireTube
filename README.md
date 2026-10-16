@@ -210,6 +210,12 @@ FireTube v1.4.0 では、**Fire TV Stick 4K Max** の高性能ハードウェア
 
 <img src="art/firetube_banner.png" width="320" alt="FireTube のテレビ用バナー" />
 
+### 3. Vega OS 搭載機 (Fire TV Stick 4K Select / 2026年モデルなど) へのインストール (試作版)
+Vega OS には APK を入れられません。[Releases](https://github.com/iwa-kasoutuuuuuka/FireTube/releases) (タグ `vega-v*`) の **Vega 版 (.vpkg)** を、開発者モード + Vega CLI で入れます (実機未検証)。
+
+- 🖥️ **Windows 11 PC から入れる場合**: [`vega/TRANSFER_FROM_WINDOWS.txt`](vega/TRANSFER_FROM_WINDOWS.txt) — Hyper-V の Ubuntu VM 作成から、usbipd-win での USB 接続、Wi-Fi 切替、インストールまでの通し手順
+- 🍎🐧 **Mac / Ubuntu から入れる場合**: [`vega/INSTALL_VEGA.txt`](vega/INSTALL_VEGA.txt)
+
 ---
 
 ## ⚠️ 上流サービスへの依存と既知の制限 (Upstream Dependencies)
