@@ -5,6 +5,9 @@
 対象: Fire OS 7 / 8 の Fire TV (Fire TV Stick HD / 4K / 4K Max / 4K Plus など)
 非対象: Vega OS 搭載機 (Fire TV Stick 4K Select、2026年モデルなど)、Fire OS 6 以前
         -> APK をインストールできません。
+        -> Vega OS 搭載機には Vega 版 (試作版 .vpkg) を使う:
+             vega/INSTALL_VEGA.txt          (Mac / Ubuntu から入れる手順)
+             vega/TRANSFER_FROM_WINDOWS.txt (Windows 11 PC から入れる手順)
 
 用意するもの
   - Windows PC (Fire TV と同じ Wi-Fi / LAN に接続)
@@ -116,6 +119,8 @@ PC に Python がある場合、PC を簡易 Web サーバーにして Fire TV �
 
 ■ INSTALL_FAILED_OLDER_SDK / 「解析エラー」
   - Fire OS 6 以前の端末。FireTube は Fire OS 7 (Android 9) 以上が必要。
+  - Vega OS 搭載機の場合は APK を入れられない。Vega 版を使う
+    (vega/INSTALL_VEGA.txt / vega/TRANSFER_FROM_WINDOWS.txt)。
 
 ■ INSTALL_FAILED_INSUFFICIENT_STORAGE
   - 空き容量不足。使っていないアプリを削除するか、
