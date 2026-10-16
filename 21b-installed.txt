@@ -1,0 +1,3 @@
+$ dev is-app-installed --appName com.firetube.tv.vega.main
+com.firetube.tv.vega.main is installed on VirtualDevice
+[exit 0]

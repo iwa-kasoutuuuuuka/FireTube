@@ -1,0 +1,3 @@
+$ dev install-app --packagePath vega/app/build/x86_64-release/firetube_x86_64.vpkg
+Installing/Updating '/tmp/firetube_x86_64.vpkg' ...success
+[exit 0]

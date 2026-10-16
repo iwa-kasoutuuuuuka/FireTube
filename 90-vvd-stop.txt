@@ -1,0 +1,3 @@
+$ vega virtual-device stop
+2026/10/16 14:14:47 [INFO] SDK Version obtained: 0.24.12112
+[exit 0]

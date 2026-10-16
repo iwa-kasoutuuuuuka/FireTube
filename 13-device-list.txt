@@ -1,0 +1,4 @@
+$ vega device list
+Found the following device:
+VirtualDevice : tv - x86_64 - OS - amazon-dc5c33d972213c41
+[exit 0]

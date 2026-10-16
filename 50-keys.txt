@@ -1,0 +1,16 @@
+[Errno 2] No such file or directory: 'inputd-cli'
+Injecting Button Press As Driver: KEY_ENTER State: short
+[Errno 2] No such file or directory: 'inputd-cli'
+Injecting Button Press As Driver: KEY_RIGHT State: short
+[Errno 2] No such file or directory: 'inputd-cli'
+Injecting Button Press As Driver: KEY_DOWN State: short
+[Errno 2] No such file or directory: 'inputd-cli'
+Injecting Button Press As Driver: KEY_BACK State: short
+[Errno 2] No such file or directory: 'inputd-cli'
+Injecting Button Press As Driver: KEY_BACK State: short
+[Errno 2] No such file or directory: 'inputd-cli'
+Injecting Button Press As Driver: KEY_RIGHT State: short
+[Errno 2] No such file or directory: 'inputd-cli'
+Injecting Button Press As Driver: KEY_ENTER State: short
+[Errno 2] No such file or directory: 'inputd-cli'
+Injecting Button Press As Driver: KEY_BACK State: short

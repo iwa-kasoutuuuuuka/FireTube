@@ -1,0 +1,3 @@
+$ dev launch-app --appName com.firetube.tv.vega.main
+Sending: pkg://com.firetube.tv.vega.main
+[exit 0]

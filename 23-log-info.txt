@@ -1,0 +1,8 @@
+$ dev get-log-info
+Getting log info
+Found 4 artifacts:
+ACR_REPORT/acr : 0 bytes in 0 files
+SYSTEM_TOMBSTONE/acr : 0 bytes in 0 files
+main/var_log : 542929 bytes in 2 files
+system/var_log : 0 bytes in 0 files
+[exit 0]

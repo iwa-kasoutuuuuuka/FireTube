@@ -1,0 +1,272 @@
+== vvd dir: /home/runner/vega/sdk/vega-sdk/main/0.24.12112/vvd
+===== /home/runner/vega/sdk/vega-sdk/main/0.24.12112/vvd/virtual_device.log
+Creating instance: default_instance
+Getting opt-in status
+Retrieved opt-in status: true
+Telemetry service already running with PID: 4103
+Launching virtual device	{"script": "/home/runner/vega/sdk/vega-sdk/main/0.24.12112/vvd/images/tv/vmtools/agent/emulator", "args": "-avd-archx86_64-skindir/home/runner/vega/sdk/vega-sdk/main/0.24.12112/vvd/images/tv/vmtools/agent/skins-skintv-remote-ports5554,5555-no-window-gpuoff-dns-serverauto-sysdir/home/runner/vega/sdk/vega-sdk/main/0.24.12112/vvd/instances/5c913ebd-b63c-4126-acb5-a335eefc0d44-datadir/home/runner/vega/sdk/vega-sdk/main/0.24.12112/vvd/instances/5c913ebd-b63c-4126-acb5-a335eefc0d44-data/home/runner/vega/sdk/vega-sdk/main/0.24.12112/vvd/instances/5c913ebd-b63c-4126-acb5-a335eefc0d44/userdata.qcow2-keyboard-mappingKEY_ESC:KEY_BACK,KEY_F1:KEY_HOMEPAGE,KEY_F2:KEY_MENU,KEY_F3:KEY_REWIND,KEY_F4:KEY_PLAYPAUSE,KEY_F5:KEY_FASTFORWARD-qemu-qmpunix:/tmp/qmp-socket-5554.sock,server,nowait"}
+Getting opt-in status
+Retrieved opt-in status: true
+Telemetry service already running with PID: 4103
+Getting opt-in status
+Retrieved opt-in status: true
+Telemetry service already running with PID: 4103
+===== /home/runner/vega/sdk/vega-sdk/main/0.24.12112/vvd/instances/5c913ebd-b63c-4126-acb5-a335eefc0d44/read-snapshot.txt
+== sdk logs: /home/runner/vega/sdk/vega-sdk/main/0.24.12112/logs
+total 2260
+-rw-r--r-- 1 runner runner  212778 Oct 16 14:14 vega-2026-10-16.log
+-rw-r--r-- 1 runner runner 2097488 Oct 16 14:11 error-2026-10-16.log
+===== /home/runner/vega/sdk/vega-sdk/main/0.24.12112/logs/vega-2026-10-16.log
+2026-10-16 14:14:45 debug [DeviceManagerHandler]: Found 0 files
+2026-10-16 14:14:45 debug [DeviceManagerHandler]: Running the command: vda -s emulator-5554 shell 'loggingctl vault --json-dump system/var_log' 
+2026-10-16 14:14:45 info [DeviceManagerHandler]: RUN: vda -s emulator-5554 shell 'loggingctl vault --json-dump system/var_log' 
+2026-10-16 14:14:45 debug [DeviceManagerHandler]: Command succeeded
+2026-10-16 14:14:45 info [DeviceManagerHandler]: {
+ "status": 0,
+ "var_log": {
+  "PathInVault": "/var/lib/data/ace/dropbox/vault/system/var_log",
+  "artifacts": [
+   {
+    "age": "1792160085",
+    "filename": "1#acs_system.log.gz",
+    "filepath": "/var/lib/data/ace/dropbox/vault/system/var_log/1#acs_system.log.gz",
+    "importance": "10",
+    "meta_filepath": "/var/lib/data/ace/dropbox/vault/system/var_log/.meta/1#acs_system.log.gz",
+    "size": "53811"
+   }
+  ],
+  "storage": "53811"
+ }
+}
+2026-10-16 14:14:45 debug [DeviceManagerHandler]: Found 0 files
+2026-10-16 14:14:45 debug [DeviceManagerHandler]: Running the command: vda -s emulator-5554 shell 'loggingctl vault --json-dump ACR_REPORT/acr' 
+2026-10-16 14:14:45 info [DeviceManagerHandler]: RUN: vda -s emulator-5554 shell 'loggingctl vault --json-dump ACR_REPORT/acr' 
+2026-10-16 14:14:45 debug [DeviceManagerHandler]: Command succeeded
+2026-10-16 14:14:45 info [DeviceManagerHandler]: {
+ "acr": {
+  "PathInVault": "/var/lib/data/ace/dropbox/vault/ACR_REPORT/acr",
+  "artifacts": [],
+  "storage": "0"
+ },
+ "status": 0
+}
+2026-10-16 14:14:45 debug [DeviceManagerHandler]: Found 0 files
+2026-10-16 14:14:45 debug [DeviceManagerHandler]: Running the command: vda -s emulator-5554 shell '
+for f in ; do
+    if loggingctl vault --cat ACR_REPORT ${f//#.*$/} | grep -q "Process:com.firetube.tv.vega.main"; then
+        echo "$f"
+    fi
+done' 
+2026-10-16 14:14:45 info [DeviceManagerHandler]: RUN: vda -s emulator-5554 shell '
+for f in ; do
+    if loggingctl vault --cat ACR_REPORT ${f//#.*$/} | grep -q "Process:com.firetube.tv.vega.main"; then
+        echo "$f"
+    fi
+done' 
+2026-10-16 14:14:45 debug [DeviceManagerHandler]: Command succeeded
+2026-10-16 14:14:45 debug [DeviceManagerHandler]: Running the command: vda -s emulator-5554 shell 'loggingctl vault --json-dump SYSTEM_TOMBSTONE/acr' 
+2026-10-16 14:14:45 info [DeviceManagerHandler]: RUN: vda -s emulator-5554 shell 'loggingctl vault --json-dump SYSTEM_TOMBSTONE/acr' 
+2026-10-16 14:14:45 debug [DeviceManagerHandler]: Command succeeded
+2026-10-16 14:14:45 info [DeviceManagerHandler]: {
+ "acr": {
+  "PathInVault": "/var/lib/data/ace/dropbox/vault/SYSTEM_TOMBSTONE/acr",
+  "artifacts": [],
+  "storage": "406767"
+ },
+ "status": 0
+}
+2026-10-16 14:14:45 debug [DeviceManagerHandler]: Found 0 files
+2026-10-16 14:14:45 debug [DeviceManagerHandler]: Running the command: vda -s emulator-5554 shell '
+for f in ; do
+    if loggingctl vault --cat SYSTEM_TOMBSTONE ${f//#.*$/} | grep -q "Process:com.firetube.tv.vega.main"; then
+        echo "$f"
+    fi
+done' 
+2026-10-16 14:14:45 info [DeviceManagerHandler]: RUN: vda -s emulator-5554 shell '
+for f in ; do
+    if loggingctl vault --cat SYSTEM_TOMBSTONE ${f//#.*$/} | grep -q "Process:com.firetube.tv.vega.main"; then
+        echo "$f"
+    fi
+done' 
+2026-10-16 14:14:45 debug [DeviceManagerHandler]: Command succeeded
+2026-10-16 14:14:45 debug [EnvUtils]: Environment variable KEPLER_SDK_PATH: found
+2026-10-16 14:14:45 debug [OperationalMetricClient]: creating new telemetry client with componentName=keplercli keplerCliVersion=0.200.0 sdkPath=/home/runner/vega/sdk/vega-sdk/main/0.24.12112
+2026-10-16 14:14:45 info [Timing]: device-VirtualDeviceDoctorHandler.handle completed successfully in 655 ms
+2026-10-16 14:14:45 info [EnvUtils]: getting absolute path for /home/runner/vega/sdk/vega-sdk/main/0.24.12112 (from env variable KEPLER_SDK_PATH)
+2026-10-16 14:14:45 info [DeviceManagerHandler]: [collectDiagnostics]: End
+2026-10-16 14:14:45 debug [OperationalMetricClient]: emitting metric with payload: {"operationName":"device","subOperationName":"VirtualDeviceDoctorHandler.handle","metricType":"Count","metricValue":1}
+2026-10-16 14:14:45 debug [OperationalMetricClient]: emitting metric with payload: {"basePayload":{"metricType":"Latency","operationName":"device","metricValue":0.654960096,"subOperationName":"VirtualDeviceDoctorHandler.handle"},"isOperational":true,"isBehavioral":true}
+2026-10-16 14:14:45 debug [OperationalMetricClient]: Spawning /home/runner/vega/telemetry/telemetry with args: -baseDir,/home/runner/vega/telemetry,-getOptIn,-sendLogsToFile
+2026-10-16 14:14:45 debug [OperationalMetricClient]: Spawning /home/runner/vega/telemetry/telemetry with args: -baseDir,/home/runner/vega/telemetry,-getOptIn,-sendLogsToFile
+2026-10-16 14:14:45 debug [OperationalMetricClient]: Data successfully appended to file
+2026-10-16 14:14:45 debug [OperationalMetricClient]: Telemetry service already running with PID: 4103
+2026-10-16 14:14:45 debug [OperationalMetricClient]: Data successfully appended to file
+2026-10-16 14:14:45 debug [OperationalMetricClient]: Telemetry service already running with PID: 4103
+2026-10-16 14:14:46 info [ComponentHelper]: Component file content = '[object Object]'
+2026-10-16 14:14:46 debug [ComponentHelper]: Component file set to '/home/runner/vega/sdk/vega-sdk/main/0.24.12112/packages/KeplerCLI/KeplerCLI-2.0.29145.0/AL2_x86_64/DEV.STD.PTHREAD/build/kepler/dist/components.json'
+2026-10-16 14:14:46 debug [DeviceManagerHandler]: Created KeplerDeviceManager
+2026-10-16 14:14:46 info [DeviceManagerHandler]: [stopLogStream]: Start
+2026-10-16 14:14:46 debug [DeviceManagerHandler]: [getDeviceIdTypeInfo] for VirtualDevice
+2026-10-16 14:14:46 debug [DeviceManagerHandler]: The device VirtualDevice is a VirtualDevice
+2026-10-16 14:14:46 debug [DeviceManagerHandler]: Running the command: vda devices | tail -n +2 | awk '{print $1}'
+2026-10-16 14:14:46 info [DeviceManagerHandler]: RUN: vda devices | tail -n +2 | awk '{print $1}'
+2026-10-16 14:14:46 debug [DeviceManagerHandler]: Command succeeded
+2026-10-16 14:14:46 debug [DeviceManagerHandler]: Single emulator found: emulator-5554
+2026-10-16 14:14:46 debug [DeviceManagerHandler]: Running the command: vda -s emulator-5554 shell 'vdcm get com.amazon.devconf/system/device-info/device-type-id && uname -m && vdcm get com.amazon.devconf/system/device-info/profile && uname -n && vsm developer-mode && vdcm get com.amazon.devconf/system/device-info/product-name && vdcm get com.amazon.devconf/system/device-info/build-desc && whoami' 
+2026-10-16 14:14:46 info [DeviceManagerHandler]: RUN: vda -s emulator-5554 shell 'vdcm get com.amazon.devconf/system/device-info/device-type-id && uname -m && vdcm get com.amazon.devconf/system/device-info/profile && uname -n && vsm developer-mode && vdcm get com.amazon.devconf/system/device-info/product-name && vdcm get com.amazon.devconf/system/device-info/build-desc && whoami' 
+2026-10-16 14:14:46 debug [DeviceManagerHandler]: Command succeeded
+2026-10-16 14:14:46 debug [DeviceManagerHandler]: Running the command: vda -s emulator-5554 shell 'loggingctl vault --ls' 
+2026-10-16 14:14:46 info [DeviceManagerHandler]: RUN: vda -s emulator-5554 shell 'loggingctl vault --ls' 
+2026-10-16 14:14:46 debug [DeviceManagerHandler]: Command succeeded
+2026-10-16 14:14:46 debug [DeviceManagerHandler]: Running the command: pgrep -f "vda -s emulator-5554 shell loggingctl log -f"
+2026-10-16 14:14:46 info [DeviceManagerHandler]: RUN: pgrep -f "vda -s emulator-5554 shell loggingctl log -f"
+2026-10-16 14:14:46 debug [DeviceManagerHandler]: Command succeeded
+2026-10-16 14:14:46 debug [DeviceManagerHandler]: Running the command: kill 10910
+2026-10-16 14:14:46 info [DeviceManagerHandler]: RUN: kill 10910
+2026-10-16 14:14:46 debug [DeviceManagerHandler]: Error when running command: kill 10910. Error: /bin/sh: 1: kill: No such process
+2026-10-16 14:14:46 debug [EnvUtils]: Environment variable KEPLER_SDK_PATH: found
+2026-10-16 14:14:46 debug [OperationalMetricClient]: creating new telemetry client with componentName=keplercli keplerCliVersion=0.200.0 sdkPath=/home/runner/vega/sdk/vega-sdk/main/0.24.12112
+2026-10-16 14:14:46 info [Timing]: device-StopLogStreamHandler.handle completed successfully in 247 ms
+2026-10-16 14:14:46 info [DeviceManagerHandler]: [stopLogStream]: End
+2026-10-16 14:14:46 info [EnvUtils]: getting absolute path for /home/runner/vega/sdk/vega-sdk/main/0.24.12112 (from env variable KEPLER_SDK_PATH)
+2026-10-16 14:14:46 debug [OperationalMetricClient]: emitting metric with payload: {"operationName":"device","subOperationName":"StopLogStreamHandler.handle","metricType":"Count","metricValue":1}
+2026-10-16 14:14:46 debug [OperationalMetricClient]: emitting metric with payload: {"basePayload":{"metricType":"Latency","operationName":"device","metricValue":0.246816026,"subOperationName":"StopLogStreamHandler.handle"},"isOperational":true,"isBehavioral":true}
+2026-10-16 14:14:46 debug [OperationalMetricClient]: Spawning /home/runner/vega/telemetry/telemetry with args: -baseDir,/home/runner/vega/telemetry,-getOptIn,-sendLogsToFile
+2026-10-16 14:14:46 debug [OperationalMetricClient]: Spawning /home/runner/vega/telemetry/telemetry with args: -baseDir,/home/runner/vega/telemetry,-getOptIn,-sendLogsToFile
+2026-10-16 14:14:46 debug [OperationalMetricClient]: Data successfully appended to file
+2026-10-16 14:14:46 debug [OperationalMetricClient]: Telemetry service already running with PID: 4103
+2026-10-16 14:14:46 debug [OperationalMetricClient]: Data successfully appended to file
+2026-10-16 14:14:46 debug [OperationalMetricClient]: Telemetry service already running with PID: 4103
+===== /home/runner/vega/sdk/vega-sdk/main/0.24.12112/logs/error-2026-10-16.log
+Oct 16 14:11:19.118258 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYERV2:GstPadImpl.cpp(513) onPadProbeInfo invoking observer for probe id 1 and probe type 4112
+Oct 16 14:11:19.135950 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:[MSE_EME] void ignite::media::MediaElement::push_time_update_event(): Send events::TIME_UPDATE: 9.106000
+Oct 16 14:11:19.136093 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:Emitting event: source = HtmlMediaElement name = timeupdate
+Oct 16 14:11:19.357215 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe12c72fc90, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.093993812 running_time:0:00:09.327259118 kernel_timestamp:0:00:09.233265306
+Oct 16 14:11:19.406606 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe12c72fc90, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.085629333 running_time:0:00:09.318894639 kernel_timestamp:0:00:09.233265306
+Oct 16 14:11:19.456954 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe12c72fc90, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.085760647 running_time:0:00:09.319025953 kernel_timestamp:0:00:09.233265306
+Oct 16 14:11:19.473150 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-Native] [MountingManager::SurfaceTelemetryLogger] surfaceId=1 mutations=438 transactions=13 commitTime=693.21ms diffTime=8.48ms layoutTime=692.16ms mountTime=81.74ms
+Oct 16 14:11:19.488956 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe164004d60, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.050754436 running_time:0:00:09.284019742 kernel_timestamp:0:00:09.233265306
+Oct 16 14:11:19.489034 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:[MSE_EME] void ignite::media::MediaElement::push_time_update_event(): Send events::TIME_UPDATE: 9.269000
+Oct 16 14:11:19.489061 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:SourceBuffer[0]getBufferedRange[0.066000-40.100000] secs
+Oct 16 14:11:19.489085 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:SourceBuffer[0]getBufferedRange[0.066000-40.100000] secs
+Oct 16 14:11:19.489107 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:SourceBuffer[1]getBufferedRange[0.000000-40.425000] secs
+Oct 16 14:11:19.489136 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:SourceBuffer[1]getBufferedRange[0.000000-40.425000] secs
+Oct 16 14:11:19.489158 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:Emitting event: source = HtmlMediaElement name = timeupdate
+Oct 16 14:11:19.489180 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYERV2:GstPadImpl.cpp(339) onPadProbeInfo probe id 1 found
+Oct 16 14:11:19.489204 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYERV2:GstPadImpl.cpp(513) onPadProbeInfo invoking observer for probe id 1 and probe type 4112
+Oct 16 14:11:19.489227 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYERV2:GstPadImpl.cpp(339) onPadProbeInfo probe id 1 found
+Oct 16 14:11:19.489249 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYERV2:GstPadImpl.cpp(513) onPadProbeInfo invoking observer for probe id 1 and probe type 4112
+Oct 16 14:11:19.489271 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYERV2:GstPadImpl.cpp(339) onPadProbeInfo probe id 1 found
+Oct 16 14:11:19.489295 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYERV2:GstPadImpl.cpp(513) onPadProbeInfo invoking observer for probe id 1 and probe type 4112
+Oct 16 14:11:19.514097 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe10800f760, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.077809196 running_time:0:00:09.311074502 kernel_timestamp:0:00:09.233265306
+Oct 16 14:11:19.541759 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe10800f760, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.066852033 running_time:0:00:09.300117339 kernel_timestamp:0:00:09.233265306
+Oct 16 14:11:19.577159 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe12c72fc90, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.062816942 running_time:0:00:09.296082248 kernel_timestamp:0:00:09.233265306
+Oct 16 14:11:19.617954 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe10800f760, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.072544137 running_time:0:00:09.305809443 kernel_timestamp:0:00:09.233265306
+Oct 16 14:11:19.618930 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe12c72fc90, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.057626140 running_time:0:00:09.290891446 kernel_timestamp:0:00:09.233265306
+Oct 16 14:11:19.626148 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe10800f760, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.048525014 running_time:0:00:09.281790320 kernel_timestamp:0:00:09.233265306
+Oct 16 14:11:19.653233 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe10800f760, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.066820783 running_time:0:00:09.300086089 kernel_timestamp:0:00:09.233265306
+Oct 16 14:11:19.667235 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe12c72fc90, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.053260468 running_time:0:00:09.286525774 kernel_timestamp:0:00:09.233265306
+Oct 16 14:11:19.680627 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe10800f760, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.053038192 running_time:0:00:09.286303498 kernel_timestamp:0:00:09.233265306
+Oct 16 14:11:19.711973 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe10800f760, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.069057032 running_time:0:00:09.303025285 kernel_timestamp:0:00:09.233968253
+Oct 16 14:11:19.722532 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:[MSE_EME] void ignite::media::MediaElement::push_time_update_event(): Send events::TIME_UPDATE: 9.284000
+Oct 16 14:11:19.722640 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:Emitting event: source = HtmlMediaElement name = timeupdate
+Oct 16 14:11:19.738138 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe10800f760, WARN   , keplervideosink, gstkeplervideosink.cpp, 647, get_renderer_clock_time, <keplervideosink>, Discontinuity disct:1 pause:1 clock_rtime:0:00:09.300135591 buffer_rtime:0:00:09.400000000 clock drift:+0:00:00.204300939
+Oct 16 14:11:19.777911 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe10800f760, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.073344972 running_time:0:00:09.334886922 kernel_timestamp:0:00:09.261541950
+Oct 16 14:11:19.778205 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYERV2:GstPadImpl.cpp(339) onPadProbeInfo probe id 1 found
+Oct 16 14:11:19.778231 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYERV2:GstPadImpl.cpp(513) onPadProbeInfo invoking observer for probe id 1 and probe type 4112
+Oct 16 14:11:19.805092 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe10800f760, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.071560577 running_time:0:00:09.333102527 kernel_timestamp:0:00:09.261541950
+Oct 16 14:11:19.814138 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYERV2:GstPadImpl.cpp(339) onPadProbeInfo probe id 1 found
+Oct 16 14:11:19.814195 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYERV2:GstPadImpl.cpp(513) onPadProbeInfo invoking observer for probe id 1 and probe type 4112
+Oct 16 14:11:19.814222 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYERV2:GstPadImpl.cpp(339) onPadProbeInfo probe id 1 found
+Oct 16 14:11:19.814245 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYERV2:GstPadImpl.cpp(513) onPadProbeInfo invoking observer for probe id 1 and probe type 4112
+Oct 16 14:11:19.830785 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe12c72fc90, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.063011883 running_time:0:00:09.324553833 kernel_timestamp:0:00:09.261541950
+Oct 16 14:11:19.836171 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe10800f760, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.048965445 running_time:0:00:09.310507395 kernel_timestamp:0:00:09.261541950
+Oct 16 14:11:19.941567 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe10800f760, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.098770491 running_time:0:00:09.407296568 kernel_timestamp:0:00:09.308526077
+Oct 16 14:11:19.973084 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:[MSE_EME] void ignite::media::MediaElement::push_time_update_event(): Send events::TIME_UPDATE: 9.339000
+Oct 16 14:11:19.973193 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:Emitting event: source = HtmlMediaElement name = timeupdate
+Oct 16 14:11:20.074756 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe12c72fc90, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.124529885 running_time:0:00:09.433237367 kernel_timestamp:0:00:09.308707482
+Oct 16 14:11:20.074796 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYERV2:GstPadImpl.cpp(339) onPadProbeInfo probe id 1 found
+Oct 16 14:11:20.074818 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYERV2:GstPadImpl.cpp(513) onPadProbeInfo invoking observer for probe id 1 and probe type 4112
+Oct 16 14:11:20.074837 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYERV2:GstPadImpl.cpp(339) onPadProbeInfo probe id 1 found
+Oct 16 14:11:20.074855 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYERV2:GstPadImpl.cpp(513) onPadProbeInfo invoking observer for probe id 1 and probe type 4112
+Oct 16 14:11:20.074872 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYERV2:GstPadImpl.cpp(339) onPadProbeInfo probe id 1 found
+Oct 16 14:11:20.074889 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYERV2:GstPadImpl.cpp(513) onPadProbeInfo invoking observer for probe id 1 and probe type 4112
+Oct 16 14:11:20.074906 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe10800f760, WARN   , keplervideosink, gstkeplervideosink.cpp, 647, get_renderer_clock_time, <keplervideosink>, Discontinuity disct:1 pause:1 clock_rtime:0:00:09.342681283 buffer_rtime:0:00:09.433000000 clock drift:+0:00:00.144142797
+Oct 16 14:11:20.074926 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:SourceBuffer[0]getBufferedRange[0.066000-40.100000] secs
+Oct 16 14:11:20.074947 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:SourceBuffer[0]getBufferedRange[0.066000-40.100000] secs
+Oct 16 14:11:20.074965 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:SourceBuffer[1]getBufferedRange[0.000000-40.425000] secs
+Oct 16 14:11:20.074982 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:SourceBuffer[1]getBufferedRange[0.000000-40.425000] secs
+Oct 16 14:11:20.138516 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe12c72fc90, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.086160108 running_time:0:00:09.394867590 kernel_timestamp:0:00:09.308707482
+Oct 16 14:11:20.171926 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe12c72fc90, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.087284474 running_time:0:00:09.395991956 kernel_timestamp:0:00:09.308707482
+Oct 16 14:11:20.216864 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe10800f760, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.081638142 running_time:0:00:09.390345624 kernel_timestamp:0:00:09.308707482
+Oct 16 14:11:20.226775 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe12c72fc90, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.046754725 running_time:0:00:09.355462207 kernel_timestamp:0:00:09.308707482
+Oct 16 14:11:20.277076 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe12c72fc90, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.086963334 running_time:0:00:09.395670816 kernel_timestamp:0:00:09.308707482
+Oct 16 14:11:20.324536 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe10800f760, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.052191397 running_time:0:00:09.392939696 kernel_timestamp:0:00:09.340748299
+Oct 16 14:11:20.337016 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYERV2:GstPadImpl.cpp(339) onPadProbeInfo probe id 1 found
+Oct 16 14:11:20.337056 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYERV2:GstPadImpl.cpp(513) onPadProbeInfo invoking observer for probe id 1 and probe type 4112
+Oct 16 14:11:20.337081 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:[MSE_EME] void ignite::media::MediaElement::push_time_update_event(): Send events::TIME_UPDATE: 9.358000
+Oct 16 14:11:20.337281 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYERV2:GstPadImpl.cpp(339) onPadProbeInfo probe id 1 found
+Oct 16 14:11:20.337322 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYERV2:GstPadImpl.cpp(513) onPadProbeInfo invoking observer for probe id 1 and probe type 4112
+Oct 16 14:11:20.337532 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:Emitting event: source = HtmlMediaElement name = timeupdate
+Oct 16 14:11:20.343460 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYERV2:GstPadImpl.cpp(339) onPadProbeInfo probe id 1 found
+Oct 16 14:11:20.343520 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYERV2:GstPadImpl.cpp(513) onPadProbeInfo invoking observer for probe id 1 and probe type 4112
+Oct 16 14:11:20.344949 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe10800f760, WARN   , keplervideosink, gstkeplervideosink.cpp, 647, get_renderer_clock_time, <keplervideosink>, Discontinuity disct:1 pause:1 clock_rtime:0:00:09.366059325 buffer_rtime:0:00:09.466000000 clock drift:+0:00:00.126448913
+Oct 16 14:11:20.378983 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe10800f760, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.059398400 running_time:0:00:09.400146699 kernel_timestamp:0:00:09.340748299
+Oct 16 14:11:20.414507 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe10800f760, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.059399722 running_time:0:00:09.400148021 kernel_timestamp:0:00:09.340748299
+Oct 16 14:11:20.438720 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe10800f760, WARN   , keplervideosink, gstkeplervideosink.cpp, 647, get_renderer_clock_time, <keplervideosink>, Discontinuity disct:1 pause:1 clock_rtime:0:00:09.400092614 buffer_rtime:0:00:09.500000000 clock drift:+0:00:00.029829360
+Oct 16 14:11:20.473594 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe10800f760, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.072946176 running_time:0:00:09.435123046 kernel_timestamp:0:00:09.362176870
+Oct 16 14:11:20.487477 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe12c72fc90, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.051968258 running_time:0:00:09.414145128 kernel_timestamp:0:00:09.362176870
+Oct 16 14:11:20.537996 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe12c72fc90, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.088532646 running_time:0:00:09.450709516 kernel_timestamp:0:00:09.362176870
+Oct 16 14:11:20.578410 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe1706d3c40, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.051058573 running_time:0:00:09.440741112 kernel_timestamp:0:00:09.389682539
+Oct 16 14:11:20.578507 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:SourceBuffer[0]getBufferedRange[0.066000-40.100000] secs
+Oct 16 14:11:20.578566 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:SourceBuffer[0]getBufferedRange[0.066000-40.100000] secs
+Oct 16 14:11:20.578948 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:SourceBuffer[1]getBufferedRange[0.000000-40.425000] secs
+Oct 16 14:11:20.578989 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:SourceBuffer[1]getBufferedRange[0.000000-40.425000] secs
+Oct 16 14:11:20.595380 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:[MSE_EME] void ignite::media::MediaElement::push_time_update_event(): Send events::TIME_UPDATE: 9.410000
+Oct 16 14:11:20.595559 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:Emitting event: source = HtmlMediaElement name = timeupdate
+Oct 16 14:11:20.615832 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe10800f760, WARN   , keplervideosink, gstkeplervideosink.cpp, 647, get_renderer_clock_time, <keplervideosink>, Discontinuity disct:1 pause:1 clock_rtime:0:00:09.437566627 buffer_rtime:0:00:09.533000000 clock drift:+0:00:00.069608220
+Oct 16 14:11:20.627171 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYERV2:GstPadImpl.cpp(339) onPadProbeInfo probe id 1 found
+Oct 16 14:11:20.627276 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYERV2:GstPadImpl.cpp(513) onPadProbeInfo invoking observer for probe id 1 and probe type 4112
+Oct 16 14:11:20.627599 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYERV2:GstPadImpl.cpp(339) onPadProbeInfo probe id 1 found
+Oct 16 14:11:20.627640 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYERV2:GstPadImpl.cpp(513) onPadProbeInfo invoking observer for probe id 1 and probe type 4112
+Oct 16 14:11:20.630518 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYERV2:GstPadImpl.cpp(339) onPadProbeInfo probe id 1 found
+Oct 16 14:11:20.630609 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYERV2:GstPadImpl.cpp(513) onPadProbeInfo invoking observer for probe id 1 and probe type 4112
+Oct 16 14:11:20.639899 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe12c72fc90, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.055426916 running_time:0:00:09.462070906 kernel_timestamp:0:00:09.406643990
+Oct 16 14:11:20.667900 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe10800f760, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.059444351 running_time:0:00:09.466088341 kernel_timestamp:0:00:09.406643990
+Oct 16 14:11:20.691809 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe10800f760, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.059427979 running_time:0:00:09.466071969 kernel_timestamp:0:00:09.406643990
+Oct 16 14:11:20.715860 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe10800f760, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.053191597 running_time:0:00:09.466094091 kernel_timestamp:0:00:09.412902494
+Oct 16 14:11:20.744697 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe10800f760, WARN   , keplervideosink, gstkeplervideosink.cpp, 647, get_renderer_clock_time, <keplervideosink>, Discontinuity disct:1 pause:1 clock_rtime:0:00:09.471760144 buffer_rtime:0:00:09.566000000 clock drift:+0:00:00.047604307
+Oct 16 14:11:20.795556 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe12c72fc90, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.078157739 running_time:0:00:09.520130528 kernel_timestamp:0:00:09.441972789
+Oct 16 14:11:20.840141 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe164004d60, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.076992571 running_time:0:00:09.518965360 kernel_timestamp:0:00:09.441972789
+Oct 16 14:11:20.840239 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:[MSE_EME] void ignite::media::MediaElement::push_time_update_event(): Send events::TIME_UPDATE: 9.472000
+Oct 16 14:11:20.843020 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:Emitting event: source = HtmlMediaElement name = timeupdate
+Oct 16 14:11:20.872333 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe10800f760, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.062453731 running_time:0:00:09.504426520 kernel_timestamp:0:00:09.441972789
+Oct 16 14:11:20.893763 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe12c72fc90, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.055228894 running_time:0:00:09.497201683 kernel_timestamp:0:00:09.441972789
+Oct 16 14:11:20.943931 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe12c72fc90, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.078879509 running_time:0:00:09.525863635 kernel_timestamp:0:00:09.446984126
+Oct 16 14:11:21.080648 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:SourceBuffer[0]getBufferedRange[0.066000-40.100000] secs
+Oct 16 14:11:21.080814 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:SourceBuffer[0]getBufferedRange[0.066000-40.100000] secs
+Oct 16 14:11:21.080842 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:SourceBuffer[1]getBufferedRange[0.000000-40.425000] secs
+Oct 16 14:11:21.080866 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:SourceBuffer[1]getBufferedRange[0.000000-40.425000] secs
+Oct 16 14:11:21.096858 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:[MSE_EME] void ignite::media::MediaElement::push_time_update_event(): Send events::TIME_UPDATE: 9.628000
+Oct 16 14:11:21.098795 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:Emitting event: source = HtmlMediaElement name = timeupdate
+Oct 16 14:11:21.140025 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe10800f760, WARN   , keplervideosink, gstkeplervideosink.cpp, 647, get_renderer_clock_time, <keplervideosink>, Discontinuity disct:1 pause:1 clock_rtime:0:00:09.667398301 buffer_rtime:0:00:09.600000000 clock drift:+0:00:00.097615428
+Oct 16 14:11:21.140154 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe10800f760, WARN   , keplervideosink, gstkeplervideosink.cpp, 669, get_renderer_clock_time, <keplervideosink>, Late frame: runtime:0:00:09.667398301 bufftime:0:00:09.600000000 now:0:02:26.509752539 newpts:0:02:26.416354238(+0:00:00.229230856) clockdrift:+0:00:00.000000000
+Oct 16 14:11:21.140187 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe10800f760, WARN   , keplervideosink, gstkeplervideosink.cpp, 669, get_renderer_clock_time, <keplervideosink>, Late frame: runtime:0:00:09.668175114 bufftime:0:00:09.666000000 now:0:02:26.510529352 newpts:0:02:26.482354238(+0:00:00.066000000) clockdrift:+0:00:00.000000035
+Oct 16 14:11:21.140320 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYERV2:GstPadImpl.cpp(339) onPadProbeInfo probe id 1 found
+Oct 16 14:11:21.140341 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYERV2:GstPadImpl.cpp(513) onPadProbeInfo invoking observer for probe id 1 and probe type 4112
+Oct 16 14:11:21.152507 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYERV2:GstPadImpl.cpp(339) onPadProbeInfo probe id 1 found
+Oct 16 14:11:21.152835 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYERV2:GstPadImpl.cpp(513) onPadProbeInfo invoking observer for probe id 1 and probe type 4112
+Oct 16 14:11:21.152872 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYERV2:GstPadImpl.cpp(339) onPadProbeInfo probe id 1 found
+Oct 16 14:11:21.152898 amazon-dc5c3
+== processes
+runner      4103       1  0 14:04 ?        00:00:00 /home/runner/vega/telemetry/telemetry -baseDir /home/runner/vega/telemetry -sendLogsToFile
+runner      6444    6443  0 14:08 ?        00:00:00 bash vega/scripts/vvd-smoke.sh
+runner      6684    6444  0 14:08 ?        00:00:00 python3 vega/scripts/range-server.py /tmp/test-media 8000
+runner      6837       1 99 14:08 ?        00:10:24 /home/runner/vega/sdk/vega-sdk/main/0.24.12112/vvd/images/tv/vmtools/agent/qemu/linux-x86_64/vega-virtual-device -avd-arch x86_64 -skindir /home/runner/vega/sdk/vega-sdk/main/0.24.12112/vvd/images/tv/vmtools/agent/skins -skin tv-remote -ports 5554,5555 -no-window -gpu off -dns-server auto -sysdir /home/runner/vega/sdk/vega-sdk/main/0.24.12112/vvd/instances/5c913ebd-b63c-4126-acb5-a335eefc0d44 -datadir /home/runner/vega/sdk/vega-sdk/main/0.24.12112/vvd/instances/5c913ebd-b63c-4126-acb5-a335eefc0d44 -data /home/runner/vega/sdk/vega-sdk/main/0.24.12112/vvd/instances/5c913ebd-b63c-4126-acb5-a335eefc0d44/userdata.qcow2 -keyboard-mapping KEY_ESC:KEY_BACK,KEY_F1:KEY_HOMEPAGE,KEY_F2:KEY_MENU,KEY_F3:KEY_REWIND,KEY_F4:KEY_PLAYPAUSE,KEY_F5:KEY_FASTFORWARD -qemu -qmp unix:/tmp/qmp-socket-5554.sock,server,nowait
+runner      6839       1  0 14:08 ?        00:00:00 /home/runner/vega/sdk/vega-sdk/main/0.24.12112/vvd/images/tv/vmtools/agent/crashpad_handler --no-rate-limit --database=/tmp/android-runner/emu-crash-34.1.15.db --url=https://clients2.google.com/cr/report --annotation=prod=AndroidEmulator --annotation=ver=34.1.15-1.0.275.0 --initial-client-fd=4 --shared-client-connection
+runner      6846       1  0 14:08 ?        00:00:00 /home/runner/vega/sdk/vega-sdk/main/0.24.12112/vvd/images/tv/vmtools/agent/crashpad_handler --no-rate-limit --database=/tmp/android-runner/emu-crash-34.1.15.db --url=https://clients2.google.com/cr/report --annotation=prod=AndroidEmulator --annotation=ver=34.1.15-1.0.275.0 --initial-client-fd=5 --shared-client-connection
+runner      6897    6837  0 14:08 ?        00:00:01 /home/runner/vega/sdk/vega-sdk/main/0.24.12112/vvd/images/tv/vmtools/agent/netsimd
+runner      8089       1  0 14:09 ?        00:00:00 /bin/bash /home/runner/vega/sdk/vega-sdk/main/0.24.12112/workspace/env/KeplerCLIVegaDeviceAdaptor-2.0/runtime/bin/vda -s emulator-5554 shell loggingctl log -f -o short_precise
+runner      8093    8089  0 14:09 ?        00:00:00 /home/runner/vega/sdk/vega-sdk/main/0.24.12112/workspace/env/KeplerCLIVegaDeviceAdaptor-2.0/runtime/bin/../x86_64-Linux/bin/vda -s emulator-5554 shell loggingctl log -f -o short_precise
+runner      8096       1  0 14:09 ?        00:00:00 /bin/bash /home/runner/vega/sdk/vega-sdk/main/0.24.12112/workspace/env/KeplerCLIVegaDeviceAdaptor-2.0/runtime/bin/vda -s emulator-5554 shell loggingctl log -f -o short_precise -v com.firetube.tv.vega
+runner      8100    8096  0 14:09 ?        00:00:00 /home/runner/vega/sdk/vega-sdk/main/0.24.12112/workspace/env/KeplerCLIVegaDeviceAdaptor-2.0/runtime/bin/../x86_64-Linux/bin/vda -s emulator-5554 shell loggingctl log -f -o short_precise -v com.firetube.tv.vega

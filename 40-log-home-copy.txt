@@ -1,0 +1,1 @@
+/tmp/40-log-home.log: 1 file pulled, 0 skipped. 11.3 MB/s (13183 bytes in 0.001s)

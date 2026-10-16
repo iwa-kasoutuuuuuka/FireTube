@@ -1,0 +1,10 @@
+Oct 16 14:14:21.097156 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I GWSI_LOG:126 KB key:XF86Back state:1 evtId:16
+Oct 16 14:14:21.097486 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I GWSI_LOG:127 Consumed key:XF86Back state:1 evtId:16
+Oct 16 14:14:21.107872 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I GWSI_LOG:128 KB key:XF86Back state:0 evtId:17
+Oct 16 14:14:21.108289 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I GWSI_LOG:129 Consumed key:XF86Back state:0 evtId:17
+Oct 16 14:14:21.126014 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] KeplerVideoSurfaceView: componentWillUnmount
+Oct 16 14:14:21.126142 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] MediaPlayer: pause
+Oct 16 14:14:21.126325 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:+ HtmlMediaElement::pause
+Oct 16 14:14:21.126359 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:[MSE_EME] virtual void ignite::media::MediaPlayerPipelineImpl::pause(): MediaPlayerPipelineImpl::pause
+Oct 16 14:14:21.126383 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:- HtmlMediaElement::pause
+Oct 16 14:14:21.129665 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I Volta:GWSIWindow::~GWSIWindow addr: 0x562f972e36f0

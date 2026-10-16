@@ -1,0 +1,23 @@
+$ vega device copy-from --help
+Copy a file/files from a device
+
+Usage: vega device copy-from [options]
+
+Options:
+  -d, --device       Serial number of a connected device. Defaults to the
+                     connected device if there is only one.
+                                                          [string] [default: ""]
+  -s, --source       Source file or directory on the host    [string] [required]
+  -o, --destination  Destination file or directory on the device
+                                                             [string] [required]
+  -h, -?, --help     Show help                                         [boolean]
+
+Examples:
+  vega device copy-from --device            Copy "/tmp/my_source_file" on device
+  GXX2A1234567890A --source                 "GXX2A1234567890A" to
+  /tmp/my_source_file --destination         "/tmp/my_dest_file" on the host
+  /tmp/my_dest_file
+  vega device copy-from --device            Copy "/tmp/my_source_file" on device
+  GXX2A1234567890A --source                 "GXX2A1234567890A" to "/tmp" on the
+  /tmp/my_source_file --destination /tmp    host
+[exit 0]

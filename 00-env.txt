@@ -1,0 +1,8 @@
+vpkg: vega/app/build/x86_64-release/firetube_x86_64.vpkg
+vvd: /home/runner/vega/sdk/vega-sdk/main/0.24.12112/vvd
+crw-rw-rw- 1 root kvm 10, 232 Oct 16 14:03 /dev/kvm
+4
+4
+               total        used        free      shared  buff/cache   available
+Mem:              15           0           3           0          10          14
+Swap:              2           0           2

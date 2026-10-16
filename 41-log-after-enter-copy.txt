@@ -1,0 +1,1 @@
+/tmp/41-log-after-enter.log: 1 file pulled, 0 skipped. 0.3 MB/s (13133 bytes in 0.044s)

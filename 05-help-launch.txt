@@ -1,0 +1,23 @@
+$ vega device launch-app --help
+Launch an app on a device
+
+Usage: vega device launch-app [options]
+
+Options:
+  -d, --device            Serial number of a connected device. Defaults to the
+                          connected device if there is only one.
+                                                          [string] [default: ""]
+  -a, --appName           App name, e.g. com.example.app.main
+                                                          [string] [default: ""]
+      --directory, --dir  Project directory if app name is not provided
+                                                          [string] [default: ""]
+  -h, -?, --help          Show help                                    [boolean]
+
+Examples:
+  vega device launch-app --device           Launch "com.mycompany.myapp.main" on
+  GXX2A1234567890A --appName                device "GXX2A1234567890A"
+  com.mycompany.myapp.main
+  vega device launch-app --device           Launch the app built in
+  GXX2A1234567890A --directory              "/my_project_directory" on device
+  /my_project_directory                     "GXX2A1234567890A"
+[exit 0]

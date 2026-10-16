@@ -1,0 +1,4 @@
+$ vega virtual-device status
+2026/10/16 14:09:20 [INFO] SDK Version obtained: 0.24.12112
+{"running":true,"process_ids":{"qemu":6837}}
+[exit 0]

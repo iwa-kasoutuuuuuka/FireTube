@@ -1,0 +1,33 @@
+$ vega virtual-device start --help
+vega virtual-device start
+
+Starts a Vega Virtual Device instance
+
+Options:
+  -p, --vvdPath, --path            Path to Vega Virtual Device package root. If
+                                   not provided, location of the Vega Virtual
+                                   Device installed with this CLI will be used
+                                                          [string] [default: ""]
+  -t, --timeoutSeconds, --timeout  Time in seconds to wait for Vega Virtual
+                                   Device to start before failing.
+                                                          [number] [default: 60]
+  -g, --gui                        Launches the virtual devices with GUI. Usage:
+                                   --gui | --gui=true | --no-gui | --gui=false
+                                   (default: true).    [boolean] [default: true]
+  -a, --gl-accel                   Launches the virtual device with graphics
+                                   acceleration. Can only be turned off on
+                                   linux. Usage: --gl-accel | --gl-accel=true |
+                                   --no-gl-accel | --gl-accel=false (default:
+                                   true).              [boolean] [default: true]
+  -d, --displayRes, --display-res  Custom display resolution for the virtual
+                                   device in format "width,height". (default [])
+                                                          [string] [default: []]
+  -h, -?, --help                   Show help                           [boolean]
+
+Examples:
+  start -p <path-to-virtual-device>       Launches the Vega Virtual Device found
+                                          at the provided path
+  start -p <path-to-virtual-device> -t 5  Launches the Vega Virtual Device found
+                                          at the provided path, timing out at 5
+                                          seconds
+[exit 0]

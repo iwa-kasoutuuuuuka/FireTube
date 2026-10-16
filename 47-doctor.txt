@@ -1,0 +1,15 @@
+$ dev doctor --directory /home/runner/work/_temp/out/doctor --since 30m --appName com.firetube.tv.vega.main
+  Collecting metadata          done
+  Collecting vvd-log           done
+  Collecting aemu-out          done
+  Collecting aemu-err          done
+  Collecting manifest          done
+  Collecting main-log          skipped (no files found)
+  Collecting system-log        skipped (no files found)
+  Collecting acr-reports       skipped (no files found)
+  Collecting tombstones        skipped (no files found)
+
+Bundle: /home/runner/work/_temp/out/doctor/vvd-doctor-2026-10-16T14-14-45.zip
+
+Having issues? Report a bug: https://community.amazondeveloper.com
+[exit 0]

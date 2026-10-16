@@ -1,0 +1,16 @@
+$ vega device run-cmd --help
+Run a command on a device
+
+Usage: vega device run-cmd [options]
+
+Options:
+  -d, --device    Serial number of a connected device. Defaults to the connected
+                  device if there is only one.            [string] [default: ""]
+  -c, --command   The command to run, enclosed in single quotes ''
+                                                              [array] [required]
+  -h, -?, --help  Show help                                            [boolean]
+
+Examples:
+  vega device run-cmd --device              Run "ls /tmp" on device
+  GXX2A1234567890A --command 'ls /tmp'      "GXX2A1234567890A"
+[exit 0]

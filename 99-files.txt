@@ -1,0 +1,56 @@
+/home/runner/work/_temp/out:
+total 2848
+drwxr-xr-x 4 runner runner    4096 Oct 16 14:14 .
+drwxr-xr-x 6 runner runner    4096 Oct 16 14:08 ..
+-rw-r--r-- 1 runner runner     376 Oct 16 14:08 00-env.txt
+-rw-r--r-- 1 runner runner    1979 Oct 16 14:08 01-help-start.txt
+-rw-r--r-- 1 runner runner     645 Oct 16 14:08 02-help-run-cmd.txt
+-rw-r--r-- 1 runner runner     961 Oct 16 14:08 03-help-copy-logs.txt
+-rw-r--r-- 1 runner runner     533 Oct 16 14:08 04-help-log-stream.txt
+-rw-r--r-- 1 runner runner    1118 Oct 16 14:08 05-help-launch.txt
+-rw-r--r-- 1 runner runner     320 Oct 16 14:09 10-start.txt
+-rw-r--r-- 1 runner runner       7 Oct 16 14:09 11-boot.txt
+-rw-r--r-- 1 runner runner     115 Oct 16 14:09 13-device-list.txt
+-rw-r--r-- 1 runner runner     143 Oct 16 14:09 14-vvd-status.txt
+-rw-r--r-- 1 runner runner     151 Oct 16 14:09 21-install.txt
+-rw-r--r-- 1 runner runner     124 Oct 16 14:09 21b-installed.txt
+-rw-r--r-- 1 runner runner     103 Oct 16 14:09 22-launch.txt
+-rw-r--r-- 1 runner runner     217 Oct 16 14:10 23-log-info.txt
+-rw-r--r-- 1 runner runner    1109 Oct 16 14:10 23b-copy-from-help.txt
+-rw-r--r-- 1 runner runner     120 Oct 16 14:10 24-is-running.txt
+-rw-r--r-- 1 runner runner       0 Oct 16 14:10 40-log-home-app.txt
+-rw-r--r-- 1 runner runner      82 Oct 16 14:10 40-log-home-copy.txt
+-rw-r--r-- 1 runner runner   13183 Oct 16 14:10 40-log-home.log
+-rw-r--r-- 1 runner runner    6689 Oct 16 14:12 41-log-after-enter-app.txt
+-rw-r--r-- 1 runner runner      88 Oct 16 14:12 41-log-after-enter-copy.txt
+-rw-r--r-- 1 runner runner   13133 Oct 16 14:11 41-log-after-enter.log
+-rw-r--r-- 1 runner runner     120 Oct 16 14:12 42-is-running.txt
+-rw-r--r-- 1 runner runner    1371 Oct 16 14:14 43-log-after-keys-app.txt
+-rw-r--r-- 1 runner runner      88 Oct 16 14:14 43-log-after-keys-copy.txt
+-rw-r--r-- 1 runner runner   13178 Oct 16 14:14 43-log-after-keys.log
+-rw-r--r-- 1 runner runner     120 Oct 16 14:14 44-is-running.txt
+-rw-r--r-- 1 runner runner     205 Oct 16 14:14 46-copy-logs.txt
+-rw-r--r-- 1 runner runner     668 Oct 16 14:14 47-doctor.txt
+-rw-r--r-- 1 runner runner  353995 Oct 16 14:14 48-main-log-app.txt
+-rw-r--r-- 1 runner runner     852 Oct 16 14:14 50-keys.txt
+-rw-r--r-- 1 runner runner 1048726 Oct 16 14:11 60-stream-app.txt
+-rw-r--r-- 1 runner runner 1048744 Oct 16 14:10 61-stream-all.txt
+-rw-r--r-- 1 runner runner  194886 Oct 16 14:14 62-stream-app-lines.txt
+-rw-r--r-- 1 runner runner   28350 Oct 16 14:14 63-stream-key.txt
+-rw-r--r-- 1 runner runner    4030 Oct 16 14:12 70-media-server.txt
+-rw-r--r-- 1 runner runner      96 Oct 16 14:14 90-vvd-stop.txt
+-rw-r--r-- 1 runner runner       0 Oct 16 14:14 99-files.txt
+drwxr-xr-x 2 runner runner    4096 Oct 16 14:14 device-logs
+drwxr-xr-x 2 runner runner    4096 Oct 16 14:14 doctor
+-rw-r--r-- 1 runner runner   41656 Oct 16 14:14 vvd-logs-final.txt
+
+/home/runner/work/_temp/out/device-logs:
+total 8
+drwxr-xr-x 2 runner runner 4096 Oct 16 14:14 .
+drwxr-xr-x 4 runner runner 4096 Oct 16 14:14 ..
+
+/home/runner/work/_temp/out/doctor:
+total 16
+drwxr-xr-x 2 runner runner 4096 Oct 16 14:14 .
+drwxr-xr-x 4 runner runner 4096 Oct 16 14:14 ..
+-rw-rw-rw- 1 runner runner 4423 Oct 16 14:14 vvd-doctor-2026-10-16T14-14-45.zip

@@ -1,0 +1,3 @@
+$ dev is-app-running --appName com.firetube.tv.vega.main
+com.firetube.tv.vega.main is running on VirtualDevice
+[exit 0]

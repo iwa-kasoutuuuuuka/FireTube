@@ -1,0 +1,75 @@
+Oct 16 14:10:31.043642 amazon-dc5c33d972213c41 acr_core_dump[4411]: ACR_BEGIN COMM:stem{family=com SIG:6 PID:4408 T:1792159831 UID:5000 GID:5000 TID:2 CS:18446744073709551615 P:!usr!bin!stem-init
+Oct 16 14:10:31.043642 amazon-dc5c33d972213c41 systemd-journald[324]: Journal header limits reached or header out-of-date, rotating.
+Oct 16 14:10:31.045283 amazon-dc5c33d972213c41 acr_core_dump[4411]: Locked /var/lib/data/acr/tmp/fingerprints/stem{family=com_6_7b15f81b1886a2eb9790d0dc39fd1c44
+Oct 16 14:10:31.045342 amazon-dc5c33d972213c41 acr_core_dump[4411]: Hit crash throttle, crash report skipped for process !usr!bin!stem-init (PID=4408).                        Please wait 60 seconds before observing new acrs of the same fingerprint.
+Oct 16 14:10:31.045361 amazon-dc5c33d972213c41 acr_core_dump[4411]: LcmKillReasonProvider::Fetch() called before minidump capture — call SetMinidumpComplete() first
+Oct 16 14:10:31.045378 amazon-dc5c33d972213c41 acr_core_dump[4411]: LcmKillReasonProvider::Fetch() called before minidump capture — call SetMinidumpComplete() first
+Oct 16 14:10:31.045398 amazon-dc5c33d972213c41 acr_core_dump[4411]: LcmKillReasonProvider::Fetch() called before minidump capture — call SetMinidumpComplete() first
+Oct 16 14:10:31.045423 amazon-dc5c33d972213c41 acr_core_dump[4411]: LcmKillReasonProvider::Fetch() called before minidump capture — call SetMinidumpComplete() first
+Oct 16 14:10:31.045438 amazon-dc5c33d972213c41 acr_core_dump[4411]: LcmKillReasonProvider::Fetch() called before minidump capture — call SetMinidumpComplete() first
+Oct 16 14:10:31.045452 amazon-dc5c33d972213c41 acr_core_dump[4411]: LcmKillReasonProvider::Fetch() called before minidump capture — call SetMinidumpComplete() first
+Oct 16 14:10:31.045469 amazon-dc5c33d972213c41 acr_core_dump[4411]: LcmKillReasonProvider::Fetch() called before minidump capture — call SetMinidumpComplete() first
+Oct 16 14:10:31.045484 amazon-dc5c33d972213c41 acr_core_dump[4411]: Add POSIX signal failed, rc: -5
+Oct 16 14:10:31.045500 amazon-dc5c33d972213c41 acr_core_dump[4411]: Crash metric generation failed
+Oct 16 14:10:31.045518 amazon-dc5c33d972213c41 acr_core_dump[4411]: Unlocked /var/lib/data/acr/tmp/fingerprints/stem{family=com_6_7b15f81b1886a2eb9790d0dc39fd1c44
+Oct 16 14:10:31.045538 amazon-dc5c33d972213c41 acr_core_dump[4411]: LcmKillReasonProvider::Fetch() called before minidump capture — call SetMinidumpComplete() first
+Oct 16 14:10:31.045564 amazon-dc5c33d972213c41 acr_core_dump[4411]: Binder: Creating IPCN runtime on-demand via ipcn_get_runtime(). Note: this is probably not what you want and you should invoke ipcn_create with appropriate configuration parameters for your application's use case.
+Oct 16 14:10:31.045587 amazon-dc5c33d972213c41 acr_core_dump[4411]: Binder: Attempting to open binder driver with thread_count=8 max_transaction_size=1048576 bytes
+Oct 16 14:10:31.045604 amazon-dc5c33d972213c41 acr_core_dump[4411]: Binder: Opened binder driver
+Oct 16 14:10:31.046175 amazon-dc5c33d972213c41 servicergrd[1027]: INFO com.amazon.appfwk.servicergrd: binder_request{cid="72200a21360693c5"}: processed request, request="connect", service="com.amazon.ace.metrics", client=Credentials { pid: 4411, uid: 0, gid: 0, security_ctx: "System::Privileged" }, duration=323.493µs
+Oct 16 14:10:31.046988 amazon-dc5c33d972213c41 acr_core_dump_native[4411]: I ACE-AIPC: sync client_bind_callback: com.amazon.ace.metrics cp=0x55f50e3f2f80 err=0
+Oct 16 14:10:31.047167 amazon-dc5c33d972213c41 acr_core_dump_native[4411]: I ACE-AIPC: client [acr_core_dump_native]--->server [ace_metric_daemon] :  [151]:[com.amazon.ace.metrics]  <sync> channel=0x55f50e3f2b40 cp=0x55f50e3f2f80
+Oct 16 14:10:31.047195 amazon-dc5c33d972213c41 acr_core_dump_native[4411]: I ACE-AIPC: client_release: count 2 tid:4411 channel=0x55f50e3f2b40 ret=0
+Oct 16 14:10:31.049091 amazon-dc5c33d972213c41 servicergrd[1027]: Binder: Binder handle 295 died, dispatching death
+Oct 16 14:10:31.049165 amazon-dc5c33d972213c41 servicergrd[1027]: Binder: Dispatching death to 0x7f1a50012280 for handle 295
+Oct 16 14:10:31.430051 amazon-dc5c33d972213c41 powerd[1556]: I ACE_MW_POWER:ace_power_mgr_acquireResource: caller=PuffinApplication, resType=1, isFlag=F, flags=00000000, timeout=0, pid=2210
+Oct 16 14:10:31.430451 amazon-dc5c33d972213c41 powerd[1556]: I ACE_MW_POWER:ace_power_mgr_releaseResource: caller=PuffinApplication, resType=1, isFlag=F, flags=00000000, timeout=0
+Oct 16 14:10:31.430531 amazon-dc5c33d972213c41 powerd[1556]: I ACE_MW_POWER:ace_power_mgr_acquireResource: caller=PuffinApplication, resType=1, isFlag=F, flags=00000000, timeout=0, pid=2210
+Oct 16 14:10:31.430823 amazon-dc5c33d972213c41 powerd[1556]: I ACE_MW_POWER:ace_power_mgr_releaseResource: caller=PuffinApplication, resType=1, isFlag=F, flags=00000000, timeout=0
+Oct 16 14:10:31.478023 amazon-dc5c33d972213c41 powerd[1556]: I ACE_MW_POWER:ace_power_mgr_acquireResource: caller=PuffinApplication, resType=1, isFlag=F, flags=00000000, timeout=0, pid=2210
+Oct 16 14:10:31.478322 amazon-dc5c33d972213c41 powerd[1556]: I ACE_MW_POWER:ace_power_mgr_releaseResource: caller=PuffinApplication, resType=1, isFlag=F, flags=00000000, timeout=0
+Oct 16 14:10:31.478413 amazon-dc5c33d972213c41 powerd[1556]: I ACE_MW_POWER:ace_power_mgr_acquireResource: caller=PuffinApplication, resType=1, isFlag=F, flags=00000000, timeout=0, pid=2210
+Oct 16 14:10:31.478559 amazon-dc5c33d972213c41 powerd[1556]: I ACE_MW_POWER:ace_power_mgr_releaseResource: caller=PuffinApplication, resType=1, isFlag=F, flags=00000000, timeout=0
+Oct 16 14:10:31.611915 amazon-dc5c33d972213c41 stemd[1064]: INFO com.amazon.appfwk.stemd: loop:event{type=Task}:task{type=Prewarm}: prewarming new stem, prewarm_request="com.amazon.family.webview"
+Oct 16 14:10:31.612145 amazon-dc5c33d972213c41 stemd[1064]: INFO com.amazon.appfwk.stemd: loop:event{type=Task}:task{type=Prewarm}: preparing to spawn stem, program=/usr/bin/stem-init, env=["STEMD_LAUNCH_ENABLE=true", "APMF_CONFIG_PATH=/mnt", "JS_BUNDLES_PATH=/usr/local/share/bundles", "LD_LIBRARY_PATH=/mnt:"], args=["sockfd=21"]
+Oct 16 14:10:31.612885 amazon-dc5c33d972213c41 stemd[1064]: INFO com.amazon.appfwk.stemd: loop:event{type=Task}:task{type=Prewarm}: successfully spawned stem, id=180, pid=4415, sockfd=21
+Oct 16 14:10:31.628552 amazon-dc5c33d972213c41 stemd[1064]: INFO com.amazon.appfwk.stemd: loop:event{type=StemEvent}:stem{pid=4415 id=180 state="Alive"}: connection with stem was dropped
+Oct 16 14:10:31.628579 amazon-dc5c33d972213c41 stemd[1064]: INFO com.amazon.appfwk.stemd: loop:event{type=StemEvent}:stem{pid=4415 id=180 state="Alive"}: cleaning up stem, stem=(id=180, pid=4415), cleanup_type=terminating
+Oct 16 14:10:31.628628 amazon-dc5c33d972213c41 stemd[1064]: INFO com.amazon.appfwk.stemd: loop:event{type=StemEvent}:stem{pid=4415 id=180 state="Alive"}: no stem pid to remove
+Oct 16 14:10:31.630064 amazon-dc5c33d972213c41 stemd[1064]: INFO com.amazon.appfwk.stemd: loop:event{type=StemEvent}:stem{pid=4415}: stem was killed: sig=SIGKILL, coredump=false
+Oct 16 14:10:31.630102 amazon-dc5c33d972213c41 stemd[1064]: INFO com.amazon.appfwk.stemd: loop:event{type=StemEvent}:stem{pid=4415}: cleaning up stem sandbox, id=180, path=/mnt/sandbox_180
+Oct 16 14:10:31.637230 amazon-dc5c33d972213c41 acr_core_dump[4418]: failed to open procfs file: /proc/4416/attr/current, skipping lcm queries
+Oct 16 14:10:31.637394 amazon-dc5c33d972213c41 acr_core_dump[4418]: failure to grab cmdline name, fall back to proc path
+Oct 16 14:10:31.637411 amazon-dc5c33d972213c41 acr_core_dump[4418]: Process '!usr!bin!stem-init' (PID=4416) crashed with signal 6
+Oct 16 14:10:31.637423 amazon-dc5c33d972213c41 acr_core_dump[4418]: Cannot find library name for process !usr!bin!stem-init
+Oct 16 14:10:31.637433 amazon-dc5c33d972213c41 acr_core_dump[4418]: ACR_BEGIN COMM:stem{family=com SIG:6 PID:4416 T:1792159831 UID:5000 GID:5000 TID:2 CS:18446744073709551615 P:!usr!bin!stem-init
+Oct 16 14:10:31.637453 amazon-dc5c33d972213c41 acr_core_dump[4418]: Locked /var/lib/data/acr/tmp/fingerprints/stem{family=com_6_7b15f81b1886a2eb9790d0dc39fd1c44
+Oct 16 14:10:31.637479 amazon-dc5c33d972213c41 acr_core_dump[4418]: Hit crash throttle, crash report skipped for process !usr!bin!stem-init (PID=4416).                        Please wait 60 seconds before observing new acrs of the same fingerprint.
+Oct 16 14:10:31.637501 amazon-dc5c33d972213c41 acr_core_dump[4418]: LcmKillReasonProvider::Fetch() called before minidump capture — call SetMinidumpComplete() first
+Oct 16 14:10:31.637520 amazon-dc5c33d972213c41 acr_core_dump[4418]: LcmKillReasonProvider::Fetch() called before minidump capture — call SetMinidumpComplete() first
+Oct 16 14:10:31.637541 amazon-dc5c33d972213c41 acr_core_dump[4418]: LcmKillReasonProvider::Fetch() called before minidump capture — call SetMinidumpComplete() first
+Oct 16 14:10:31.637554 amazon-dc5c33d972213c41 acr_core_dump[4418]: LcmKillReasonProvider::Fetch() called before minidump capture — call SetMinidumpComplete() first
+Oct 16 14:10:31.637563 amazon-dc5c33d972213c41 acr_core_dump[4418]: LcmKillReasonProvider::Fetch() called before minidump capture — call SetMinidumpComplete() first
+Oct 16 14:10:31.637573 amazon-dc5c33d972213c41 acr_core_dump[4418]: LcmKillReasonProvider::Fetch() called before minidump capture — call SetMinidumpComplete() first
+Oct 16 14:10:31.637585 amazon-dc5c33d972213c41 acr_core_dump[4418]: LcmKillReasonProvider::Fetch() called before minidump capture — call SetMinidumpComplete() first
+Oct 16 14:10:31.637595 amazon-dc5c33d972213c41 acr_core_dump[4418]: Add POSIX signal failed, rc: -5
+Oct 16 14:10:31.637605 amazon-dc5c33d972213c41 acr_core_dump[4418]: Crash metric generation failed
+Oct 16 14:10:31.637615 amazon-dc5c33d972213c41 acr_core_dump[4418]: Unlocked /var/lib/data/acr/tmp/fingerprints/stem{family=com_6_7b15f81b1886a2eb9790d0dc39fd1c44
+Oct 16 14:10:31.637625 amazon-dc5c33d972213c41 acr_core_dump[4418]: LcmKillReasonProvider::Fetch() called before minidump capture — call SetMinidumpComplete() first
+Oct 16 14:10:31.637637 amazon-dc5c33d972213c41 acr_core_dump[4418]: Binder: Creating IPCN runtime on-demand via ipcn_get_runtime(). Note: this is probably not what you want and you should invoke ipcn_create with appropriate configuration parameters for your application's use case.
+Oct 16 14:10:31.637651 amazon-dc5c33d972213c41 acr_core_dump[4418]: Binder: Attempting to open binder driver with thread_count=8 max_transaction_size=1048576 bytes
+Oct 16 14:10:31.637714 amazon-dc5c33d972213c41 acr_core_dump[4418]: Binder: Opened binder driver
+Oct 16 14:10:31.637929 amazon-dc5c33d972213c41 servicergrd[1027]: INFO com.amazon.appfwk.servicergrd: binder_request{cid="b1f292a578b40895"}: processed request, request="connect", service="com.amazon.ace.metrics", client=Credentials { pid: 4418, uid: 0, gid: 0, security_ctx: "System::Privileged" }, duration=296.782µs
+Oct 16 14:10:31.638544 amazon-dc5c33d972213c41 acr_core_dump_native[4418]: I ACE-AIPC: sync client_bind_callback: com.amazon.ace.metrics cp=0x559e7ccc9f80 err=0
+Oct 16 14:10:31.638978 amazon-dc5c33d972213c41 acr_core_dump_native[4418]: I ACE-AIPC: client [acr_core_dump_native]--->server [ace_metric_daemon] :  [152]:[com.amazon.ace.metrics]  <sync> channel=0x559e7ccc9b40 cp=0x559e7ccc9f80
+Oct 16 14:10:31.638993 amazon-dc5c33d972213c41 acr_core_dump_native[4418]: I ACE-AIPC: client_release: count 2 tid:4418 channel=0x559e7ccc9b40 ret=0
+Oct 16 14:10:31.640549 amazon-dc5c33d972213c41 servicergrd[1027]: Binder: Binder handle 295 died, dispatching death
+Oct 16 14:10:31.640736 amazon-dc5c33d972213c41 servicergrd[1027]: Binder: Dispatching death to 0x7f1a50010bf0 for handle 295
+Oct 16 14:10:31.942440 amazon-dc5c33d972213c41 powerd[1556]: I ACE_MW_POWER:ace_power_mgr_acquireResource: caller=MinervaMetrics, resType=1, isFlag=F, flags=00000000, timeout=0, pid=1289
+Oct 16 14:10:32.213164 amazon-dc5c33d972213c41 stemd[1064]: INFO com.amazon.appfwk.stemd: loop:event{type=Task}:task{type=Prewarm}: prewarming new stem, prewarm_request="com.amazon.family.webview"
+Oct 16 14:10:32.213324 amazon-dc5c33d972213c41 stemd[1064]: INFO com.amazon.appfwk.stemd: loop:event{type=Task}:task{type=Prewarm}: preparing to spawn stem, program=/usr/bin/stem-init, env=["STEMD_LAUNCH_ENABLE=true", "APMF_CONFIG_PATH=/mnt", "JS_BUNDLES_PATH=/usr/local/share/bundles", "LD_LIBRARY_PATH=/mnt:"], args=["sockfd=21"]
+Oct 16 14:10:32.214037 amazon-dc5c33d972213c41 stemd[1064]: INFO com.amazon.appfwk.stemd: loop:event{type=Task}:task{type=Prewarm}: successfully spawned stem, id=181, pid=4422, sockfd=21
+Oct 16 14:10:32.229989 amazon-dc5c33d972213c41 stemd[1064]: INFO com.amazon.appfwk.stemd: loop:event{type=StemEvent}:stem{pid=4422 id=181 state="Alive"}: connection with stem was dropped
+Oct 16 14:10:32.230028 amazon-dc5c33d972213c41 stemd[1064]: INFO com.amazon.appfwk.stemd: loop:event{type=StemEvent}:stem{pid=4422 id=181 state="Alive"}: cleaning up stem, stem=(id=181, pid=4422), cleanup_type=terminating
+Oct 16 14:10:32.230052 amazon-dc5c33d972213c41 stemd[1064]: INFO com.amazon.appfwk.stemd: loop:event{type=StemEvent}:stem{pid=4422 id=181 state="Alive"}: no stem pid to remove
+

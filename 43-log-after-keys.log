@@ -1,0 +1,75 @@
+Oct 16 14:14:20.850545 amazon-dc5c33d972213c41 systemd-journald[324]: Journal header limits reached or header out-of-date, rotating.
+Oct 16 14:14:21.095856 amazon-dc5c33d972213c41 inputd[1232]: I Inputd:onMessageReceivedStatic:1836: key event injection as driver requested by id=28 pid=7973 prio=INTERCEPT_HIGHEST_PRIORITY, TimeStamp=1792160061.095482 : keyType=EV_KEY : keyCode=[KEY_BACK] : state=up
+Oct 16 14:14:21.095946 amazon-dc5c33d972213c41 inputd[1232]: I Inputd:worker:122: Worker thread [Input_Processing] executing task
+Oct 16 14:14:21.096132 amazon-dc5c33d972213c41 inputd[1232]: I Inputd:accept:364: Back key up event: sending key press down event first
+Oct 16 14:14:21.096166 amazon-dc5c33d972213c41 inputd-cli[7973]: I ACE-AIPC: terminate_client(): Disconnect 852268155 channel=0x556837d855c0
+Oct 16 14:14:21.096219 amazon-dc5c33d972213c41 inputd[1232]: I Inputd:sendKeyToClient:2731: sending key to passthrough-capable client: id=10 pid=2300 prio=USAGE_STATS_PRIORITY: TimeStamp=1792160061.095482 : keyType=EV_KEY : keyCode=[KEY_BACK] : state=down
+Oct 16 14:14:21.096242 amazon-dc5c33d972213c41 inputd[1232]: I Inputd:sendKeyToClient:2731: sending key to passthrough-capable client: id=15 pid=2210 prio=PUFFIN_OBSERVER_PRIORITY: TimeStamp=1792160061.095482 : keyType=EV_KEY : keyCode=[KEY_BACK] : state=down
+Oct 16 14:14:21.096263 amazon-dc5c33d972213c41 inputd[1232]: I ACE-AIPC: service_death_release(): client_id=28 ref=0 channel=0x5578c051a6d0
+Oct 16 14:14:21.096290 amazon-dc5c33d972213c41 inputd[1232]: I ACE-AIPC: remove_client: Client [28] [0x7fd714043cd0] removed from service=60029 total=20
+Oct 16 14:14:21.096318 amazon-dc5c33d972213c41 inputd[1232]: I Inputd:sendKeyEvent:2824: id 20 is registered for key event device injection intercept, injecting [KEY_BACK] to the original input device
+Oct 16 14:14:21.097134 amazon-dc5c33d972213c41 inputd[1232]: I Inputd:inject_key:427: Input event successfully written to udev: TimeStamp=1792160061.095482 : keyType=EV_KEY : keyCode=[KEY_BACK] : state=down
+Oct 16 14:14:21.097156 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I GWSI_LOG:126 KB key:XF86Back state:1 evtId:16
+Oct 16 14:14:21.097437 amazon-dc5c33d972213c41 inputd-cli[7973]: I ACE-AIPC: client_release: count 1 tid:645 channel=0x556837d855c0 ret=0
+Oct 16 14:14:21.097467 amazon-dc5c33d972213c41 inputd-cli[7973]: I ACE-AIPC: client_release_on_service_death: count 0, tid:643 channel=0x556837d855c0 ret=0
+Oct 16 14:14:21.097486 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I GWSI_LOG:127 Consumed key:XF86Back state:1 evtId:16
+Oct 16 14:14:21.097509 amazon-dc5c33d972213c41 servicergrd[1027]: INFO com.amazon.appfwk.servicergrd: binder_request{cid="2f67d75d40626c10"}: processed request, request="unbind", service="IpcHandle { handle: ipcn_handle { _internal: 0x19, __internal: 0x0 }, on_death: false }", client=Credentials { pid: 7973, uid: 5000, gid: 0, security_ctx: "User::Pkg::15ee9f33-d1fd-47b5-9c49-54dc5374f2a3" }, duration=367.514µs
+Oct 16 14:14:21.099595 amazon-dc5c33d972213c41 servicergrd[1027]: Binder: Binder handle 414 died, dispatching death
+Oct 16 14:14:21.099917 amazon-dc5c33d972213c41 pkgmgrd[1142]: WARNING com.amazon.package_manager.service.ipcf4.skeleton: .endp_hdl.dth_ctx: [ssn: 95] Received endpoint's death callback.
+Oct 16 14:14:21.099959 amazon-dc5c33d972213c41 servicergrd[1027]: Binder: Dispatching death to 0x7f1a50016170 for handle 414
+Oct 16 14:14:21.100059 amazon-dc5c33d972213c41 lcm_service[1141]: WARNING com.amazon.lcm.app_control_ops.service.ipcf4.skeleton: .endp_hdl.dth_ctx: [ssn: 68] Received endpoint's death callback.
+Oct 16 14:14:21.100259 amazon-dc5c33d972213c41 pkgmgrd[1142]: Binder: Binder handle 35 died, dispatching death
+Oct 16 14:14:21.100289 amazon-dc5c33d972213c41 pkgmgrd[1142]: I pkgmgr-service-impl:[PackageManagerServiceImpl.cpp:316] Received request: 'client disconnected remove vendor tracking id listener' pid 7969
+Oct 16 14:14:21.100317 amazon-dc5c33d972213c41 lcm_service[1141]: Binder: Binder handle 35 died, dispatching death
+Oct 16 14:14:21.100350 amazon-dc5c33d972213c41 pkgmgrd[1142]: E pkgmgr-installer-util:[SecurityManagerWrapper.cpp:212] Security-Manager failed to get client uuid with error code Indicated resource not found 
+Oct 16 14:14:21.100378 amazon-dc5c33d972213c41 pkgmgrd[1142]: Binder: Dispatching death to 0x7f607c022db0 for handle 35
+Oct 16 14:14:21.100407 amazon-dc5c33d972213c41 lcm_service[1141]: Binder: Dispatching death to 0x7f8a4c008390 for handle 35
+Oct 16 14:14:21.100426 amazon-dc5c33d972213c41 servicergrd[1027]: Binder: Binder handle 416 died, dispatching death
+Oct 16 14:14:21.100440 amazon-dc5c33d972213c41 servicergrd[1027]: Binder: Dispatching death to 0x7f1a50016cd0 for handle 416
+Oct 16 14:14:21.101568 amazon-dc5c33d972213c41 stemd[1064]: INFO com.amazon.appfwk.stemd: loop:event{type=Task}:task{type=Prewarm}: prewarming new stem, prewarm_request="com.amazon.family.webview"
+Oct 16 14:14:21.102184 amazon-dc5c33d972213c41 stemd[1064]: INFO com.amazon.appfwk.stemd: loop:event{type=Task}:task{type=Prewarm}: preparing to spawn stem, program=/usr/bin/stem-init, env=["STEMD_LAUNCH_ENABLE=true", "APMF_CONFIG_PATH=/mnt", "JS_BUNDLES_PATH=/usr/local/share/bundles", "LD_LIBRARY_PATH=/mnt:"], args=["sockfd=21"]
+Oct 16 14:14:21.102336 amazon-dc5c33d972213c41 stemd[1064]: INFO com.amazon.appfwk.stemd: loop:event{type=Task}:task{type=Prewarm}: successfully spawned stem, id=547, pid=7982, sockfd=21
+Oct 16 14:14:21.106693 amazon-dc5c33d972213c41 inputd[1232]: I Inputd:sendKeyToClient:2731: sending key to passthrough-capable client: id=10 pid=2300 prio=USAGE_STATS_PRIORITY: TimeStamp=1792160061.095482 : keyType=EV_KEY : keyCode=[KEY_BACK] : state=up
+Oct 16 14:14:21.106955 amazon-dc5c33d972213c41 inputd[1232]: I Inputd:sendKeyToClient:2731: sending key to passthrough-capable client: id=15 pid=2210 prio=PUFFIN_OBSERVER_PRIORITY: TimeStamp=1792160061.095482 : keyType=EV_KEY : keyCode=[KEY_BACK] : state=up
+Oct 16 14:14:21.106992 amazon-dc5c33d972213c41 inputd[1232]: I Inputd:sendKeyEvent:2824: id 20 is registered for key event device injection intercept, injecting [KEY_BACK] to the original input device
+Oct 16 14:14:21.107018 amazon-dc5c33d972213c41 inputd[1232]: I Inputd:inject_key:427: Input event successfully written to udev: TimeStamp=1792160061.095482 : keyType=EV_KEY : keyCode=[KEY_BACK] : state=up
+Oct 16 14:14:21.107549 amazon-dc5c33d972213c41 inputd[1232]: I Inputd:sendKeyToClient:2731: sending key to passthrough-capable client: id=10 pid=2300 prio=USAGE_STATS_PRIORITY: TimeStamp=1792160061.095482 : keyType=EV_KEY : keyCode=[KEY_BACK] : state=short
+Oct 16 14:14:21.107596 amazon-dc5c33d972213c41 inputd[1232]: I Inputd:sendKeyToClient:2731: sending key to passthrough-capable client: id=15 pid=2210 prio=PUFFIN_OBSERVER_PRIORITY: TimeStamp=1792160061.095482 : keyType=EV_KEY : keyCode=[KEY_BACK] : state=short
+Oct 16 14:14:21.107656 amazon-dc5c33d972213c41 inputd[1232]: I Inputd:sendKeyEvent:2824: id 20 is registered for key event device injection intercept, injecting [KEY_BACK] to the original input device
+Oct 16 14:14:21.107683 amazon-dc5c33d972213c41 inputd[1232]: I Inputd:setDisplayPowerResource:690: Display Power Resource Released for Key Event [KEY_BACK]: Took 0.006ms
+Oct 16 14:14:21.107710 amazon-dc5c33d972213c41 inputd[1232]: I Inputd:worker:126: Worker thread [Input_Processing] task execution completed, current queue size 0 (ignoring tasks possibly added during previous task execution)
+Oct 16 14:14:21.107731 amazon-dc5c33d972213c41 inputd[1232]: I Inputd:operator():98: Worker thread [Input_Processing] queue is empty, starting to wait
+Oct 16 14:14:21.107822 amazon-dc5c33d972213c41 inputd[1232]: INFO com.amazon.kepler.activity_locking: ActivityLockImpl.cpp:53:unlock() UNLOCK reason:TactileInput lockId:10
+Oct 16 14:14:21.107847 amazon-dc5c33d972213c41 inputd[1232]: INFO com.amazon.kepler.activity_locking: ActivityLockingClient.cpp:461:getOrMakeConnectedIpcfProxy() getOrMakeConnectedIpcfProxy
+Oct 16 14:14:21.107872 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I GWSI_LOG:128 KB key:XF86Back state:0 evtId:17
+Oct 16 14:14:21.108239 amazon-dc5c33d972213c41 inputd[1232]: INFO com.amazon.kepler.activity_locking: ActivityLockingClient.cpp:603:removeMonitoredLock() removeMonitoredLock lockId:10
+Oct 16 14:14:21.108264 amazon-dc5c33d972213c41 inputd[1232]: I api:PowerManagerExtClient:InputManagerDaemon displayLocker is released
+Oct 16 14:14:21.108289 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I GWSI_LOG:129 Consumed key:XF86Back state:0 evtId:17
+Oct 16 14:14:21.108314 amazon-dc5c33d972213c41 lcm_service[1141]: INFO com.amazon.kepler.activity_locking: ActivityLockingClient.cpp:156:onLockListChange() onLockListChange lockInfoArray.size():0
+Oct 16 14:14:21.108342 amazon-dc5c33d972213c41 lcm_service[1141]: INFO com.amazon.kepler.activity_locking: ActivityLockingClient.cpp:166:onLockListChange() Fanning out to 1 listeners
+Oct 16 14:14:21.108369 amazon-dc5c33d972213c41 lcm_service[1141]: INFO com.amazon.kepler.activity_locking: ActivityLockListListener.cpp:32:onLockListChange() ActivityLockListListener::onLockListChange() called with 0 locks
+Oct 16 14:14:21.108395 amazon-dc5c33d972213c41 lcm_service[1141]: I lcm-still-watching-activity-listener:[StillWatchingActivityListener.cpp:65] Tactile input ended, checking for active sessions
+Oct 16 14:14:21.108422 amazon-dc5c33d972213c41 lcm_service[1141]: I lcm-still-watching-handler:[StillWatchingHandler.cpp:478] Started still watching timer for 14400000 ms. Timer started at: 2026-10-16 14:14:21
+Oct 16 14:14:21.108448 amazon-dc5c33d972213c41 lcm_service[1141]: INFO com.amazon.kepler.activity_locking: ActivityLockListListener.cpp:67:onLockListChange() ActivityLockListListener::onLockListChange() finished
+Oct 16 14:14:21.119793 amazon-dc5c33d972213c41 powerd[1556]: I ACE_MW_POWER:ace_power_mgr_releaseResource: caller=InputManagerDaemon, resType=0, isFlag=T, flags=00000018, timeout=0
+Oct 16 14:14:21.119903 amazon-dc5c33d972213c41 hdmiManagerd[1356]: [682] EventHelper: DISPLAY ON
+Oct 16 14:14:21.119903 amazon-dc5c33d972213c41 hdmiManagerd[1356]: [682] HdmiControlManagerService: DisplayOnCallback.
+Oct 16 14:14:21.119903 amazon-dc5c33d972213c41 hdmiManagerd[1356]: [682] CecDeviceIFace: setPowerStatus devicelist not available. pending to set local device power status
+Oct 16 14:14:21.120008 amazon-dc5c33d972213c41 powerd[1556]: I ACE_MW_POWER:ace_power_mgr_flags_subsystem_vote: name=DISPLAY, isDisable=F, state(last)=2(3), total_count(last)=7(8), NormalStateTransition happened!
+Oct 16 14:14:21.120043 amazon-dc5c33d972213c41 powerd[1556]: I acehal_power:acePwrHal_setFlagsPolicy DISPLAY 2 1
+Oct 16 14:14:21.120071 amazon-dc5c33d972213c41 inputd[1232]: I Inputd:onPowerStateChanged:693: Adding power state change to worker thread for DISPLAY
+Oct 16 14:14:21.120510 amazon-dc5c33d972213c41 eventmgrd[1139]: INFO com.amazon.message_router.core: [MessageRouterService.cpp:1594] Channel: 37 from pid: 1556 Send request for message uri: broadcast://*/com.amazon.idle/time_to_screensaver, reqId: 164
+Oct 16 14:14:21.121858 amazon-dc5c33d972213c41 powerd[1556]: I acehal_power:setPowerState set power state to DISPLAY subsystem: normal to powersave, retval:0
+Oct 16 14:14:21.121939 amazon-dc5c33d972213c41 inputd[1232]: I Inputd:worker:122: Worker thread [Power_State] executing task
+Oct 16 14:14:21.121979 amazon-dc5c33d972213c41 inputd[1232]: I Inputd:worker:126: Worker thread [Power_State] task execution completed, current queue size 0 (ignoring tasks possibly added during previous task execution)
+Oct 16 14:14:21.122007 amazon-dc5c33d972213c41 inputd[1232]: I Inputd:operator():98: Worker thread [Power_State] queue is empty, starting to wait
+Oct 16 14:14:21.126014 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] KeplerVideoSurfaceView: componentWillUnmount
+Oct 16 14:14:21.126142 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] MediaPlayer: pause
+Oct 16 14:14:21.126325 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:+ HtmlMediaElement::pause
+Oct 16 14:14:21.126359 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:[MSE_EME] virtual void ignite::media::MediaPlayerPipelineImpl::pause(): MediaPlayerPipelineImpl::pause
+Oct 16 14:14:21.126383 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:- HtmlMediaElement::pause
+Oct 16 14:14:21.128219 amazon-dc5c33d972213c41 stemd[1064]: INFO com.amazon.appfwk.stemd: loop:event{type=StemEvent}:stem{pid=7982 id=547 state="Alive"}: connection with stem was dropped
+Oct 16 14:14:21.128262 amazon-dc5c33d972213c41 stemd[1064]: INFO com.amazon.appfwk.stemd: loop:event{type=StemEvent}:stem{pid=7982 id=547 state="Alive"}: cleaning up stem, stem=(id=547, pid=7982), cleanup_type=terminating
+Oct 16 14:14:21.128290 amazon-dc5c33d972213c41 stemd[1064]: INFO com.amazon.appfwk.stemd: loop:event{type=StemEvent}:stem{pid=7982 id=547 state="Alive"}: no stem pid to remove
+Oct 16 14:14:21.129665 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I Volta:GWSIWindow::~GWSIWindow addr: 0x562f972e36f0
+

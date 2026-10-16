@@ -1,0 +1,20 @@
+$ vega device copy-logs --help
+Copy logs/ACRs from a device
+
+Usage: vega device copy-logs [options]
+
+Options:
+  -d, --device            Serial number of a connected device. Defaults to the
+                          connected device if there is only one.
+                                                          [string] [default: ""]
+  -a, --artifact          Log artifact to copy, in the form 'artifact/provider'
+                          (e.g., 'system/var_log')           [string] [required]
+      --directory, --dir  Directory to copy the logs to on the host
+                                                             [string] [required]
+  -h, -?, --help          Show help                                    [boolean]
+
+Examples:
+  vega device copy-logs --device            Copy "system/var_log" logs/ACRs on
+  GXX2A1234567890A --artifact               device "GXX2A1234567890A" to "/tmp"
+  system/var_log --directory /tmp           on the host
+[exit 0]

@@ -1,0 +1,6 @@
+$ dev copy-logs --artifact main/var_log --directory /home/runner/work/_temp/out/device-logs
+Copying 6 log files
+.....
+
+Output is stored in /home/runner/work/_temp/out/device-logs/main-var_log.log
+[exit 0]

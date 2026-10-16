@@ -1,0 +1,134 @@
+Oct 16 14:09:44.778177 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'popular loaded', 98
+Oct 16 14:09:46.197352 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player ng', 'IOS_KIDS', 'A49-_ua1mbQ', '120ms', 'この動画は再生できません'
+Oct 16 14:09:46.950101 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'visitorData', 'ok', 'sts', 20711
+Oct 16 14:09:47.020051 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player ng', 'VISIONOS', 'A49-_ua1mbQ', '69ms', 'ログインして bot ではないことを確認してください'
+Oct 16 14:09:47.117730 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player ng', 'IOS_EMBEDDED', 'A49-_ua1mbQ', '97ms', 'コミュニティの保護に役立ちます。詳細'
+Oct 16 14:09:47.205671 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player ng', 'MWEB', 'A49-_ua1mbQ', '88ms', 'コミュニティの保護に役立ちます。詳細'
+Oct 16 14:09:47.306669 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player ng', 'ANDROID_KIDS', 'A49-_ua1mbQ', '101ms', 'この動画は再生できません'
+Oct 16 14:09:47.410302 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player ng', 'IOS', 'A49-_ua1mbQ', '104ms', 'コミュニティの保護に役立ちます。詳細'
+Oct 16 14:09:47.410392 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'all player clients failed', 'A49-_ua1mbQ', 'この動画は再生できません | ログインして bot ではないことを確認してください | コミュニティの保護に役立ちます。詳細 | コミュニティの保護に役立ちます。詳細 | この動画は再生できません | コミュニティの保護に役立ちます。詳細'
+Oct 16 14:10:50.543198 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I GWSI_LOG:32 Consumed key:Return state:1 evtId:2
+Oct 16 14:10:50.802806 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I GWSI_LOG:34 Consumed key:Return state:0 evtId:3
+Oct 16 14:10:50.980775 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E MEDIA_PLAYERV2:AudioFocusClientAdapter.cpp(75) getAudioFocusClientId getAudioFocusClientId clientId = 1
+Oct 16 14:10:50.993382 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] setDefaultSeekIntervalInSec seekInterval 10
+Oct 16 14:10:50.996254 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player start', 'A49-_ua1mbQ'
+Oct 16 14:10:50.996266 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'stream info', 'A49-_ua1mbQ', 'DASH 240p', 'captions', 0
+Oct 16 14:10:50.996278 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'play source', 'A49-_ua1mbQ', 'DASH 240p', 'CI', 'resumeAt', 0
+Oct 16 14:10:51.003984 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E MEDIA_PLAYERV2:AudioFocusClientAdapter.cpp(137) releaseAudioFocus  Client has never requested Audiofocus
+Oct 16 14:10:51.010185 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E MEDIA_PLAYERV2:AudioFocusClientAdapter.cpp(75) getAudioFocusClientId getAudioFocusClientId clientId = 2
+Oct 16 14:10:51.030806 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E MEDIA_PLAYERV2:GstPipelineImpl.cpp(651) getPlaybackDurationMs [0x7fe1706bb590] Failed to get duration. Internal error
+Oct 16 14:10:51.030827 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E MEDIA_PLAYERV2:GstPipelineImpl.cpp(480) handleDurationChanged Failed to get duration
+Oct 16 14:10:51.030847 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E MEDIA_PLAYERV2:MediaPlayerMetricsHelper.cpp(127) extractCodecFromPipeline mediasourcebin element not found
+Oct 16 14:10:51.038580 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E MEDIA_PLAYERV2:GstPipelineImpl.cpp(651) getPlaybackDurationMs [0x7fe1706e47d0] Failed to get duration. Internal error
+Oct 16 14:10:51.038645 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E MEDIA_PLAYERV2:GstPipelineImpl.cpp(480) handleDurationChanged Failed to get duration
+Oct 16 14:10:51.038672 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E MEDIA_PLAYERV2:MediaPlayerMetricsHelper.cpp(127) extractCodecFromPipeline mediasourcebin element not found
+Oct 16 14:10:51.077655 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E MEDIA_PLAYERV2:GstCapsImpl.cpp(100) getString The field original-media-type does not exist or may not contain a string
+Oct 16 14:10:51.077687 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E MEDIA_PLAYERV2:MediaDemuxerImpl.cpp(461) onPadAdded demux unknown original media type
+Oct 16 14:10:51.077770 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E MEDIA_PLAYERV2:GstCapsImpl.cpp(100) getString The field original-media-type does not exist or may not contain a string
+Oct 16 14:10:51.094052 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E MEDIA_PLAYERV2:GstElementFactoryImpl.cpp(40) createGstElementInternal  gst_element_factory_make failed. returned (nil)
+Oct 16 14:10:51.094079 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E MEDIA_PLAYERV2:GstElementFactoryImpl.cpp(54) create Failed to create gst element of type: capsxform.
+Oct 16 14:10:51.099913 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E MEDIA_PLAYERV2:GstCapsImpl.cpp(100) getString The field original-media-type does not exist or may not contain a string
+Oct 16 14:10:51.100068 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E MEDIA_PLAYERV2:MediaDemuxerImpl.cpp(461) onPadAdded demux unknown original media type
+Oct 16 14:10:51.100184 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E MEDIA_PLAYERV2:GstCapsImpl.cpp(100) getString The field original-media-type does not exist or may not contain a string
+Oct 16 14:10:51.100234 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E MEDIA_PLAYERV2:GstElementFactoryImpl.cpp(40) createGstElementInternal  gst_element_factory_make failed. returned (nil)
+Oct 16 14:10:51.100262 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E MEDIA_PLAYERV2:GstElementFactoryImpl.cpp(54) create Failed to create gst element of type: capsxform.
+Oct 16 14:10:51.168189 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W MEDIA_PLAYERV2:GstPipelineImpl.cpp(728) getSeekRangeMs [0x7fe1706bb590] Seek Not Enabled
+Oct 16 14:10:51.171876 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E MEDIA_PLAYERV2:PlaybackPipelineBuilderImpl.cpp(119) build +
+Oct 16 14:10:51.190007 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E MEDIA_PLAYERV2:GstCapsImpl.cpp(100) getString The field color-range does not exist or may not contain a string
+Oct 16 14:10:51.205357 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E MEDIA_PLAYERV2:PlaybackPipelineBuilderImpl.cpp(603) operator() Invalid Sink Type = video/
+Oct 16 14:10:51.205407 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E MEDIA_PLAYERV2:PlaybackPipelineBuilderImpl.cpp(603) operator() Invalid Sink Type = video/
+Oct 16 14:10:51.205436 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E MEDIA_PLAYERV2:PlaybackPipelineBuilderImpl.cpp(603) operator() Invalid Sink Type = video/
+Oct 16 14:10:51.253901 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E MEDIA_PLAYERV2:PlaybackPipelineBuilderImpl.cpp(196) build -
+Oct 16 14:10:52.187327 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E MEDIA_PLAYERV2:GstPipelineImpl.cpp(651) getPlaybackDurationMs [0x7fe12c5fe010] Failed to get duration. Internal error
+Oct 16 14:10:52.187351 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E MEDIA_PLAYERV2:GstPipelineImpl.cpp(480) handleDurationChanged Failed to get duration
+Oct 16 14:10:52.201208 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'playing', 'A49-_ua1mbQ', 'at', 0
+Oct 16 14:10:54.014476 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'position', 'A49-_ua1mbQ', 0
+Oct 16 14:10:59.690804 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player ng', 'VISIONOS', 'A49-_ua1mbQ', '8075ms', 'ログインして bot ではないことを確認してください'
+Oct 16 14:11:01.823907 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player ng', 'IOS_KIDS', 'A49-_ua1mbQ', '10194ms', 'この動画は再生できません'
+Oct 16 14:11:02.179781 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player ng', 'IOS_EMBEDDED', 'A49-_ua1mbQ', '366ms', 'コミュニティの保護に役立ちます。詳細'
+Oct 16 14:11:02.492866 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player ng', 'MWEB', 'A49-_ua1mbQ', '282ms', 'コミュニティの保護に役立ちます。詳細'
+Oct 16 14:11:02.824614 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player ng', 'ANDROID_KIDS', 'A49-_ua1mbQ', '366ms', 'この動画は再生できません'
+Oct 16 14:11:03.012850 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player ng', 'IOS', 'A49-_ua1mbQ', '189ms', 'コミュニティの保護に役立ちます。詳細'
+Oct 16 14:11:03.012944 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'all player clients failed', 'A49-_ua1mbQ', 'この動画は再生できません | ログインして bot ではないことを確認してください | コミュニティの保護に役立ちます。詳細 | コミュニティの保護に役立ちます。詳細 | この動画は再生できません | コミュニティの保護に役立ちます。詳細'
+Oct 16 14:11:09.295586 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'position', 'A49-_ua1mbQ', 6
+Oct 16 14:11:24.351125 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'position', 'A49-_ua1mbQ', 10
+Oct 16 14:11:39.639306 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'position', 'A49-_ua1mbQ', 13
+Oct 16 14:11:54.550965 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'position', 'A49-_ua1mbQ', 18
+Oct 16 14:12:07.911523 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:[MSE_EME] PipelineImpl::seek: Seek time: 31.326000s
+Oct 16 14:12:07.911549 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:[MSE_EME] SampleConsumerImpl::seek: Seeking to 31.326000 s
+Oct 16 14:12:08.799498 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E MEDIA_PLAYERV2:GstPipelineImpl.cpp(959) handleRenderTimingControl Failed to send event to sink pad
+Oct 16 14:12:08.799934 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E MEDIA_PLAYERV2:MediaTrackImpl.cpp(141) pushMediaSampleSync MediaTrackImpl[0x7fe12c6be8b0]::pushMediaSampleSync track[1] Flushed
+Oct 16 14:12:08.799974 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E W3CMEDIA:[MPB_DRM] MPB UNF callback: [AUDIO] pushMediaSampleSync failed
+Oct 16 14:12:08.799997 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E W3CMEDIA:[MSE_EME] send_audio_sample: MPB Call failed with code: 50004.
+Oct 16 14:12:08.800020 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E W3CMEDIA:[MSE_EME] TrackBufferReader::try_flush_queue: mpb->send_audio_sample failed
+Oct 16 14:12:08.800146 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:[MSE_EME] DemuxerImpl::seek: Seeking to 31.326000 seconds
+Oct 16 14:12:08.801134 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:[MSE_EME] SampleConsumerImpl::on_demuxer_seek_completed_locked: Seeking to 31.326000 s completed.
+Oct 16 14:12:08.804473 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:[MSE_EME] PipelineImpl::on_seek_done: Seek has been completed. _seek_time(31.326000s), _pending_seek(0)
+Oct 16 14:12:08.804623 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:[MSE_EME] TrackBufferReader::perform_seek_operation: Seeking to 31.326000 s completed.
+Oct 16 14:12:08.862907 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'playing', 'A49-_ua1mbQ', 'at', 31
+Oct 16 14:12:09.172936 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E MEDIA_PLAYERV2:GstPipelineImpl.cpp(651) getPlaybackDurationMs [0x7fe12c5fe010] Failed to get duration. Internal error
+Oct 16 14:12:09.172979 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E MEDIA_PLAYERV2:GstPipelineImpl.cpp(480) handleDurationChanged Failed to get duration
+Oct 16 14:12:11.033387 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'position', 'A49-_ua1mbQ', 31
+Oct 16 14:12:26.113599 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'position', 'A49-_ua1mbQ', 35
+Oct 16 14:12:41.300612 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'position', 'A49-_ua1mbQ', 39
+Oct 16 14:12:48.034002 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I GWSI_LOG:92 Consumed key:XF86Back state:1 evtId:8
+Oct 16 14:12:48.051549 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I GWSI_LOG:94 Consumed key:XF86Back state:0 evtId:9
+Oct 16 14:12:56.464342 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'position', 'A49-_ua1mbQ', 43
+Oct 16 14:12:58.611619 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I GWSI_LOG:96 Consumed key:XF86Back state:1 evtId:10
+Oct 16 14:12:58.611720 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I GWSI_LOG:98 Consumed key:XF86Back state:0 evtId:11
+Oct 16 14:12:59.035523 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E MEDIA_PLAYERV2:GstPipelineImpl.cpp(651) getPlaybackDurationMs [0x7fe12c5fe010] Failed to get duration. Internal error
+Oct 16 14:12:59.035546 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E MEDIA_PLAYERV2:GstPipelineImpl.cpp(480) handleDurationChanged Failed to get duration
+Oct 16 14:12:59.639574 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player ng', 'VISIONOS', 'A49-_ua1mbQ', '81ms', 'ログインして bot ではないことを確認してください'
+Oct 16 14:12:59.706868 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player ng', 'IOS_KIDS', 'A49-_ua1mbQ', '149ms', 'この動画は再生できません'
+Oct 16 14:12:59.809333 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player ng', 'IOS_EMBEDDED', 'A49-_ua1mbQ', '103ms', 'コミュニティの保護に役立ちます。詳細'
+Oct 16 14:12:59.901575 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player ng', 'MWEB', 'A49-_ua1mbQ', '92ms', 'コミュニティの保護に役立ちます。詳細'
+Oct 16 14:12:59.993061 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player ng', 'ANDROID_KIDS', 'A49-_ua1mbQ', '91ms', 'この動画は再生できません'
+Oct 16 14:13:00.132469 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player ng', 'IOS', 'A49-_ua1mbQ', '139ms', 'コミュニティの保護に役立ちます。詳細'
+Oct 16 14:13:00.132556 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'all player clients failed', 'A49-_ua1mbQ', 'この動画は再生できません | ログインして bot ではないことを確認してください | コミュニティの保護に役立ちます。詳細 | コミュニティの保護に役立ちます。詳細 | この動画は再生できません | コミュニティの保護に役立ちます。詳細'
+Oct 16 14:13:13.454010 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player ng', 'VISIONOS', 'TPe6Qixvm-0', '82ms', 'ログインして bot ではないことを確認してください'
+Oct 16 14:13:13.480480 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player ng', 'IOS_KIDS', 'TPe6Qixvm-0', '109ms', 'この動画は再生できません'
+Oct 16 14:13:13.588444 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player ng', 'IOS_EMBEDDED', 'TPe6Qixvm-0', '108ms', 'コミュニティの保護に役立ちます。詳細'
+Oct 16 14:13:13.682786 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player ng', 'MWEB', 'TPe6Qixvm-0', '94ms', 'コミュニティの保護に役立ちます。詳細'
+Oct 16 14:13:13.798401 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player ng', 'ANDROID_KIDS', 'TPe6Qixvm-0', '116ms', 'この動画は再生できません'
+Oct 16 14:13:14.055073 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player ng', 'IOS', 'TPe6Qixvm-0', '256ms', 'コミュニティの保護に役立ちます。詳細'
+Oct 16 14:13:14.055227 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'all player clients failed', 'TPe6Qixvm-0', 'この動画は再生できません | ログインして bot ではないことを確認してください | コミュニティの保護に役立ちます。詳細 | コミュニティの保護に役立ちます。詳細 | この動画は再生できません | コミュニティの保護に役立ちます。詳細'
+Oct 16 14:13:16.703746 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I GWSI_LOG:119 Consumed key:Return state:1 evtId:14
+Oct 16 14:13:16.958930 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I GWSI_LOG:121 Consumed key:Return state:0 evtId:15
+Oct 16 14:13:16.994983 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E MEDIA_PLAYERV2:AudioFocusClientAdapter.cpp(75) getAudioFocusClientId getAudioFocusClientId clientId = 3
+Oct 16 14:13:16.998838 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] setDefaultSeekIntervalInSec seekInterval 10
+Oct 16 14:13:17.010058 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player start', 'TPe6Qixvm-0'
+Oct 16 14:13:17.010485 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'stream info', 'TPe6Qixvm-0', 'HLS', 'captions', 0
+Oct 16 14:13:17.010507 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'play source', 'TPe6Qixvm-0', 'HLS', 'CI', 'resumeAt', 0
+Oct 16 14:13:17.012548 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E MEDIA_PLAYERV2:AudioFocusClientAdapter.cpp(137) releaseAudioFocus  Client has never requested Audiofocus
+Oct 16 14:13:17.051129 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E MEDIA_PLAYERV2:AudioFocusClientAdapter.cpp(75) getAudioFocusClientId getAudioFocusClientId clientId = 4
+Oct 16 14:13:17.066206 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYER:DefaultMediaPlayer.cpp(772) DefaultMediaPlayer [0x7fe19800fae0] mInitialSeekPos :0
+Oct 16 14:13:17.067126 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E MEDIA_PLAYERV2:MediaPlayerImplLegacy.cpp(209) open  open failed
+Oct 16 14:13:17.067148 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E W3CMEDIA:[MPB_DRM] MPB UNF callback: Open failed -1
+Oct 16 14:13:17.067192 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E W3CMEDIA:[MSE_EME] set_src_uri: MPB Call failed with code: 50004.
+Oct 16 14:13:17.067233 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E W3CMEDIA:[MSE_EME] virtual bool ignite::media::MediaPlayerPipelineImpl::prepareForPlayback(): set_src_uri(mUri) failed apiStatus=50004
+Oct 16 14:13:17.067848 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E MEDIA_PLAYERV2:AudioFocusClientAdapter.cpp(137) releaseAudioFocus  Client has never requested Audiofocus
+Oct 16 14:13:17.068634 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: E W3CMEDIA:makeMediaError: code= 4 msg = 
+Oct 16 14:13:17.794793 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player ng', 'VISIONOS', 'A49-_ua1mbQ', '109ms', 'ログインして bot ではないことを確認してください'
+Oct 16 14:13:17.841934 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player ng', 'IOS_KIDS', 'A49-_ua1mbQ', '157ms', 'この動画は再生できません'
+Oct 16 14:13:18.232869 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player ng', 'IOS_EMBEDDED', 'A49-_ua1mbQ', '391ms', 'コミュニティの保護に役立ちます。詳細'
+Oct 16 14:13:18.326803 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player ng', 'MWEB', 'A49-_ua1mbQ', '94ms', 'コミュニティの保護に役立ちます。詳細'
+Oct 16 14:13:18.445992 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player ng', 'ANDROID_KIDS', 'A49-_ua1mbQ', '119ms', 'この動画は再生できません'
+Oct 16 14:13:18.576004 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player ng', 'IOS', 'A49-_ua1mbQ', '129ms', 'コミュニティの保護に役立ちます。詳細'
+Oct 16 14:13:18.576102 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'all player clients failed', 'A49-_ua1mbQ', 'この動画は再生できません | ログインして bot ではないことを確認してください | コミュニティの保護に役立ちます。詳細 | コミュニティの保護に役立ちます。詳細 | この動画は再生できません | コミュニティの保護に役立ちます。詳細'
+Oct 16 14:13:37.004888 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'source failed', 'TPe6Qixvm-0', 0, '再生が始まりませんでした'
+Oct 16 14:13:37.138913 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player ng', 'IOS_KIDS', 'TPe6Qixvm-0', '135ms', 'この動画は再生できません'
+Oct 16 14:13:37.141946 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player ng', 'VISIONOS', 'TPe6Qixvm-0', '127ms', 'ログインして bot ではないことを確認してください'
+Oct 16 14:13:37.248496 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player ng', 'IOS_EMBEDDED', 'TPe6Qixvm-0', '107ms', 'コミュニティの保護に役立ちます。詳細'
+Oct 16 14:13:37.348984 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player ng', 'MWEB', 'TPe6Qixvm-0', '100ms', 'コミュニティの保護に役立ちます。詳細'
+Oct 16 14:13:37.442337 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player ng', 'ANDROID_KIDS', 'TPe6Qixvm-0', '93ms', 'この動画は再生できません'
+Oct 16 14:13:37.554006 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player ng', 'IOS', 'TPe6Qixvm-0', '111ms', 'コミュニティの保護に役立ちます。詳細'
+Oct 16 14:13:37.554072 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'all player clients failed', 'TPe6Qixvm-0', 'この動画は再生できません | ログインして bot ではないことを確認してください | コミュニティの保護に役立ちます。詳細 | コミュニティの保護に役立ちます。詳細 | この動画は再生できません | コミュニティの保護に役立ちます。詳細'
+Oct 16 14:14:21.097486 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I GWSI_LOG:127 Consumed key:XF86Back state:1 evtId:16
+Oct 16 14:14:21.108289 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I GWSI_LOG:129 Consumed key:XF86Back state:0 evtId:17
+Oct 16 14:14:21.914314 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player ng', 'VISIONOS', 'A49-_ua1mbQ', '82ms', 'ログインして bot ではないことを確認してください'
+Oct 16 14:14:21.942113 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player ng', 'IOS_KIDS', 'A49-_ua1mbQ', '109ms', 'この動画は再生できません'
+Oct 16 14:14:22.042520 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player ng', 'IOS_EMBEDDED', 'A49-_ua1mbQ', '100ms', 'コミュニティの保護に役立ちます。詳細'
+Oct 16 14:14:22.142857 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player ng', 'MWEB', 'A49-_ua1mbQ', '100ms', 'コミュニティの保護に役立ちます。詳細'
+Oct 16 14:14:22.240273 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player ng', 'ANDROID_KIDS', 'A49-_ua1mbQ', '98ms', 'この動画は再生できません'
+Oct 16 14:14:22.334376 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'player ng', 'IOS', 'A49-_ua1mbQ', '94ms', 'コミュニティの保護に役立ちます。詳細'
+Oct 16 14:14:22.334464 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: INFO com.amazon.keplerscript: [KeplerScript-JavaScript] '[FireTube]', 'all player clients failed', 'A49-_ua1mbQ', 'この動画は再生できません | ログインして bot ではないことを確認してください | コミュニティの保護に役立ちます。詳細 | コミュニティの保護に役立ちます。詳細 | この動画は再生できません | コミュニティの保護に役立ちます。詳細'

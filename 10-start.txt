@@ -1,0 +1,6 @@
+2026/10/16 14:08:53 [INFO] SDK Version obtained: 0.24.12112
+2026/10/16 14:08:53 [INFO] SDK Version obtained: 0.24.12112
+Instance created: /home/runner/vega/sdk/vega-sdk/main/0.24.12112/vvd/instances/5c913ebd-b63c-4126-acb5-a335eefc0d44
+Launching virtual device.
+Waiting for virtual device to boot.
+Virtual device ready.

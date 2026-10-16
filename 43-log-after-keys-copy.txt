@@ -1,0 +1,1 @@
+/tmp/43-log-after-keys.log: 1 file pulled, 0 skipped. 13.9 MB/s (13178 bytes in 0.001s)

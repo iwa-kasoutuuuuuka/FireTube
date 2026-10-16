@@ -1,0 +1,65 @@
+Oct 16 14:11:46.234086 amazon-dc5c33d972213c41 systemd-journald[324]: Journal header limits reached or header out-of-date, rotating.
+Oct 16 14:11:46.247216 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYERV2:GstPadImpl.cpp(339) onPadProbeInfo probe id 1 found
+Oct 16 14:11:46.247247 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYERV2:GstPadImpl.cpp(513) onPadProbeInfo invoking observer for probe id 1 and probe type 4112
+Oct 16 14:11:46.247273 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYERV2:GstPadImpl.cpp(339) onPadProbeInfo probe id 1 found
+Oct 16 14:11:46.247289 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYERV2:GstPadImpl.cpp(513) onPadProbeInfo invoking observer for probe id 1 and probe type 4112
+Oct 16 14:11:46.247345 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYERV2:GstPadImpl.cpp(339) onPadProbeInfo probe id 1 found
+Oct 16 14:11:46.247367 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I MEDIA_PLAYERV2:GstPadImpl.cpp(513) onPadProbeInfo invoking observer for probe id 1 and probe type 4112
+Oct 16 14:11:46.247416 amazon-dc5c33d972213c41 lcm_service[1141]: I resmgr-monitor-procs:[ProcessUtil.cpp:1676] Get memory policy 0 for 5744
+Oct 16 14:11:46.247446 amazon-dc5c33d972213c41 lcm_service[1141]: I resmgr-monitor-service:[AppStateMonitor.cpp:228] ignore post event for service/task
+Oct 16 14:11:46.247472 amazon-dc5c33d972213c41 lcm_service[1141]: I resmgr-monitor-service:[AppStateMonitor.cpp:448] Got app update, event 4, reason 0, for pid 5744 appInstId 38 appId com.amazon.livedeviceservice.stationsync.task state no-change type 2 serviceType 0 taskType 0 pinnedToBackstack 0 postEvent true
+Oct 16 14:11:46.253858 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe1706d3c40, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.070866689 running_time:0:00:16.100073038 kernel_timestamp:0:00:16.029206349
+Oct 16 14:11:46.254010 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:SourceBuffer[0]getBufferedRange[0.066000-46.100000] secs
+Oct 16 14:11:46.254166 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:SourceBuffer[0]getBufferedRange[0.066000-46.100000] secs
+Oct 16 14:11:46.254375 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:SourceBuffer[1]getBufferedRange[0.000000-46.485000] secs
+Oct 16 14:11:46.254521 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:SourceBuffer[1]getBufferedRange[0.000000-46.485000] secs
+Oct 16 14:11:46.267740 amazon-dc5c33d972213c41 lcm_service[1141]: I resmgr-monitor-procs:[ProcessUtil.cpp:1676] Get memory policy 0 for 5744
+Oct 16 14:11:46.286897 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe10800f760, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.071096191 running_time:0:00:16.100302540 kernel_timestamp:0:00:16.029206349
+Oct 16 14:11:46.309815 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe164004d60, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.063515907 running_time:0:00:16.092722256 kernel_timestamp:0:00:16.029206349
+Oct 16 14:11:46.309908 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:[MSE_EME] void ignite::media::MediaElement::push_time_update_event(): Send events::TIME_UPDATE: 16.070000
+Oct 16 14:11:46.309948 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:Emitting event: source = HtmlMediaElement name = timeupdate
+Oct 16 14:11:46.316656 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe10800f760, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.048458711 running_time:0:00:16.077665060 kernel_timestamp:0:00:16.029206349
+Oct 16 14:11:46.326166 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe12c72fc90, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.047242916 running_time:0:00:16.076449265 kernel_timestamp:0:00:16.029206349
+Oct 16 14:11:46.347294 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe10800f760, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.065333503 running_time:0:00:16.094539852 kernel_timestamp:0:00:16.029206349
+Oct 16 14:11:46.369424 amazon-dc5c33d972213c41 stemd[1064]: INFO com.amazon.appfwk.stemd: loop:event{type=Task}:task{type=Prewarm}: prewarming new stem, prewarm_request="com.amazon.family.webview"
+Oct 16 14:11:46.369527 amazon-dc5c33d972213c41 stemd[1064]: INFO com.amazon.appfwk.stemd: loop:event{type=Task}:task{type=Prewarm}: preparing to spawn stem, program=/usr/bin/stem-init, env=["STEMD_LAUNCH_ENABLE=true", "APMF_CONFIG_PATH=/mnt", "JS_BUNDLES_PATH=/usr/local/share/bundles", "LD_LIBRARY_PATH=/mnt:"], args=["sockfd=21"]
+Oct 16 14:11:46.369566 amazon-dc5c33d972213c41 stemd[1064]: INFO com.amazon.appfwk.stemd: loop:event{type=Task}:task{type=Prewarm}: successfully spawned stem, id=298, pid=5769, sockfd=21
+Oct 16 14:11:46.375327 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe10800f760, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.070883725 running_time:0:00:16.100090074 kernel_timestamp:0:00:16.029206349
+Oct 16 14:11:46.405807 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe10800f760, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.072127452 running_time:0:00:16.101333801 kernel_timestamp:0:00:16.029206349
+Oct 16 14:11:46.435076 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe10800f760, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.070990234 running_time:0:00:16.100196583 kernel_timestamp:0:00:16.029206349
+Oct 16 14:11:46.535807 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe10800f760, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.073554451 running_time:0:00:16.102760800 kernel_timestamp:0:00:16.029206349
+Oct 16 14:11:46.536212 amazon-dc5c33d972213c41 acr_core_dump[5772]: Process 'stem{family=com.amazon.family.webview}' (PID=5770) crashed with signal 6
+Oct 16 14:11:46.536353 amazon-dc5c33d972213c41 acr_core_dump[5772]: Cannot find library name for process stem{family=com.amazon.family.webview}
+Oct 16 14:11:46.536409 amazon-dc5c33d972213c41 acr_core_dump[5772]: ACR_BEGIN COMM:stem{family=com SIG:6 PID:5770 T:1792159906 UID:5000 GID:5000 TID:2 CS:18446744073709551615 P:!usr!bin!stem-init
+Oct 16 14:11:46.536448 amazon-dc5c33d972213c41 acr_core_dump[5772]: Locked /var/lib/data/acr/tmp/fingerprints/stem{family=com_6_7b15f81b1886a2eb9790d0dc39fd1c44
+Oct 16 14:11:46.536488 amazon-dc5c33d972213c41 acr_core_dump[5772]: Hit crash throttle, crash report skipped for process stem{family=com.amazon.family.webview} (PID=5770).                        Please wait 60 seconds before observing new acrs of the same fingerprint.
+Oct 16 14:11:46.536509 amazon-dc5c33d972213c41 stemd[1064]: INFO com.amazon.appfwk.stemd: loop:event{type=StemEvent}:stem{pid=5769 id=298 state="Alive"}: connection with stem was dropped
+Oct 16 14:11:46.536536 amazon-dc5c33d972213c41 acr_core_dump[5772]: LcmKillReasonProvider::Fetch() called before minidump capture — call SetMinidumpComplete() first
+Oct 16 14:11:46.536555 amazon-dc5c33d972213c41 stemd[1064]: INFO com.amazon.appfwk.stemd: loop:event{type=StemEvent}:stem{pid=5769 id=298 state="Alive"}: cleaning up stem, stem=(id=298, pid=5769), cleanup_type=terminating
+Oct 16 14:11:46.536580 amazon-dc5c33d972213c41 acr_core_dump[5772]: LcmKillReasonProvider::Fetch() called before minidump capture — call SetMinidumpComplete() first
+Oct 16 14:11:46.536599 amazon-dc5c33d972213c41 stemd[1064]: INFO com.amazon.appfwk.stemd: loop:event{type=StemEvent}:stem{pid=5769 id=298 state="Alive"}: no stem pid to remove
+Oct 16 14:11:46.536626 amazon-dc5c33d972213c41 acr_core_dump[5772]: LcmKillReasonProvider::Fetch() called before minidump capture — call SetMinidumpComplete() first
+Oct 16 14:11:46.536642 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe10800f760, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.070885608 running_time:0:00:16.100091957 kernel_timestamp:0:00:16.029206349
+Oct 16 14:11:46.536708 amazon-dc5c33d972213c41 acr_core_dump[5772]: LcmKillReasonProvider::Fetch() called before minidump capture — call SetMinidumpComplete() first
+Oct 16 14:11:46.536729 amazon-dc5c33d972213c41 servicergrd[1027]: INFO com.amazon.appfwk.servicergrd: binder_request{cid="6bd60e3e1d3f46c0"}: processed request, request="connect", service="com.amazon.ace.metrics", client=Credentials { pid: 5772, uid: 0, gid: 0, security_ctx: "System::Privileged" }, duration=4.113815ms
+Oct 16 14:11:46.536870 amazon-dc5c33d972213c41 acr_core_dump[5772]: LcmKillReasonProvider::Fetch() called before minidump capture — call SetMinidumpComplete() first
+Oct 16 14:11:46.536889 amazon-dc5c33d972213c41 acr_core_dump_native[5772]: I ACE-AIPC: sync client_bind_callback: com.amazon.ace.metrics cp=0x559d4402e320 err=0
+Oct 16 14:11:46.536914 amazon-dc5c33d972213c41 acr_core_dump[5772]: LcmKillReasonProvider::Fetch() called before minidump capture — call SetMinidumpComplete() first
+Oct 16 14:11:46.537096 amazon-dc5c33d972213c41 acr_core_dump[5772]: LcmKillReasonProvider::Fetch() called before minidump capture — call SetMinidumpComplete() first
+Oct 16 14:11:46.537150 amazon-dc5c33d972213c41 acr_core_dump[5772]: Add POSIX signal failed, rc: -5
+Oct 16 14:11:46.537170 amazon-dc5c33d972213c41 acr_core_dump_native[5772]: I ACE-AIPC: client [acr_core_dump_native]--->server [ace_metric_daemon] :  [265]:[com.amazon.ace.metrics]  <sync> channel=0x559d4402dee0 cp=0x559d4402e320
+Oct 16 14:11:46.537190 amazon-dc5c33d972213c41 acr_core_dump[5772]: Crash metric generation failed
+Oct 16 14:11:46.537209 amazon-dc5c33d972213c41 acr_core_dump_native[5772]: I ACE-AIPC: client_release: count 2 tid:5772 channel=0x559d4402dee0 ret=0
+Oct 16 14:11:46.537231 amazon-dc5c33d972213c41 acr_core_dump[5772]: Unlocked /var/lib/data/acr/tmp/fingerprints/stem{family=com_6_7b15f81b1886a2eb9790d0dc39fd1c44
+Oct 16 14:11:46.537270 amazon-dc5c33d972213c41 acr_core_dump[5772]: LcmKillReasonProvider::Fetch() called before minidump capture — call SetMinidumpComplete() first
+Oct 16 14:11:46.537341 amazon-dc5c33d972213c41 acr_core_dump[5772]: Binder: Creating IPCN runtime on-demand via ipcn_get_runtime(). Note: this is probably not what you want and you should invoke ipcn_create with appropriate configuration parameters for your application's use case.
+Oct 16 14:11:46.537362 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe10800f760, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.071991108 running_time:0:00:16.101197457 kernel_timestamp:0:00:16.029206349
+Oct 16 14:11:46.537394 amazon-dc5c33d972213c41 acr_core_dump[5772]: Binder: Attempting to open binder driver with thread_count=8 max_transaction_size=1048576 bytes
+Oct 16 14:11:46.537411 amazon-dc5c33d972213c41 acr_core_dump[5772]: Binder: Opened binder driver
+Oct 16 14:11:46.537449 amazon-dc5c33d972213c41 servicergrd[1027]: Binder: Binder handle 433 died, dispatching death
+Oct 16 14:11:46.537477 amazon-dc5c33d972213c41 servicergrd[1027]: Binder: Dispatching death to 0x7f1a50016170 for handle 433
+Oct 16 14:11:46.555750 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe10800f760, WARN   , novaaudiosink, novaaudiosink.c, 2564, nova_audio_sink_get_time_system_time, <novaaudiosink>, Adjusting clock by clock_drift:-0:00:00.051691522 running_time:0:00:16.100104220 kernel_timestamp:0:00:16.048412698
+Oct 16 14:11:46.560379 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:[MSE_EME] void ignite::media::MediaElement::push_time_update_event(): Send events::TIME_UPDATE: 16.075000
+Oct 16 14:11:46.560458 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: I W3CMEDIA:Emitting event: source = HtmlMediaElement name = timeupdate
+Oct 16 14:11:46.585097 amazon-dc5c33d972213c41 com.firetube.tv.vega[3656]: W GSTLOG: 0x7fe10800f760, WARN   , keplervideosink, gstkeplervideosink.cpp, 647, get_renderer_clock_time, <keplervideosink>, Discontinuity disct:1 pause:1 clock_rtime:0:00:16.100158640 buffer_rtime:0:00:16.200000000 clock drift:+0:00:00.165583975
+
