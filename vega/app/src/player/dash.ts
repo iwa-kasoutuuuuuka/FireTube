@@ -6,6 +6,7 @@
  */
 import {DashTrack} from '../api/types';
 import {parseSidx, Segment} from './sidx';
+import {log} from '../log';
 
 const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
@@ -133,6 +134,13 @@ class TrackPump {
     this.segments = parseSidx(
       bytes.subarray(this.track.indexStart),
       this.track.indexStart,
+    );
+    log(
+      'dash init',
+      this.track.mimeType,
+      this.track.height,
+      'segments',
+      this.segments.length,
     );
     if (this.segments.length === 0) {
       throw new Error('セグメントがありません');
