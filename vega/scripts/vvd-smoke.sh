@@ -69,16 +69,25 @@ run 13-device-list vega device list
 run 14-vvd-status vega virtual-device status
 
 if booted && [ -n "$VPKG" ]; then
+  # 起動直後は VDA の接続がまだ offline のことがあるため、入るまで繰り返す
+  for i in $(seq 1 15); do
+    run 21-install dev install-app --packagePath "$VPKG"
+    grep -q '\[exit 0\]' "$OUT/21-install.txt" && break
+    sleep 20
+  done
   run 20-info dev info
-  ( vega device start-log-stream -d VirtualDevice > "$OUT/25-log-stream.txt" 2>&1 ) &
-  run 21-install dev install-app --packagePath "$VPKG"
+  run 21b-installed dev is-app-installed --appName "$APP_ID"
+  ( timeout 240 vega device start-log-stream -d VirtualDevice > "$OUT/25-log-stream.txt" 2>&1 ) &
   run 22-launch dev launch-app --appName "$APP_ID"
-  sleep 60
+  sleep 30
   run 23-running dev running-apps
   run 24-is-running dev is-app-running --appName "$APP_ID"
-  run 30-journal dev run-cmd "journalctl --no-pager -n 4000"
-  run 31-copy-logs dev copy-logs --outputDir "$OUT/device-logs"
-  run 32-doctor dev doctor --outputDir "$OUT/doctor"
+  sleep 60
+  run 26-is-running-90s dev is-app-running --appName "$APP_ID"
+  run 30-journal dev run-cmd --command 'journalctl --no-pager -n 6000'
+  run 31-journal-app dev run-cmd --command "journalctl --no-pager -n 20000 | grep -iE 'firetube|ReactNativeJS|keplerscript|w3cmedia|exception|crash' | tail -n 800"
+  run 32-copy-logs dev copy-logs --artifact system/var_log --directory "$OUT/device-logs"
+  run 33-doctor dev doctor --directory "$OUT/doctor" --since 30m --appName "$APP_ID"
   vega device stop-log-stream -d VirtualDevice > /dev/null 2>&1
 fi
 
