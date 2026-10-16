@@ -1,0 +1,38 @@
+Active SDK Version: 0.24.12112
+Vega CLI Version: 1.4.4
+
+
+Available templates:
+
+helloWorld:	Use this project template to create a new app (targets RN v0.83)
+helloWorld-rn72:	Use this project template to create a new app (targets RN v0.72)
+basic-turbo-module:	An example Turbo Module that includes stubs for calling your own native logic.
+idl-turbo-module:	An example Turbo Module that uses native OS APIs defined in IDL
+vegaWebview:	A webview template for Vega applications
+
+Generate a new project from a template
+
+Usage: vega project generate [options] [options]
+
+Options:
+  -t, --template     Template Id, run "vega project list-templates" to get the
+                     list of valid values                    [string] [required]
+  -n, --name         Project name. Alpha-numeric string with a max of 100
+                     characters.                             [string] [required]
+      --packageId    Package Id for manifest.toml, required in applications
+                                                                        [string]
+  -o, --outputDir    Output directory for template generation
+                       [string] [default: "/home/runner/work/FireTube/FireTube"]
+      --libraryName  Library name                                       [string]
+      --idlPackage   IDL package name                                   [string]
+      --uri          URI to load in the WebView
+                             [string] [default: "file:///pkg/assets/index.html"]
+  -h, -?, --help     Show help                                         [boolean]
+
+Examples:
+  vega project generate --template          Create a new application project
+  helloWorld --name exampleProject          named exampleProject in the current
+                                            directory
+  vega project generate --template          Create a new Turbo Module project
+  basicTurboModule --name MyTurbomodule     named MyTurbomodule in the /tmp
+  --outputDir /tmp                          directory

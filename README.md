@@ -18,7 +18,7 @@
 > ⚠️ **Vega OS 搭載の新型 Fire TV Stick (Fire TV Stick 4K Select / 4K 第3世代 / HD 2026年モデルなど) には対応していません。**
 > Vega OS は Android ではないため APK をインストールできません。購入前に [対応機種・非対応機種の一覧](#-動作対応デバイス機種一覧-supported-devices) をご確認ください。
 >
-> 🚧 Vega OS 向けの別実装 (React Native) を [`vega/`](vega/) で試作中です (未公開)。開発者モードの端末へ入れる手順は [`vega/INSTALL_VEGA.txt`](vega/INSTALL_VEGA.txt) を参照してください。
+> 🚧 Vega OS 向けの別実装 (React Native) の **試作版 (.vpkg)** を [Releases](https://github.com/iwa-kasoutuuuuuka/FireTube/releases) (タグ `vega-v*`) で公開しています (実機未検証)。Vega OS は開発者モード + Vega CLI でのみ入れられます。手順は [`vega/INSTALL_VEGA.txt`](vega/INSTALL_VEGA.txt) を参照してください。
 
 </div>
 
@@ -556,8 +556,9 @@ PC 上の Android Studio エミュレーターで、Fire TV Stick 実機環境�
 
 ### Vega OS 版 (React Native) の開発環境 (試作)
 新型 Fire TV Stick (4K Select / 4K 第3世代等) 向けに、Vega SDK を用いた別実装を [`vega/`](vega/) で試作進行中です。
-- **ドキュメント**: [`vega/INSTALL_VEGA.txt`](vega/INSTALL_VEGA.txt) (Vega OS 実機へのインストール手順。現時点では配布用ビルドは無く、開発者モード + Vega CLI のみ) / [`vega/SETUP.md`](vega/SETUP.md) (SDKセットアップと実機接続ガイド) / [`vega/docs/porting-spec.md`](vega/docs/porting-spec.md) (移植仕様)
+- **ドキュメント**: [`vega/INSTALL_VEGA.txt`](vega/INSTALL_VEGA.txt) (Vega OS 実機へのインストール手順。Releases の .vpkg を開発者モード + Vega CLI で入れる) / [`vega/SETUP.md`](vega/SETUP.md) (SDKセットアップと実機接続ガイド) / [`vega/docs/porting-spec.md`](vega/docs/porting-spec.md) (移植仕様)
 - **VM 構築スクリプト**: Windows Hyper-V 上で Ubuntu 22.04 ビルド環境を自動構築する [`vega/scripts/windows/create-ubuntu-vm.ps1`](vega/scripts/windows/create-ubuntu-vm.ps1)
+- **ビルド**: [`.github/workflows/vega-build.yml`](.github/workflows/vega-build.yml) が Ubuntu 上で Vega SDK を導入して `.vpkg` を作る (`vega-v*` タグで Releases に添付)。Windows の開発 PC では SDK が動かないため CI でビルドする
 - **スキル**: [`.agents/skills/vega-development`](.agents/skills/vega-development/SKILL.md)
 
 ---

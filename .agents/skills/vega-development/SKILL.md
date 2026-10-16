@@ -16,6 +16,7 @@ Vega OS は **Android ではない**。Android 版 (`app/`, Kotlin/Leanback/Medi
 - 既存の Android 版 (`app/`, `build.gradle.kts`, `.github/workflows/release.yml`) を壊さない。Vega 作業は `vega/` 内で完結させる。
 - タグは `vega-v*`。`v*` は Android リリース用 (release.yml が起動する)。
 - **このリポジトリの開発 PC は Windows。Vega SDK は Ubuntu / macOS 専用 (Windows・WSL 非対応)**。`vega` コマンドは Windows では実行できない。環境を確認してから作業すること (`vega --version`)。
+- Windows からのビルドは GitHub Actions (`.github/workflows/vega-build.yml`, ブランチ `vega-build` / タグ `vega-v*`) で行う。雛形は `helloWorld-rn72` (SDK 0.24.12112 / CLI 1.4.4 で確認)。CI のログは未ログインでは読めないため、失敗内容は `vega/scripts/ci-run.sh` がアノテーション (公開 API `check-runs/{job}/annotations`) に出す。
 - 下の「検証済み / 未検証」を区別する。未検証の API 名や CLI オプションを断定して書かない。公式ドキュメントはバージョン別 URL (`/docs/vega/0.2x/`)。`vega --version` の SDK に合わせる。
 
 ## 検証済みの CLI (公式ドキュメント由来)
