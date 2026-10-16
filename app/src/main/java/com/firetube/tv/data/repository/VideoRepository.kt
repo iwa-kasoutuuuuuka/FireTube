@@ -6,6 +6,7 @@ import com.firetube.tv.data.extractor.YouTubeStreamExtractor
 import com.firetube.tv.data.innertube.InnerTubeClient
 import com.firetube.tv.data.model.StreamInfoData
 import com.firetube.tv.data.model.VideoItem
+import com.firetube.tv.data.network.RemoteConfig
 import com.firetube.tv.data.piped.PipedApiClient
 import com.firetube.tv.util.AppPreferences
 import kotlinx.coroutines.CoroutineScope
@@ -119,7 +120,7 @@ object VideoRepository {
     }
 
     /**
-     * トレンド (急上昇) 動画一覧の取得
+     * ホーム「人気の動画」行の一覧取得
      * キャッシュ有効期間内であれば即座に返却し、無効時は多重フォールバック実行
      */
     suspend fun getTrendingVideos(forceRefresh: Boolean = false): Result<List<VideoItem>> = withContext(Dispatchers.IO) {
@@ -130,15 +131,16 @@ object VideoRepository {
             return@withContext Result.success(cached)
         }
 
-        // InnerTube → Piped → NewPipe (設定の「優先APIソース」を先頭に移動)
+        // Piped のトレンド → InnerTube の「今週の人気」検索 の順で固定
+        // (YouTube が急上昇ページを廃止したため、InnerTube / NewPipe の FEtrending 取得は常に失敗する。
+        //  「優先APIソース」設定に関わらず、実際のトレンドを返せる Piped を先に試す)
         val list = firstNonEmptyList(
             "trending",
-            preferredFirst(
-                listOf(
-                    AppPreferences.API_SOURCE_INNERTUBE to { InnerTubeClient.getTrendingVideos() },
-                    AppPreferences.API_SOURCE_PIPED to { PipedApiClient.getTrendingVideos() },
-                    AppPreferences.API_SOURCE_NEWPIPE to { YouTubeStreamExtractor.getTrendingVideos() }
-                )
+            listOf(
+                AppPreferences.API_SOURCE_PIPED to { PipedApiClient.getTrendingVideos() },
+                AppPreferences.API_SOURCE_INNERTUBE to {
+                    InnerTubeClient.getPopularVideos(RemoteConfig.current.popularQueries)
+                }
             )
         )
         if (list != null) {
@@ -153,7 +155,7 @@ object VideoRepository {
             return@withContext Result.success(it)
         }
 
-        Result.failure(Exception("All providers (InnerTube, Piped, NewPipe) failed to fetch trending videos"))
+        Result.failure(Exception("All providers (Piped, InnerTube) failed to fetch trending videos"))
     }
 
     /**

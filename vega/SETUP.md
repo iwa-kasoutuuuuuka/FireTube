@@ -18,7 +18,7 @@ VM から実機への接続は PC 側から出る通信なので NAT でも通�
 
 管理者 PowerShell で実行 (Hyper-V 未有効なら有効化して再起動 → もう一度実行):
 ```powershell
-powershell -ExecutionPolicy Bypass -File E:\FireTubeega\scripts\windows\create-ubuntu-vm.ps1
+powershell -ExecutionPolicy Bypass -File E:\ZFireTube\vega\scripts\windows\create-ubuntu-vm.ps1
 ```
 既定: 8 vCPU / 16GB RAM / 120GB (`E:\VM`)。ISO (約2.1GB) を取得し、入れ子の仮想化を有効にして起動する。
 Ubuntu インストール時に OpenSSH server を選ぶ。完了後は `ssh <user>@<VMのIP>` で入り、リポジトリを VM に clone して次節へ。

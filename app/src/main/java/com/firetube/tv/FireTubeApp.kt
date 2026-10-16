@@ -4,6 +4,7 @@ import android.app.Application
 import android.util.Log
 import com.firetube.tv.data.extractor.YouTubeStreamExtractor
 import com.firetube.tv.data.local.AppDatabase
+import com.firetube.tv.data.network.RemoteConfig
 import com.firetube.tv.util.MemoryManager
 
 /**
@@ -32,8 +33,11 @@ class FireTubeApp : Application() {
         MemoryManager.init(this)
 
         // 2. GMSフリー抽出エンジンの非同期バックグラウンド事前初期化 (起動スレッド負荷ゼロ化)
+        //    + リモート設定 (Piped インスタンス・player クライアント優先順) の読み込みと更新
         Thread {
+            RemoteConfig.loadCached(this)
             YouTubeStreamExtractor.init()
+            RemoteConfig.refresh(this)
         }.start()
 
         // 3. ローカルキャスト待受サーバー起動 (ポート8080)

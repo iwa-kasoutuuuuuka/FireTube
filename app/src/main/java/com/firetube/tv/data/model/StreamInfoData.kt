@@ -10,7 +10,8 @@ data class VideoStream(
     val resolution: String, // e.g. "1080p", "720p", "480p"
     val format: String,     // e.g. "mp4", "webm"
     val isVideoOnly: Boolean = false,
-    val bitrate: Int = 0
+    val bitrate: Int = 0,
+    val codec: String = ""     // e.g. "avc1.4D401F", "vp09.00.40.08", "av01.0.08M.08" (不明時は空)
 ) : Serializable
 
 data class AudioStream(

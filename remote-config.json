@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "pipedInstances": [
+    "https://api.piped.private.coffee",
+    "https://pipedapi-libre.kavin.rocks"
+  ],
+  "playerRaceClients": ["IOS_KIDS", "VISIONOS"],
+  "playerFallbackClients": ["IOS_EMBEDDED", "MWEB", "ANDROID_KIDS", "IOS"],
+  "popularQueries": ["ニュース", "音楽 MV", "ゲーム実況", "スポーツ ハイライト", "アニメ 公式"],
+  "clientVersions": {}
+}

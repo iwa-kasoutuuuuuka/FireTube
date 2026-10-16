@@ -15,6 +15,7 @@ import okhttp3.Request
 import java.util.concurrent.TimeUnit
 
 import com.firetube.tv.data.network.NetworkClient
+import com.firetube.tv.data.network.RemoteConfig
 
 /**
  * Piped API クライアント (セカンダリフォールバック)
@@ -25,20 +26,40 @@ object PipedApiClient {
 
     private const val TAG = "PipedApiClient"
 
-    // 実測稼働中のインスタンスを優先配置（死滅ホスト・セキュリティソフト警告ホストを除外）
-    private val INSTANCES = listOf(
-        "https://api.piped.private.coffee",
-        "https://pipedapi-libre.kavin.rocks"
-    )
+    // インスタンス一覧はリモート設定 (remote-config.json) から取得する。停止したインスタンスを APK 再配布なしで差し替えるため
+    // 通信エラーになったインスタンスは一定時間スキップする
+    // (停止中のインスタンスが先頭にあると、呼び出しのたびに接続タイムアウトを待つことになるため)
+    private const val FAILURE_COOLDOWN_MS = 5 * 60 * 1000L
+    private val failedAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
 
-    private val client = NetworkClient.client
+    private val instances: List<String>
+        get() = availableInstances(RemoteConfig.current.pipedInstances, failedAt, System.currentTimeMillis())
+
+    /**
+     * 直近に失敗していないインスタンスを設定順で返す。全て失敗中の場合は全インスタンスを返す
+     */
+    @androidx.annotation.VisibleForTesting
+    internal fun availableInstances(all: List<String>, failedAt: Map<String, Long>, now: Long): List<String> =
+        all.filter { url ->
+            val failed = failedAt[url] ?: return@filter true
+            now - failed !in 0 until FAILURE_COOLDOWN_MS
+        }.ifEmpty { all }
+
+    private fun markFailed(baseUrl: String) {
+        failedAt[baseUrl] = System.currentTimeMillis()
+    }
+
+    // 応答しないインスタンスで次の候補への切替が遅れないよう、接続タイムアウトのみ短縮 (接続プールは共有)
+    private val client = NetworkClient.client.newBuilder()
+        .connectTimeout(4, TimeUnit.SECONDS)
+        .build()
     private val gson = NetworkClient.gson
 
     /**
      * トレンド動画取得
      */
     suspend fun getTrendingVideos(region: String = "JP"): Result<List<VideoItem>> = withContext(Dispatchers.IO) {
-        for (baseUrl in INSTANCES) {
+        for (baseUrl in instances) {
             try {
                 val request = Request.Builder()
                     .url("$baseUrl/trending?region=$region")
@@ -81,6 +102,7 @@ object PipedApiClient {
                 }
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
+                markFailed(baseUrl)
                 Log.w(TAG, "Piped instance $baseUrl failed: ${e.message}")
             }
         }
@@ -91,7 +113,7 @@ object PipedApiClient {
      * 検索動画取得
      */
     suspend fun searchVideos(query: String): Result<List<VideoItem>> = withContext(Dispatchers.IO) {
-        for (baseUrl in INSTANCES) {
+        for (baseUrl in instances) {
             try {
                 val encodedQuery = java.net.URLEncoder.encode(query, "UTF-8")
                 val request = Request.Builder()
@@ -139,6 +161,7 @@ object PipedApiClient {
                 }
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
+                markFailed(baseUrl)
                 Log.w(TAG, "Piped search on $baseUrl failed: ${e.message}")
             }
         }
@@ -149,7 +172,7 @@ object PipedApiClient {
      * 動画再生ストリーム情報の取得（高速フォールバック）
      */
     suspend fun extractStreamInfo(videoId: String): Result<StreamInfoData> = withContext(Dispatchers.IO) {
-        for (baseUrl in INSTANCES) {
+        for (baseUrl in instances) {
             try {
                 val request = Request.Builder()
                     .url("$baseUrl/streams/$videoId")
@@ -183,14 +206,18 @@ object PipedApiClient {
                             val format = obj.getStringOrNull("format") ?: "mp4"
                             val videoOnly = obj.getBooleanOrDefault("videoOnly", false)
                             val bitrate = obj.getIntOrDefault("bitrate", 0)
-                            if (url.isNotEmpty()) {
+                            val codec = obj.getStringOrNull("codec") ?: ""
+                            // 一部インスタンスが返す LBRY 等の非 YouTube ストリームは再生不能なため除外
+                            val isHttpVideo = url.startsWith("http", ignoreCase = true) && quality.any { it.isDigit() }
+                            if (isHttpVideo) {
                                 videoStreams.add(
                                     VideoStream(
                                         url = url,
                                         resolution = quality,
                                         format = format,
                                         isVideoOnly = videoOnly,
-                                        bitrate = bitrate
+                                        bitrate = bitrate,
+                                        codec = codec
                                     )
                                 )
                             }
@@ -228,6 +255,7 @@ object PipedApiClient {
                 }
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
+                markFailed(baseUrl)
                 Log.w(TAG, "Piped stream info on $baseUrl failed: ${e.message}")
             }
         }

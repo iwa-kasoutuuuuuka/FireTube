@@ -16,6 +16,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import com.firetube.tv.data.network.RemoteConfig
 import com.firetube.tv.data.network.await
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -35,15 +36,28 @@ object InnerTubeClient {
     // InnerTube 検索フィルタ (実際の API 応答で確認済み)
     const val SEARCH_FILTER_LIVE = "EgJAAQ=="     // ライブ配信中のみ
     const val SEARCH_FILTER_SHORTS = "EgIQCQ=="   // ショート動画のみ
+    const val SEARCH_FILTER_POPULAR_THIS_WEEK = "CAMSBAgDEAE="  // 動画のみ・今週アップロード・視聴回数順
 
     /** 検索結果中の再生リストカードの id 接頭辞 */
     const val PLAYLIST_ID_PREFIX = "__pl__:"
     private const val BASE_URL = "https://www.youtube.com/youtubei/v1"
     private val JSON_MEDIA = "application/json; charset=utf-8".toMediaType()
 
-    private const val IOS_USER_AGENT = "com.google.ios.youtube/21.03.2(iPhone16,2; U; CPU iOS 18_7_2 like Mac OS X; ja_JP)"
-    private const val IOS_KIDS_USER_AGENT = "com.google.ios.youtubekids/9.01.0 (iPhone16,2; U; CPU iOS 18_7_2 like Mac OS X; ja_JP)"
-    private const val ANDROID_KIDS_USER_AGENT = "com.google.android.apps.youtube.kids/9.01.0 (Linux; U; Android 11)"
+    // clientVersion は YouTube 側で古いものから順に拒否されるため、リモート設定 (clientVersions) で上書きできる
+    // User-Agent に含まれるバージョンも同じ値に揃える
+    private fun clientVersion(client: String, builtIn: String): String =
+        RemoteConfig.current.clientVersions[client] ?: builtIn
+
+    private val webVersion get() = clientVersion(RemoteConfig.VERSION_KEY_WEB, "2.20240401.01.00")
+    private val iosVersion get() = clientVersion(RemoteConfig.CLIENT_IOS, "21.03.2")
+    private val iosKidsVersion get() = clientVersion(RemoteConfig.CLIENT_IOS_KIDS, "9.01.0")
+    private val androidKidsVersion get() = clientVersion(RemoteConfig.CLIENT_ANDROID_KIDS, "9.01.0")
+    private val mwebVersion get() = clientVersion(RemoteConfig.CLIENT_MWEB, "2.20231201.01.00")
+    private val visionOsVersion get() = clientVersion(RemoteConfig.CLIENT_VISIONOS, "1.02")
+
+    private val IOS_USER_AGENT get() = "com.google.ios.youtube/$iosVersion(iPhone16,2; U; CPU iOS 18_7_2 like Mac OS X; ja_JP)"
+    private val IOS_KIDS_USER_AGENT get() = "com.google.ios.youtubekids/$iosKidsVersion (iPhone16,2; U; CPU iOS 18_7_2 like Mac OS X; ja_JP)"
+    private val ANDROID_KIDS_USER_AGENT get() = "com.google.android.apps.youtube.kids/$androidKidsVersion (Linux; U; Android 11)"
     private const val VISIONOS_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 15_7_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15"
     private const val MWEB_USER_AGENT = "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1"
 
@@ -64,7 +78,7 @@ object InnerTubeClient {
             addProperty("hl", "ja")
             addProperty("gl", "JP")
             addProperty("clientName", "WEB")
-            addProperty("clientVersion", "2.20240401.01.00")
+            addProperty("clientVersion", webVersion)
             addProperty("utcOffsetMinutes", 540)
         }
         return JsonObject().apply {
@@ -77,7 +91,7 @@ object InnerTubeClient {
             addProperty("hl", "ja")
             addProperty("gl", "JP")
             addProperty("clientName", "IOS")
-            addProperty("clientVersion", "21.03.2")
+            addProperty("clientVersion", iosVersion)
             addProperty("clientScreen", "WATCH")
             addProperty("platform", "MOBILE")
             addProperty("deviceMake", "Apple")
@@ -96,7 +110,7 @@ object InnerTubeClient {
             addProperty("hl", "ja")
             addProperty("gl", "JP")
             addProperty("clientName", "IOS_KIDS")
-            addProperty("clientVersion", "9.01.0")
+            addProperty("clientVersion", iosKidsVersion)
             addProperty("clientScreen", "WATCH")
             addProperty("platform", "MOBILE")
             addProperty("deviceMake", "Apple")
@@ -115,7 +129,7 @@ object InnerTubeClient {
             addProperty("hl", "ja")
             addProperty("gl", "JP")
             addProperty("clientName", "ANDROID_KIDS")
-            addProperty("clientVersion", "9.01.0")
+            addProperty("clientVersion", androidKidsVersion)
             addProperty("androidSdkVersion", 30)
             addProperty("osName", "Android")
             addProperty("osVersion", "11")
@@ -132,7 +146,7 @@ object InnerTubeClient {
             addProperty("hl", "ja")
             addProperty("gl", "JP")
             addProperty("clientName", "MWEB")
-            addProperty("clientVersion", "2.20231201.01.00")
+            addProperty("clientVersion", mwebVersion)
             addProperty("platform", "MOBILE")
             addProperty("utcOffsetMinutes", 540)
         }
@@ -142,35 +156,35 @@ object InnerTubeClient {
     }
 
     /**
-     * トレンド（急上昇）動画一覧の取得
+     * 「人気の動画」一覧の取得 (Piped のトレンドが使えない場合の代替)
+     *
+     * YouTube は急上昇ページ (browseId=FEtrending) を廃止しており、同 API は全クライアントで HTTP 400 を返す。
+     * 代わりに複数ジャンルを「今週 × 視聴回数順」で並列検索し、ジャンル横断で交互に並べる
      */
-    suspend fun getTrendingVideos(): Result<List<VideoItem>> = withContext(Dispatchers.IO) {
-        try {
-            val payload = JsonObject().apply {
-                add("context", buildContext())
-                addProperty("browseId", "FEtrending")
-            }
-
-            val request = Request.Builder()
-                .url("$BASE_URL/browse")
-                .post(payload.toString().toRequestBody(JSON_MEDIA))
-                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
-                .build()
-
-            client.newCall(request).await().use { response ->
-                if (!response.isSuccessful) return@withContext Result.failure(Exception("HTTP ${response.code}"))
-                // ③ charStream() で直接パース: body?.string() より1回の String アロケーションを省略
-                val body = response.body ?: return@withContext Result.failure(Exception("Empty body"))
-                val json = gson.fromJson(body.charStream(), JsonObject::class.java)
-                val items = parseVideoRenderers(json)
-                Log.i(TAG, "InnerTube fetched ${items.size} trending videos successfully.")
-                Result.success(items)
-            }
-        } catch (e: Throwable) {
-            if (e is kotlinx.coroutines.CancellationException) throw e
-            Log.e(TAG, "InnerTube getTrendingVideos failed", e)
-            Result.failure(e)
+    suspend fun getPopularVideos(queries: List<String>): Result<List<VideoItem>> = withContext(Dispatchers.IO) {
+        if (queries.isEmpty()) return@withContext Result.failure(Exception("No popular queries"))
+        val perQuery = coroutineScope {
+            queries.map { query ->
+                async { searchVideos(query, SEARCH_FILTER_POPULAR_THIS_WEEK).getOrNull().orEmpty() }
+            }.map { it.await() }
         }
+        val items = interleave(perQuery)
+        Log.i(TAG, "InnerTube built ${items.size} popular videos from ${queries.size} queries.")
+        if (items.isEmpty()) Result.failure(Exception("Popular search returned no videos")) else Result.success(items)
+    }
+
+    /** 各リストの先頭から 1 件ずつ交互に取り出して並べる (動画 ID の重複は除外) */
+    @androidx.annotation.VisibleForTesting
+    internal fun interleave(lists: List<List<VideoItem>>): List<VideoItem> {
+        val seen = HashSet<String>()
+        val result = mutableListOf<VideoItem>()
+        for (i in 0 until (lists.maxOfOrNull { it.size } ?: 0)) {
+            for (list in lists) {
+                val item = list.getOrNull(i) ?: continue
+                if (seen.add(item.id)) result.add(item)
+            }
+        }
+        return result
     }
 
     /**
@@ -187,29 +201,42 @@ object InnerTubeClient {
             val browseId = resolveChannelBrowseId(key)
                 ?: return@withContext Result.failure(Exception("Failed to resolve channel: $key"))
 
-            val payload = JsonObject().apply {
-                add("context", buildContext())
-                addProperty("browseId", browseId)
-            }
-
-            val request = Request.Builder()
-                .url("$BASE_URL/browse")
-                .post(payload.toString().toRequestBody(JSON_MEDIA))
-                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
-                .build()
-
-            client.newCall(request).await().use { response ->
-                if (!response.isSuccessful) return@withContext Result.failure(Exception("HTTP ${response.code}"))
-                val body = response.body ?: return@withContext Result.failure(Exception("Empty body"))
-                val json = gson.fromJson(body.charStream(), JsonObject::class.java)
-                val items = parseVideoRenderers(json)
-                Log.i(TAG, "InnerTube fetched ${items.size} channel videos for $channelIdOrHandle.")
-                Result.success(items)
-            }
+            // 「動画」タブ (新しい順) を取得する。params 無しの browse はチャンネルのホームタブを返し、
+            // 並びが「おすすめ・人気」になるため、登録チャンネルの「新着」行が最新順にならなかった
+            val latest = browseChannelTab(browseId, CHANNEL_VIDEOS_TAB_PARAMS)
+            val items = if (latest.isNotEmpty()) latest else browseChannelTab(browseId, null)
+            Log.i(TAG, "InnerTube fetched ${items.size} channel videos for $channelIdOrHandle (latest tab=${latest.isNotEmpty()}).")
+            Result.success(items)
         } catch (e: Throwable) {
             if (e is kotlinx.coroutines.CancellationException) throw e
             Log.e(TAG, "InnerTube getChannelVideos failed", e)
             Result.failure(e)
+        }
+    }
+
+    /** チャンネル「動画」タブ (アップロード日の新しい順) を指定する browse params */
+    private const val CHANNEL_VIDEOS_TAB_PARAMS = "EgZ2aWRlb3PyBgQKAjoA"
+
+    /**
+     * @param params null でホームタブ (ショートのみ・ライブのみ等で動画タブが空のチャンネル向けフォールバック)
+     * @throws java.io.IOException 通信失敗時
+     */
+    private suspend fun browseChannelTab(browseId: String, params: String?): List<VideoItem> {
+        val payload = JsonObject().apply {
+            add("context", buildContext())
+            addProperty("browseId", browseId)
+            if (params != null) addProperty("params", params)
+        }
+        val request = Request.Builder()
+            .url("$BASE_URL/browse?prettyPrint=false")
+            .post(payload.toString().toRequestBody(JSON_MEDIA))
+            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+            .build()
+        return client.newCall(request).await().use { response ->
+            if (!response.isSuccessful) throw java.io.IOException("HTTP ${response.code}")
+            val body = response.body ?: throw java.io.IOException("Empty body")
+            val json = gson.fromJson(body.charStream(), JsonObject::class.java)
+            parseVideoRenderers(json)
         }
     }
 
@@ -251,7 +278,7 @@ object InnerTubeClient {
      * 動画検索
      */
     /**
-     * @param filterParams 検索フィルタ (SEARCH_FILTER_LIVE / SEARCH_FILTER_SHORTS)。null で通常検索
+     * @param filterParams 検索フィルタ (SEARCH_FILTER_LIVE / SEARCH_FILTER_SHORTS / SEARCH_FILTER_POPULAR_THIS_WEEK)。null で通常検索
      */
     suspend fun searchVideos(query: String, filterParams: String? = null): Result<List<VideoItem>> = withContext(Dispatchers.IO) {
         try {
@@ -651,6 +678,13 @@ object InnerTubeClient {
         }
     }
 
+    private val CODEC_REGEX = Regex("codecs=\"([^\"]+)\"")
+
+    /** mimeType 'video/mp4; codecs="avc1.4D401F"' → "avc1.4D401F" (無ければ空) */
+    @androidx.annotation.VisibleForTesting
+    internal fun parseCodec(mimeType: String): String =
+        CODEC_REGEX.find(mimeType)?.groupValues?.get(1)?.trim().orEmpty()
+
     private fun parseDurationToSeconds(text: String?): Long {
         if (text == null) return 0L
         val parts = text.split(":")
@@ -663,83 +697,43 @@ object InnerTubeClient {
 
     /**
      * 動画再生ストリーム情報の取得
-     * ① 並列コンテキスト Racing: IOS_KIDS と VISIONOS を async で同時発火し最速で返す
-     * 残りの 3〜5 は順次フォールバック
+     * ① 並列コンテキスト Racing: 既定では IOS_KIDS と VISIONOS を async で同時発火し、優先順に採用する
+     * ② Racing が全滅した場合は残りのクライアントを順次フォールバック
+     *
+     * どのクライアントをどの順で使うかはリモート設定 (RemoteConfig) で差し替えられる。
+     * YouTube 側が特定クライアントを制限した際に、APK を再配布せず優先順を変更するため
      */
     suspend fun extractStreamInfo(videoId: String): Result<StreamInfoData> = withContext(Dispatchers.IO) {
         val failureReasons = mutableListOf<String>()
+        val config = RemoteConfig.current
 
-        // ① Level-1 Racing: IOS_KIDS（子ども向け HLS）と VISIONOS（一般動画 HLS）を並列実行
-        // IOS_KIDS が有効なストリームを返した時点で VISIONOS を即キャンセルして返却
+        // ① Racing: 全クライアントを並列発火し、優先順 (リストの先頭側) に結果を確認する
+        // 有効なストリームが得られた時点で残りを即キャンセルして返却
         // (旧実装は両方の完了を待っていたため、常に遅い方のレイテンシになっていた)
         val raceResult = coroutineScope {
-            val kidsDeferred = async { fetchPlayerStream(videoId, buildIosKidsContext(), IOS_KIDS_USER_AGENT) }
-            val visionDeferred = async { fetchVisionOsStream(videoId) }
-
-            val kidsResult = kidsDeferred.await()
-            val kidsData = kidsResult.getOrNull()
-            if (kidsData != null && (kidsData.hlsUrl != null || kidsData.videoStreams.isNotEmpty())) {
-                visionDeferred.cancel()
-                Log.i(TAG, "Racing: IOS_KIDS won for $videoId (hls=${kidsData.hlsUrl != null})")
-                return@coroutineScope kidsResult
+            val racers = config.playerRaceClients.map { name -> name to async { fetchByClient(name, videoId) } }
+            for ((name, deferred) in racers) {
+                val result = deferred.await()
+                if (result.hasStreams()) {
+                    racers.forEach { it.second.cancel() }
+                    Log.i(TAG, "Racing: $name won for $videoId (hls=${result.getOrNull()?.hlsUrl != null})")
+                    return@coroutineScope result
+                }
+                result.exceptionOrNull()?.message?.let { failureReasons.add(it) }
             }
-            kidsResult.exceptionOrNull()?.message?.let { failureReasons.add(it) }
-
-            val visionResult = visionDeferred.await()
-            val visionData = visionResult.getOrNull()
-            if (visionData != null && (visionData.hlsUrl != null || visionData.videoStreams.isNotEmpty())) {
-                Log.i(TAG, "Racing: VISIONOS won for $videoId (hls=${visionData.hlsUrl != null})")
-                return@coroutineScope visionResult
-            }
-            visionResult.exceptionOrNull()?.message?.let { failureReasons.add(it) }
             null
         }
 
         if (raceResult != null) return@withContext raceResult
 
-        // Level-2 フォールバック: IOS_EMBEDDED (音楽PV / LOGIN_REQUIRED 救済)
-        val iosEmbedResult = fetchPlayerStream(videoId, buildIosContext(), IOS_USER_AGENT, isEmbedded = true)
-        if (iosEmbedResult.isSuccess) {
-            val data = iosEmbedResult.getOrNull()
-            if (data != null && (data.hlsUrl != null || data.videoStreams.isNotEmpty())) {
-                Log.i(TAG, "Fallback IOS_EMBEDDED succeeded for $videoId")
-                return@withContext iosEmbedResult
+        // ② 順次フォールバック (既定: IOS_EMBEDDED → MWEB → ANDROID_KIDS → IOS)
+        for (name in config.playerFallbackClients) {
+            val result = fetchByClient(name, videoId)
+            if (result.hasStreams()) {
+                Log.i(TAG, "Fallback $name succeeded for $videoId")
+                return@withContext result
             }
-        } else {
-            iosEmbedResult.exceptionOrNull()?.message?.let { failureReasons.add(it) }
-        }
-
-        // Level-3 フォールバック: MWEB
-        val mwebResult = fetchPlayerStream(videoId, buildMwebContext(), MWEB_USER_AGENT)
-        if (mwebResult.isSuccess) {
-            val data = mwebResult.getOrNull()
-            if (data != null && (data.hlsUrl != null || data.videoStreams.isNotEmpty())) {
-                Log.i(TAG, "Fallback MWEB succeeded for $videoId")
-                return@withContext mwebResult
-            }
-        } else {
-            mwebResult.exceptionOrNull()?.message?.let { failureReasons.add(it) }
-        }
-
-        // Level-4 フォールバック: ANDROID_KIDS
-        val androidKidsResult = fetchPlayerStream(videoId, buildAndroidKidsContext(), ANDROID_KIDS_USER_AGENT)
-        if (androidKidsResult.isSuccess) {
-            val data = androidKidsResult.getOrNull()
-            if (data != null && (data.hlsUrl != null || data.videoStreams.isNotEmpty())) {
-                Log.i(TAG, "Fallback ANDROID_KIDS succeeded for $videoId")
-                return@withContext androidKidsResult
-            }
-        } else {
-            androidKidsResult.exceptionOrNull()?.message?.let { failureReasons.add(it) }
-        }
-
-        // Level-5 フォールバック: 標準 IOS
-        val iosResult = fetchPlayerStream(videoId, buildIosContext(), IOS_USER_AGENT)
-        if (iosResult.isSuccess) {
-            Log.i(TAG, "Fallback IOS standard succeeded for $videoId")
-            return@withContext iosResult
-        } else {
-            iosResult.exceptionOrNull()?.message?.let { failureReasons.add(it) }
+            result.exceptionOrNull()?.message?.let { failureReasons.add(it) }
         }
 
         // 最も具体的で意味のある失敗理由を抽出（非公開、プレミア公開前、ログイン要求など）
@@ -821,7 +815,7 @@ object InnerTubeClient {
                 addProperty("hl", "ja")
                 addProperty("gl", "JP")
                 addProperty("clientName", "VISIONOS")
-                addProperty("clientVersion", "1.02")
+                addProperty("clientVersion", visionOsVersion)
                 addProperty("deviceMake", "Apple")
                 addProperty("deviceModel", "RealityDevice17,1")
                 addProperty("userAgent", VISIONOS_USER_AGENT)
@@ -854,7 +848,7 @@ object InnerTubeClient {
                 .post(payload.toString().toRequestBody(JSON_MEDIA))
                 .header("Content-Type", "application/json")
                 .header("X-Youtube-Client-Name", "101")
-                .header("X-Youtube-Client-Version", "1.02")
+                .header("X-Youtube-Client-Version", visionOsVersion)
                 .header("Origin", "https://www.youtube.com")
                 .header("User-Agent", VISIONOS_USER_AGENT)
 
@@ -875,6 +869,23 @@ object InnerTubeClient {
             Log.e(TAG, "fetchVisionOsStream failed for $videoId", e)
             Result.failure(e)
         }
+    }
+
+    private fun Result<StreamInfoData>.hasStreams(): Boolean {
+        val data = getOrNull() ?: return false
+        return data.hlsUrl != null || data.videoStreams.isNotEmpty()
+    }
+
+    /** リモート設定のクライアント名に対応する player リクエストを実行する */
+    private suspend fun fetchByClient(name: String, videoId: String): Result<StreamInfoData> = when (name) {
+        RemoteConfig.CLIENT_IOS_KIDS -> fetchPlayerStream(videoId, buildIosKidsContext(), IOS_KIDS_USER_AGENT)
+        RemoteConfig.CLIENT_VISIONOS -> fetchVisionOsStream(videoId)
+        // 音楽PV / LOGIN_REQUIRED 救済
+        RemoteConfig.CLIENT_IOS_EMBEDDED -> fetchPlayerStream(videoId, buildIosContext(), IOS_USER_AGENT, isEmbedded = true)
+        RemoteConfig.CLIENT_MWEB -> fetchPlayerStream(videoId, buildMwebContext(), MWEB_USER_AGENT)
+        RemoteConfig.CLIENT_ANDROID_KIDS -> fetchPlayerStream(videoId, buildAndroidKidsContext(), ANDROID_KIDS_USER_AGENT)
+        RemoteConfig.CLIENT_IOS -> fetchPlayerStream(videoId, buildIosContext(), IOS_USER_AGENT)
+        else -> Result.failure(Exception("Unknown player client: $name"))
     }
 
     private suspend fun fetchPlayerStream(
@@ -975,7 +986,8 @@ object InnerTubeClient {
                             resolution = quality,
                             format = format,
                             isVideoOnly = false,
-                            bitrate = bitrate
+                            bitrate = bitrate,
+                            codec = parseCodec(mimeType)
                         )
                     )
                 }
@@ -999,7 +1011,8 @@ object InnerTubeClient {
                                 resolution = quality,
                                 format = format,
                                 isVideoOnly = true,
-                                bitrate = bitrate
+                                bitrate = bitrate,
+                                codec = parseCodec(mimeType)
                             )
                         )
                     } else if (mimeType.startsWith("audio/", ignoreCase = true)) {

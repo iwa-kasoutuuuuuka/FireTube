@@ -10,11 +10,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.schabi.newpipe.extractor.NewPipe
 import org.schabi.newpipe.extractor.ServiceList
-import org.schabi.newpipe.extractor.kiosk.KioskInfo
 import org.schabi.newpipe.extractor.search.SearchInfo
 import org.schabi.newpipe.extractor.services.youtube.extractors.YoutubeStreamExtractor
 import org.schabi.newpipe.extractor.stream.StreamInfo
-import org.schabi.newpipe.extractor.stream.StreamType
 
 /**
  * GMS（Google Play Services）を一切介さず、
@@ -36,38 +34,6 @@ object YouTubeStreamExtractor {
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to initialize NewPipeExtractor", e)
             }
-        }
-    }
-
-    /**
-     * トレンド (急上昇) 動画の取得
-     */
-    suspend fun getTrendingVideos(): Result<List<VideoItem>> = withContext(Dispatchers.IO) {
-        init()
-        try {
-            val kiosk = KioskInfo.getInfo(
-                ServiceList.YouTube,
-                "https://www.youtube.com/feed/trending"
-            )
-            val items = kiosk.relatedItems.mapNotNull { streamItem ->
-                if (streamItem.streamType == StreamType.VIDEO_STREAM) {
-                    val id = streamItem.url.substringAfter("watch?v=").substringBefore("&")
-                    VideoItem(
-                        id = id,
-                        title = streamItem.name ?: "Unknown Title",
-                        uploaderName = streamItem.uploaderName ?: "Unknown Channel",
-                        uploaderUrl = streamItem.uploaderUrl,
-                        thumbnailUrl = streamItem.thumbnails.lastOrNull()?.url ?: "",
-                        durationSeconds = streamItem.duration,
-                        viewCount = streamItem.viewCount
-                    )
-                } else null
-            }
-            Result.success(items)
-        } catch (e: Throwable) {
-            if (e is kotlinx.coroutines.CancellationException) throw e
-            Log.e(TAG, "Error fetching stream data", e)
-            Result.failure(e)
         }
     }
 
@@ -123,7 +89,8 @@ object YouTubeStreamExtractor {
                             resolution = s.resolution ?: "720p",
                             format = s.format?.name ?: "mp4",
                             isVideoOnly = s.isVideoOnly,
-                            bitrate = s.bitrate
+                            bitrate = s.bitrate,
+                            codec = s.codec ?: ""
                         )
                     )
                 }
@@ -137,7 +104,8 @@ object YouTubeStreamExtractor {
                             resolution = s.resolution ?: "1080p",
                             format = s.format?.name ?: "mp4",
                             isVideoOnly = true,
-                            bitrate = s.bitrate
+                            bitrate = s.bitrate,
+                            codec = s.codec ?: ""
                         )
                     )
                 }

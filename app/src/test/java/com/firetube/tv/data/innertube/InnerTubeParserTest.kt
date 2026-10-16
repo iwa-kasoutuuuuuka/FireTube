@@ -58,4 +58,16 @@ class InnerTubeParserTest {
         val withoutFlag = InnerTubeClient.parseVideoRenderers(json)
         assertTrue(withoutFlag.none { it.id.startsWith(InnerTubeClient.PLAYLIST_ID_PREFIX) })
     }
+
+    @Test
+    fun `人気の動画はジャンル横断で交互に並び重複IDは除外される`() {
+        fun item(id: String) = com.firetube.tv.data.model.VideoItem(id = id, title = id, uploaderName = "ch", thumbnailUrl = "")
+        val news = listOf(item("n1"), item("n2"), item("n3"))
+        val music = listOf(item("m1"), item("n2"))
+        val empty = emptyList<com.firetube.tv.data.model.VideoItem>()
+
+        val result = InnerTubeClient.interleave(listOf(news, empty, music)).map { it.id }
+        assertEquals(listOf("n1", "m1", "n2", "n3"), result)
+        assertTrue(InnerTubeClient.interleave(emptyList()).isEmpty())
+    }
 }

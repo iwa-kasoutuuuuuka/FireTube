@@ -225,6 +225,8 @@ class MainFragment : BrowseSupportFragment() {
 
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             delay(1500) // ホーム画面の初期描画負荷を避けて低優先度で実行
+            // リモート設定の再取得 (前回取得から 6 時間以内なら通信しない)。アプリを終了せず使い続ける場合の更新経路
+            com.firetube.tv.data.network.RemoteConfig.refresh(com.firetube.tv.FireTubeApp.instance)
             // ⑧ VisitorData を先取り: 初回 VISIONOS 抽出時の追加 HTTP ラウンドトリップを 0ms 化
             InnerTubeClient.preFetchVisitorData()
             // ⑤ キッズ動画のストリーム並列先読み

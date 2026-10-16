@@ -827,17 +827,20 @@ class PlaybackActivity : FragmentActivity() {
         }
 
         // 2. 音声付き単一ストリーム (Muxed) を検索
-        val muxedStreams = streamInfo.videoStreams.filter { !it.isVideoOnly }
-        val qualityFilteredMuxed = muxedStreams.filter { it.resolution.contains(targetQuality.take(4), ignoreCase = true) }
-        val bestMuxed = if (qualityFilteredMuxed.isNotEmpty()) qualityFilteredMuxed.first() else muxedStreams.firstOrNull()
+        //    端末がデコードできないコーデック・解像度 (HD 端末での 4K VP9 等) は候補から除外
+        val decodableStreams = StreamSelector.filterDecodable(streamInfo.videoStreams, ::canDecode)
+        val muxedStreams = decodableStreams.filter { !it.isVideoOnly }
+        val bestMuxed = StreamSelector.selectVideo(muxedStreams, targetQuality, pref.preferAvcCodec, supportsAv1)
 
-        // 3. DASH セパレートストリーム (映像ストリーム + 音声ストリームの合成)
-        val bestVideo = selectBestVideoStream(streamInfo.videoStreams, targetQuality, pref.preferAvcCodec)
-        val bestAudio = selectBestAudioStream(streamInfo.audioStreams)
+        // 3. DASH セパレートストリーム (映像のみストリーム + 音声ストリームの合成)
+        //    旧実装は Muxed も映像候補に含めていたため、音声付きストリームに別の音声を合成することがあった
+        val videoOnlyStreams = decodableStreams.filter { it.isVideoOnly }
+        val bestVideo = StreamSelector.selectVideo(videoOnlyStreams, targetQuality, pref.preferAvcCodec, supportsAv1)
+        val bestAudio = StreamSelector.selectAudio(streamInfo.audioStreams)
         val factory = currentMediaSourceFactory
 
         if (bestVideo != null && bestAudio != null && factory != null) {
-            Log.i(TAG, "Playing via DASH MergingMediaSource: video=${bestVideo.resolution} (${bestVideo.format}), audio=${bestAudio.format} (${bestAudio.bitrate}bps)")
+            Log.i(TAG, "Playing via DASH MergingMediaSource: video=${bestVideo.resolution} (${bestVideo.format}/${bestVideo.codec}), audio=${bestAudio.format} (${bestAudio.bitrate}bps)")
             val videoSource = factory.createMediaSource(MediaItem.fromUri(bestVideo.url))
             val audioSource = factory.createMediaSource(MediaItem.fromUri(bestAudio.url))
             val mergedSource = MergingMediaSource(videoSource, audioSource)
@@ -850,6 +853,11 @@ class PlaybackActivity : FragmentActivity() {
             Log.w(TAG, "Playing video-only stream (audio stream missing): ${bestVideo.resolution}")
             val mediaItem = MediaItem.fromUri(bestVideo.url)
             executePlayback(mediaItem = mediaItem, durationMs = durationMs, resumePositionMs = resumePositionMs)
+        } else if (streamInfo.videoStreams.isNotEmpty()) {
+            // 映像ストリームはあるが上記のどれにも当てはまらない (想定外の形式) 場合の最終手段
+            val any = streamInfo.videoStreams.first()
+            Log.w(TAG, "Playing first available stream as last resort: ${any.resolution} (${any.format})")
+            executePlayback(mediaItem = MediaItem.fromUri(any.url), durationMs = durationMs, resumePositionMs = resumePositionMs)
         } else {
             Log.e(TAG, "No playable stream found for video: $videoId. Auto-recovering via WebView IFrame fallback.")
             if (!isUsingWebViewFallback && !isFinishing && !isDestroyed) {
@@ -861,46 +869,34 @@ class PlaybackActivity : FragmentActivity() {
         }
     }
 
-    private fun selectBestVideoStream(
-        streams: List<VideoStream>,
-        targetQuality: String,
-        preferAvc: Boolean
-    ): VideoStream? {
-        if (streams.isEmpty()) return null
-
-        val qualityKeyword = when {
-            targetQuality.contains("4K", ignoreCase = true) || targetQuality.contains("2160") -> "2160"
-            targetQuality.contains("1440") -> "1440"
-            targetQuality.contains("1080") -> "1080"
-            targetQuality.contains("720") -> "720"
-            targetQuality.contains("480") -> "480"
-            else -> "720"
-        }
-
-        val matchedByQuality = streams.filter { it.resolution.contains(qualityKeyword) }
-        val pool = if (matchedByQuality.isNotEmpty()) matchedByQuality else streams
-
-        // 4K (2160p) または 1440p は YouTube の仕様上 AVC (H.264) が存在しないため、
-        // preferAvc 設定に関わらず VP9 / AV1 ストリームをフル活用
-        val isHighResolution = qualityKeyword == "2160" || qualityKeyword == "1440"
-
-        return if (preferAvc && !isHighResolution) {
-            pool.firstOrNull { it.format.equals("mp4", ignoreCase = true) || it.url.contains("mime=video%2Fmp4") }
-                ?: pool.firstOrNull()
-        } else {
-            // 4K Max 等の高スペック環境では最高ビットレート（60fps / 高品質）ストリームを優先
-            pool.maxByOrNull { it.bitrate } ?: pool.firstOrNull()
+    /** 端末に AV1 デコーダーがあるか (無い端末では AV1 ストリームを選ばない) */
+    private val supportsAv1: Boolean by lazy {
+        try {
+            androidx.media3.exoplayer.mediacodec.MediaCodecUtil.getDecoderInfo(MimeTypes.VIDEO_AV1, false, false) != null
+        } catch (t: Throwable) {
+            false
         }
     }
 
-    private fun selectBestAudioStream(streams: List<AudioStream>): AudioStream? {
-        if (streams.isEmpty()) return null
-        // Fire TV ハードウェアデコーダー互換性と YouTube CDN 安定性が最も高い m4a (AAC) を最優先
-        val m4aStreams = streams.filter { it.format.equals("m4a", ignoreCase = true) }
-        if (m4aStreams.isNotEmpty()) {
-            return m4aStreams.maxByOrNull { it.bitrate } ?: m4aStreams.first()
+    private val decodeSupportCache = HashMap<Pair<String, Int>, Boolean>()
+
+    /** 端末のデコーダーが指定コーデック・縦解像度 (16:9 換算) を再生できるか */
+    private fun canDecode(mimeType: String, height: Int): Boolean =
+        decodeSupportCache.getOrPut(mimeType to height) {
+            try {
+                androidx.media3.exoplayer.mediacodec.MediaCodecUtil.getDecoderInfo(mimeType, false, false)
+                    ?.isVideoSizeAndRateSupportedV21(height * 16 / 9, height, 30.0) == true
+            } catch (t: Throwable) {
+                false
+            }
         }
-        return streams.maxByOrNull { it.bitrate } ?: streams.firstOrNull()
+
+    /** いずれかのコーデックで再生できる最大の縦解像度 (判定不能な端末では制限しない) */
+    private val maxDecodableHeight: Int by lazy {
+        val mimeTypes = listOf(MimeTypes.VIDEO_H264, MimeTypes.VIDEO_VP9, MimeTypes.VIDEO_AV1)
+        listOf(2160, 1440, 1080, 720, 480, 360)
+            .firstOrNull { height -> mimeTypes.any { canDecode(it, height) } }
+            ?: Int.MAX_VALUE
     }
 
     private fun executePlayback(
@@ -1019,7 +1015,7 @@ class PlaybackActivity : FragmentActivity() {
     /** HLS の最大画質を制限 (null = 制限なし)。HLS は再生を止めずに ABR が切り替える */
     private fun applyHlsMaxHeight(quality: String?) {
         val selector = trackSelector ?: return
-        val height = quality?.let { q -> Regex("\\d{3,4}").find(q)?.value?.toIntOrNull() }
+        val height = StreamSelector.parseHeight(quality)
         selector.parameters = selector.buildUponParameters()
             .setMaxVideoSize(Int.MAX_VALUE, height ?: Int.MAX_VALUE)
             .build()
@@ -1032,9 +1028,13 @@ class PlaybackActivity : FragmentActivity() {
         val info = currentStreamInfo ?: return
         val pref = AppPreferences.getInstance(this)
         val isHls = info.hlsUrl != null
+        // 端末がデコードできない画質 (HD 端末での 4K / 1440p 等) は選択肢に出さない
+        val decodableStreams = StreamSelector.filterDecodable(info.videoStreams, ::canDecode)
         val qualityLabels = listOf("2160p", "1440p", "1080p", "720p", "480p", "360p").filter { q ->
-            // HLS はマニフェスト内の画質が事前に分からないため全候補を表示
-            isHls || info.videoStreams.any { it.resolution.contains(q.removeSuffix("p")) }
+            val height = q.removeSuffix("p").toInt()
+            // HLS はマニフェスト内の画質が事前に分からないため、端末の上限以下の全候補を表示
+            if (isHls) height <= maxDecodableHeight
+            else decodableStreams.any { StreamSelector.parseHeight(it.resolution) == height }
         }
         val hasSubtitles = info.subtitles.isNotEmpty()
         val currentQuality = qualityOverride ?: if (isHls) null else pref.defaultQuality
@@ -1195,7 +1195,9 @@ class PlaybackActivity : FragmentActivity() {
             if (!isActive || videoId != currentTargetId) return@launch
             val result = VideoRepository.getUpNextVideos(currentTargetId)
             if (!isActive || videoId != currentTargetId) return@launch
-            result.onSuccess { videos ->
+            result.onSuccess { list ->
+                // 現在再生中の動画が混ざると自動再生が同じ動画をループするため除外
+                val videos = list.filter { it.id != currentTargetId }
                 upNextAdapter.clear()
                 upNextAdapter.addAll(0, videos)
                 if (isPlaybackEnded && upNextContainer.visibility != View.VISIBLE) {
