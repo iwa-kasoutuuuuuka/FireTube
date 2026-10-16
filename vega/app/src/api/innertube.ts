@@ -11,6 +11,7 @@ import {
   StreamInfo,
   VideoItem,
 } from './types';
+import {log} from '../log';
 
 const BASE_URL = 'https://www.youtube.com/youtubei/v1';
 const TIMEOUT_MS = 12000;
@@ -382,6 +383,12 @@ async function fetchVisitorData(): Promise<boolean> {
   if (sts) {
     signatureTimestamp = Number(sts);
   }
+  log(
+    'visitorData',
+    visitorData ? 'ok' : 'not found',
+    'sts',
+    signatureTimestamp,
+  );
   return visitorData !== undefined;
 }
 
@@ -550,8 +557,22 @@ async function fetchPlayer(
       headers['X-Goog-Visitor-Id'] = visitorData;
     }
   }
-  const json = await postJson('player?prettyPrint=false', body, headers);
-  return parsePlayerResponse(json, videoId, name, maxHeight);
+  const started = Date.now();
+  try {
+    const json = await postJson('player?prettyPrint=false', body, headers);
+    const info = parsePlayerResponse(json, videoId, name, maxHeight);
+    log('player ok', name, videoId, `${Date.now() - started}ms`);
+    return info;
+  } catch (e) {
+    log(
+      'player ng',
+      name,
+      videoId,
+      `${Date.now() - started}ms`,
+      (e as Error).message,
+    );
+    throw e;
+  }
 }
 
 export function parsePlayerResponse(
@@ -742,6 +763,7 @@ export async function extractStreamInfo(
     reasons.find((r) => PREFERRED_REASON.test(r)) ??
     reasons.find((r) => !/HTTP|failed|streamingData|timeout/i.test(r)) ??
     'この動画は再生できません';
+  log('all player clients failed', videoId, reasons.join(' | '));
   throw new Error(best);
 }
 

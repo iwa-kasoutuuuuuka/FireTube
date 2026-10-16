@@ -278,6 +278,7 @@ export const PlayerScreen = ({
       return;
     }
     const st = settings.get();
+    log('player start', video.id);
     if (st.sponsorBlock) {
       getSponsorSegments(video.id).then((list) => (segments.current = list));
     }
@@ -319,6 +320,7 @@ export const PlayerScreen = ({
         showToast(`前回の続き (${formatDuration(saved)}) から再生します`);
       }
     } catch (e) {
+      log('player error', video.id, (e as Error).message);
       setError((e as Error).message);
     }
   }, [applyInfo, playSource, selectCaption, showToast, video.id]);
