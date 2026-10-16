@@ -89,7 +89,8 @@ if [ -n "$VPKG" ] && connected; then
   run 24-is-running dev is-app-running --appName "$APP_ID"
   # run-cmd では loggingctl の出力が返らないため、端末内のファイルに書いてから copy-from で取り出す
   applog() { # applog <記録名>
-    dev run-cmd --command "loggingctl log > /tmp/$1.log 2>&1" > /dev/null 2>&1
+    # オプション無しの loggingctl log はヘルプを出すだけなので、出力形式を指定する
+    dev run-cmd --command "loggingctl log -o short_precise > /tmp/$1.log 2>&1" > /dev/null 2>&1
     vega device copy-from -d VirtualDevice --source "/tmp/$1.log" --destination "$OUT/" > "$OUT/$1-copy.txt" 2>&1
     grep -iE 'FireTube|ReactNativeJS|Exception|TypeError|ReferenceError|fatal|w3cmedia|KeplerScript' "$OUT/$1.log" 2>/dev/null | tail -n 600 > "$OUT/$1-app.txt"
   }
@@ -109,7 +110,9 @@ if [ -n "$VPKG" ] && connected; then
   run 44-is-running dev is-app-running --appName "$APP_ID"
   run 45-full-log dev run-cmd --command "loggingctl log | tail -n 1500"
   mkdir -p "$OUT/device-logs" "$OUT/doctor"
-  run 46-copy-logs dev copy-logs --artifact system/var_log --directory "$OUT/device-logs"
+  # アプリのログは main/var_log 側にある
+  run 46-copy-logs dev copy-logs --artifact main/var_log --directory "$OUT/device-logs"
+  grep -iE 'FireTube|ReactNativeJS|Exception|TypeError|ReferenceError|w3cmedia|KeplerScript|com.firetube' "$OUT"/device-logs/*.log 2>/dev/null | tail -n 1500 > "$OUT/48-main-log-app.txt"
   run 47-doctor dev doctor --directory "$OUT/doctor" --since 30m --appName "$APP_ID"
   vega device stop-log-stream -d VirtualDevice > /dev/null 2>&1
 fi
